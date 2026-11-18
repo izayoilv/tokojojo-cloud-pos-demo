@@ -86,15 +86,91 @@ pnpm format:check
 
 Tauri and Android checks are documented in their platform guides.
 
-## Development flow
+## Working with issues, Projects, and PRs
 
-1. Branch from `main`; never push directly to `main`.
-2. Keep the shared GraphQL contract in `packages/graphql/`.
-3. Run the relevant checks before opening a PR.
-4. Open a PR; `ci-gate` must pass and `@izayoilv` must approve.
-5. Merge with squash; the branch is deleted automatically.
+`main` is protected. For collaborators, `git push origin main` is rejected. All changes
+go through a pull request.
 
-`main` is protected. Collaborators use PRs only; the required check is `ci-gate`.
+### Why not push directly to main?
+
+| Direct push to `main`           | Pull request                                   |
+| ------------------------------- | ---------------------------------------------- |
+| No review                       | Code-owner review required                     |
+| No CI record                    | `ci-gate` must pass                            |
+| Can break the demo for everyone | Main stays green                               |
+| No link to a task               | PR links to an issue and the Project board     |
+| Hard to audit                   | Commit, checks, review, and merge are recorded |
+
+You can still use ordinary git commands locally. Only the final `git push origin main`
+is replaced by pushing a branch and opening a PR.
+
+### Daily flow
+
+1. Pick an issue from the Project board, or create one in the repo **Issues** tab.
+2. Create a branch:
+
+   ```bash
+   git switch main
+   git pull
+   git switch -c feat/short-description
+   ```
+
+3. Commit with a conventional message:
+
+   ```bash
+   git add .
+   git commit -m "feat(db): add sales and stock tables"
+   ```
+
+4. Push the branch:
+
+   ```bash
+   git push -u origin feat/short-description
+   ```
+
+5. Open a PR against `main`. Use the PR template.
+6. Wait for `ci-gate` and for `@izayoilv` to approve.
+7. Squash merge. The branch is deleted automatically.
+
+### Reference the issue
+
+Not required for CI, but required by team convention:
+
+```text
+Closes #2
+```
+
+- `Closes #2` closes the issue when the PR is merged.
+- `Refs #2` links the PR without closing the issue.
+- Multiple issues: `Closes #2, #7`.
+- If there is no issue, create one first; do not use the PR as the task list.
+
+### CI expectations
+
+- Required check: `ci-gate`.
+- `web`, `rust`, and `android` run only when their paths change.
+- Docs-only PRs skip the build jobs, but `ci-gate` still runs.
+- A failed check is fixed on the same branch; push again and CI reruns.
+- A new push after approval dismisses the old approval; request review again.
+
+### Project board
+
+- **Issues** are tasks.
+- **Project** is the board and its views.
+- Add each new issue to the project with the issue's **Projects** sidebar.
+- Keep `Status`, `Area`, and `Priority` up to date.
+- Closing the issue through `Closes #...` is the normal way to finish a task.
+
+Project: <https://github.com/users/izayoilv/projects/1>
+
+### Pull request checklist
+
+- [ ] PR title is conventional (`feat:`, `fix:`, `docs:`, `ci:`)
+- [ ] Body contains `Closes #...` or `Refs #...`
+- [ ] The relevant local checks pass
+- [ ] `ci-gate` is green
+- [ ] No secrets, tokens, or local database files
+- [ ] UI changes include a screenshot or short recording
 
 ## Shared contract
 
