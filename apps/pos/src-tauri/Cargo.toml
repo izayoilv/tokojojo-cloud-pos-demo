@@ -1,0 +1,20 @@
+[package]
+name = "tokojojo-pos"
+version = "0.1.0"
+description = "TokoJojo offline-capable POS"
+authors = ["TokoJojo"]
+edition = "2024"
+
+[lib]
+name = "tokojojo_pos_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.6", features = [] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "time"] }
+uuid = { version = "1.29.3", features = ["v7", "serde"] }

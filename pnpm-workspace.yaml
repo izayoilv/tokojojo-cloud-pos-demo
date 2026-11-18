@@ -1,0 +1,13 @@
+packages:
+  - apps/web
+  - apps/pos
+
+allowBuilds:
+  esbuild: true
+  "@tailwindcss/oxide": true
+  "@tauri-apps/cli": true
+
+minimumReleaseAgeExclude:
+  - "@tanstack/query-core@5.108.0"
+  - "@tanstack/solid-query@5.108.0"
+  - lucide-solid@1.75.0

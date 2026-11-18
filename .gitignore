@@ -17,6 +17,7 @@ src-tauri/gen/
 
 # Android / Gradle
 .gradle/
+.kotlin/
 **/build/
 local.properties
 *.apk
