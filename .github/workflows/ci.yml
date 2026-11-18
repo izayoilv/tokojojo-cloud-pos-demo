@@ -4,6 +4,16 @@ on:
   pull_request:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.mdx"
+      - "LICENSE"
+      - ".gitignore"
+      - ".gitattributes"
+      - ".github/CODEOWNERS"
+      - ".github/actionlint.yaml"
+      - "compose.dev.yaml"
+      - ".env.example"
   workflow_dispatch:
 
 permissions:
