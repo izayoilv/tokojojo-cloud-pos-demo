@@ -33,6 +33,7 @@ jobs:
       web: ${{ steps.filter.outputs.web || steps.force.outputs.web }}
       rust: ${{ steps.filter.outputs.rust || steps.force.outputs.rust }}
       android: ${{ steps.filter.outputs.android || steps.force.outputs.android }}
+      api: ${{ steps.filter.outputs.api || steps.force.outputs.api }}
     steps:
       - uses: dorny/paths-filter@v4
         id: filter
@@ -49,6 +50,22 @@ jobs:
               - 'apps/pos/tsconfig*.json'
               - 'apps/pos/public/**'
               - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - 'commitlint.config.cjs'
+              - '.prettierrc'
+              - '.prettierignore'
+              - '.editorconfig'
+              - '.github/workflows/ci.yml'
+              - '!**/*.md'
+              - '!**/*.mdx'
+              - '!LICENSE'
+              - '!**/.gitignore'
+              - '!**/.gitattributes'
+            api:
+              - 'apps/api/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -88,6 +105,7 @@ jobs:
             echo "web=true"
             echo "rust=true"
             echo "android=true"
+            echo "api=true"
           } >> "$GITHUB_OUTPUT"
 
   web:
@@ -113,6 +131,63 @@ jobs:
       - run: pnpm format:check
       - run: pnpm --filter @tokojojo/web build
       - run: pnpm --filter @tokojojo/pos build
+
+  api:
+    name: api
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: tokojojo
+          POSTGRES_USER: tokojojo
+          POSTGRES_PASSWORD: tokojojo_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tokojojo -d tokojojo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tokojojo:tokojojo_dev@127.0.0.1:5432/tokojojo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.21.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.13.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tokojojo/api typecheck
+      - run: pnpm --filter @tokojojo/api lint
+      - run: pnpm exec prettier --check apps/api
+      - run: pnpm --filter @tokojojo/api db:check
+      - run: pnpm --filter @tokojojo/api db:migrate
+      - run: pnpm --filter @tokojojo/api db:seed
+      - name: Seed is idempotent
+        working-directory: apps/api
+        run: |
+          pnpm db:seed
+          node --input-type=module -e '
+            import postgres from "postgres";
+            const sql = postgres(process.env.DATABASE_URL);
+            const [row] = await sql`select
+              (select count(*)::int from products) as products,
+              (select count(*)::int from product_units) as units`;
+            await sql.end();
+            if (row.products !== 1 || row.units !== 2) {
+              console.error(row);
+              process.exit(1);
+            }
+          '
 
   rust:
     name: rust
@@ -170,7 +245,7 @@ jobs:
 
   ci-gate:
     name: ci-gate
-    needs: [changes, web, rust, android]
+    needs: [changes, web, api, rust, android]
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -179,11 +254,13 @@ jobs:
         run: |
           echo "changes=${{ needs.changes.result }}"
           echo "web=${{ needs.web.result }}"
+          echo "api=${{ needs.api.result }}"
           echo "rust=${{ needs.rust.result }}"
           echo "android=${{ needs.android.result }}"
           for result in \
             "${{ needs.changes.result }}" \
             "${{ needs.web.result }}" \
+            "${{ needs.api.result }}" \
             "${{ needs.rust.result }}" \
             "${{ needs.android.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   decimal,
   index,
   pgTable,
@@ -54,7 +55,12 @@ export const products = pgTable(
     active: boolean("active").notNull().default(true),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (t) => [index("products_tenant_idx").on(t.tenantId)],
+  (t) => [
+    index("products_tenant_idx").on(t.tenantId),
+    index("products_tenant_category_idx").on(t.tenantId, t.categoryId),
+    check("products_base_cost_price_nonnegative", sql`${t.baseCostPrice} >= 0`),
+    check("products_min_stock_alert_nonnegative", sql`${t.minStockAlert} >= 0`),
+  ],
 );
 
 export const productUnits = pgTable(
@@ -84,6 +90,16 @@ export const productUnits = pgTable(
     uniqueIndex("product_units_barcode_uq")
       .on(t.tenantId, t.barcode)
       .where(sql`${t.barcode} IS NOT NULL`),
+    uniqueIndex("product_units_tenant_product_name_uq").on(
+      t.tenantId,
+      t.productId,
+      t.unitName,
+    ),
     index("product_units_product_idx").on(t.productId),
+    check("product_units_conversion_qty_positive", sql`${t.conversionQty} > 0`),
+    check(
+      "product_units_selling_price_nonnegative",
+      sql`${t.sellingPrice} >= 0`,
+    ),
   ],
 );

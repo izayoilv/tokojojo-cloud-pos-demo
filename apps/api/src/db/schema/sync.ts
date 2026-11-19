@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   index,
   jsonb,
   pgEnum,
@@ -62,6 +63,8 @@ export const syncBatches = pgTable(
       t.clientBatchId,
     ),
     index("sync_batches_tenant_idx").on(t.tenantId),
+    index("sync_batches_status_received_idx").on(t.status, t.receivedAt),
+    check("sync_batches_event_count_nonnegative", sql`${t.eventCount} >= 0`),
   ],
 );
 
@@ -99,5 +102,11 @@ export const deviceEvents = pgTable(
       t.clientEventId,
     ),
     index("device_events_batch_idx").on(t.batchId),
+    index("device_events_status_created_idx").on(t.status, t.createdAt),
+    index("device_events_tenant_device_status_idx").on(
+      t.tenantId,
+      t.deviceId,
+      t.status,
+    ),
   ],
 );

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   decimal,
   index,
   pgEnum,
@@ -13,16 +14,20 @@ import { users } from "./auth.js";
 import { products } from "./catalog.js";
 import { tenants } from "./tenants.js";
 
-export const suppliers = pgTable("suppliers", {
-  id: uuid("id")
-    .primaryKey()
-    .default(sql`uuidv7()`),
-  tenantId: uuid("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  phone: text("phone"),
-});
+export const suppliers = pgTable(
+  "suppliers",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    phone: text("phone"),
+  },
+  (t) => [index("suppliers_tenant_idx").on(t.tenantId)],
+);
 
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
   "SALE",
@@ -50,7 +55,7 @@ export const stockMovements = pgTable(
     expirationDate: timestamp("expiration_date", { withTimezone: true }),
     notes: text("notes"),
     createdBy: uuid("created_by").references(() => users.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -58,5 +63,8 @@ export const stockMovements = pgTable(
   },
   (t) => [
     index("stock_movements_tenant_product_idx").on(t.tenantId, t.productId),
+    index("stock_movements_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("stock_movements_reference_idx").on(t.referenceId),
+    check("stock_movements_qty_nonzero", sql`${t.qty} <> 0`),
   ],
 );

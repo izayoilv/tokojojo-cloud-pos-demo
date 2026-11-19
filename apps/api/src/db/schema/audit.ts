@@ -29,5 +29,13 @@ export const activityLogs = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("activity_logs_tenant_idx").on(t.tenantId)],
+  (t) => [
+    index("activity_logs_tenant_idx").on(t.tenantId),
+    index("activity_logs_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("activity_logs_tenant_entity_idx").on(
+      t.tenantId,
+      t.entityType,
+      t.entityId,
+    ),
+  ],
 );

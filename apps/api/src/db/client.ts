@@ -3,9 +3,12 @@ import postgres from "postgres";
 
 import * as schema from "./schema/index.js";
 
-const connectionString =
-  process.env.DATABASE_URL ??
-  "postgresql://tokojojo:tokojojo_dev@127.0.0.1:5432/tokojojo";
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error(
+    "DATABASE_URL is required; create apps/api/.env or export it",
+  );
+}
 
 export const sql = postgres(connectionString, { max: 10 });
 export const db = drizzle(sql, { schema });

@@ -43,6 +43,10 @@ pre-commit install
 
 podman-compose -f compose.dev.yaml up -d
 
+cp .env.example apps/api/.env
+pnpm db:migrate
+pnpm db:seed
+
 pnpm dev:web
 pnpm dev:pos
 (cd apps/android && ./gradlew :app:assembleDebug)

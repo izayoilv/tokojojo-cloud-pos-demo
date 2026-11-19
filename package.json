@@ -10,6 +10,11 @@
   "scripts": {
     "dev:web": "pnpm --filter @tokojojo/web dev",
     "dev:pos": "pnpm --filter @tokojojo/pos tauri dev",
+    "db:generate": "pnpm --filter @tokojojo/api db:generate",
+    "db:check": "pnpm --filter @tokojojo/api db:check",
+    "db:migrate": "pnpm --filter @tokojojo/api db:migrate",
+    "db:seed": "pnpm --filter @tokojojo/api db:seed",
+    "db:studio": "pnpm --filter @tokojojo/api db:studio",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",

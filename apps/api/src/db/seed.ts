@@ -1,89 +1,181 @@
 import { hash } from "@node-rs/argon2";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db, sql } from "./client.js";
 import * as s from "./schema/index.js";
 
-async function main() {
-  // 1. Tenant
-  await db
-    .insert(s.tenants)
-    .values({ name: "Toko Jojo", slug: "tokojojo" })
-    .onConflictDoNothing();
-  const [tenant] = await db
-    .select()
-    .from(s.tenants)
-    .where(eq(s.tenants.slug, "tokojojo"))
-    .limit(1);
-  if (!tenant) throw new Error("Tenant seed failed");
+const seedIds = {
+  tenant: "01930000-0000-7000-8000-000000000001",
+  owner: "01930000-0000-7000-8000-000000000002",
+  kasir: "01930000-0000-7000-8000-000000000003",
+  sembako: "01930000-0000-7000-8000-000000000004",
+  minuman: "01930000-0000-7000-8000-000000000005",
+  beras: "01930000-0000-7000-8000-000000000006",
+  ecer: "01930000-0000-7000-8000-000000000007",
+  karung: "01930000-0000-7000-8000-000000000008",
+} as const;
 
-  // 2. Users (Owner & Kasir)
-  const passwordHash = await hash("password123", {
+function assertSeedingAllowed() {
+  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW !== "1") {
+    throw new Error(
+      "Refusing to seed a production database; set SEED_ALLOW=1 to override",
+    );
+  }
+}
+
+async function main() {
+  assertSeedingAllowed();
+
+  const ownerHash = await hash("password123", {
     memoryCost: 19456,
     timeCost: 2,
     parallelism: 1,
   });
-  await db
-    .insert(s.users)
-    .values([
+  const kasirHash = await hash("password123", {
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1,
+  });
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(s.tenants)
+      .values({ id: seedIds.tenant, name: "Toko Jojo", slug: "tokojojo" })
+      .onConflictDoUpdate({
+        target: s.tenants.slug,
+        set: { name: "Toko Jojo" },
+      });
+
+    const [tenant] = await tx
+      .select()
+      .from(s.tenants)
+      .where(eq(s.tenants.slug, "tokojojo"))
+      .limit(1);
+    if (!tenant) throw new Error("Tenant seed failed");
+
+    const users = [
       {
-        tenantId: tenant.id,
+        id: seedIds.owner,
         email: "owner@tokojojo.local",
         name: "Johan",
-        passwordHash,
-        role: "owner",
+        passwordHash: ownerHash,
+        role: "owner" as const,
       },
       {
-        tenantId: tenant.id,
+        id: seedIds.kasir,
         email: "kasir@tokojojo.local",
         name: "Kasir 1",
-        passwordHash,
-        role: "kasir",
+        passwordHash: kasirHash,
+        role: "kasir" as const,
       },
-    ])
-    .onConflictDoNothing();
+    ];
 
-  // 3. Categories
-  await db
-    .insert(s.categories)
-    .values([
-      { tenantId: tenant.id, name: "Sembako" },
-      { tenantId: tenant.id, name: "Minuman" },
-    ])
-    .onConflictDoNothing();
+    for (const user of users) {
+      await tx
+        .insert(s.users)
+        .values({ ...user, tenantId: tenant.id })
+        .onConflictDoUpdate({
+          target: [s.users.tenantId, s.users.email],
+          set: {
+            name: user.name,
+            passwordHash: user.passwordHash,
+            role: user.role,
+            active: true,
+            deletedAt: null,
+          },
+        });
+    }
 
-  // 4. Products & Product Units
-  const [beras] = await db
-    .insert(s.products)
-    .values({
-      tenantId: tenant.id,
-      name: "Beras Ramos",
-      baseUnit: "Kg",
-      currentStock: "50.00",
-      baseCostPrice: "12000.00",
-      minStockAlert: "10.00",
-    })
-    .returning();
+    const categories = [
+      { id: seedIds.sembako, name: "Sembako" },
+      { id: seedIds.minuman, name: "Minuman" },
+    ];
 
-  await db
-    .insert(s.productUnits)
-    .values([
+    for (const category of categories) {
+      await tx
+        .insert(s.categories)
+        .values({ ...category, tenantId: tenant.id })
+        .onConflictDoUpdate({
+          target: [s.categories.tenantId, s.categories.name],
+          set: { deletedAt: null },
+        });
+    }
+
+    const [existingProduct] = await tx
+      .select()
+      .from(s.products)
+      .where(
+        and(
+          eq(s.products.tenantId, tenant.id),
+          eq(s.products.name, "Beras Ramos"),
+        ),
+      )
+      .limit(1);
+
+    let productId = existingProduct?.id;
+
+    if (existingProduct) {
+      await tx
+        .update(s.products)
+        .set({
+          baseUnit: "Kg",
+          currentStock: "50.00",
+          baseCostPrice: "12000.00",
+          minStockAlert: "10.00",
+          active: true,
+          deletedAt: null,
+        })
+        .where(eq(s.products.id, existingProduct.id));
+    } else {
+      const [createdProduct] = await tx
+        .insert(s.products)
+        .values({
+          id: seedIds.beras,
+          tenantId: tenant.id,
+          name: "Beras Ramos",
+          baseUnit: "Kg",
+          currentStock: "50.00",
+          baseCostPrice: "12000.00",
+          minStockAlert: "10.00",
+        })
+        .returning({ id: s.products.id });
+      productId = createdProduct.id;
+    }
+
+    if (!productId) throw new Error("Product seed failed");
+
+    const units = [
       {
-        tenantId: tenant.id,
-        productId: beras.id,
+        id: seedIds.ecer,
         unitName: "Ecer 1 Kg",
         conversionQty: "1.00",
         sellingPrice: "15000.00",
       },
       {
-        tenantId: tenant.id,
-        productId: beras.id,
+        id: seedIds.karung,
         unitName: "Karung 25 Kg",
         conversionQty: "25.00",
         sellingPrice: "355000.00",
       },
-    ])
-    .onConflictDoNothing();
+    ];
+
+    for (const unit of units) {
+      await tx
+        .insert(s.productUnits)
+        .values({ ...unit, tenantId: tenant.id, productId })
+        .onConflictDoUpdate({
+          target: [
+            s.productUnits.tenantId,
+            s.productUnits.productId,
+            s.productUnits.unitName,
+          ],
+          set: {
+            conversionQty: unit.conversionQty,
+            sellingPrice: unit.sellingPrice,
+          },
+        });
+    }
+  });
 
   console.log("✅ Seed complete.");
 }

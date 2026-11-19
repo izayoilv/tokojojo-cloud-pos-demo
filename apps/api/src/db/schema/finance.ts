@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   decimal,
   index,
   pgEnum,
@@ -45,5 +46,9 @@ export const cashFlows = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("cash_flows_tenant_date_idx").on(t.tenantId, t.createdAt)],
+  (t) => [
+    index("cash_flows_tenant_date_idx").on(t.tenantId, t.createdAt),
+    index("cash_flows_reference_idx").on(t.referenceId),
+    check("cash_flows_amount_positive", sql`${t.amount} > 0`),
+  ],
 );
