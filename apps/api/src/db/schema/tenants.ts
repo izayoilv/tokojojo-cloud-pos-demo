@@ -1,0 +1,13 @@
+import { sql } from "drizzle-orm";
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+export const tenants = pgTable("tenants", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

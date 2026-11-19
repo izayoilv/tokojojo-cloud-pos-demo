@@ -15,8 +15,8 @@
 Cloud POS demo for TokoJojo: a SolidJS admin dashboard, a Kotlin Android stock app, a
 Tauri + Rust POS, and an Express GraphQL API.
 
-**This repository is scaffolding only.** The client shells and development tooling are
-in place; the API and database schema are the next implementation step.
+**This repository is scaffolding only.** The client shells, development tooling, and
+Drizzle database schema are in place; the API server is the next implementation step.
 
 ## Stack
 
@@ -48,8 +48,8 @@ pnpm dev:pos
 (cd apps/android && ./gradlew :app:assembleDebug)
 ```
 
-The API is not scaffolded yet. `pnpm dev:web` proxies `/graphql` to
-`http://localhost:3000`; data calls fail until the API exists.
+The API server is not scaffolded yet. `pnpm dev:web` proxies `/graphql` to
+`http://localhost:3000`; data calls fail until the server exists.
 
 ## Structure
 

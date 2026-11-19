@@ -1,0 +1,26 @@
+{
+  "name": "@tokojojo/api",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "drizzle-orm": "0.45.4",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "drizzle-kit": "0.31.11",
+    "tsx": "^4.19.2",
+    "typescript": "6.0.3"
+  }
+}
