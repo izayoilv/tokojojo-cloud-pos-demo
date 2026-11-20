@@ -72,24 +72,22 @@ export const repository = {
   async saveProduct(product: Product): Promise<Product> {
     await delay();
     const index = localProducts.findIndex((item) => item.id === product.id);
+    let saved: Product;
 
     if (index === -1) {
-      localProducts = [
-        ...localProducts,
-        {
-          ...product,
-          id: `PRD-${String(localProducts.length + 1).padStart(3, "0")}`,
-        },
-      ];
+      saved = {
+        ...product,
+        id: `PRD-${String(localProducts.length + 1).padStart(3, "0")}`,
+      };
+      localProducts = [...localProducts, saved];
     } else {
+      saved = product;
       localProducts = localProducts.map((item, itemIndex) =>
-        itemIndex === index ? product : item,
+        itemIndex === index ? saved : item,
       );
     }
 
-    return clone(
-      localProducts.find((item) => item.sku === product.sku) ?? product,
-    );
+    return clone(saved);
   },
 };
 

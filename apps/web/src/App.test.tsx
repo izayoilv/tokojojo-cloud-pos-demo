@@ -112,5 +112,28 @@ describe("app smoke", () => {
 
     expect(root.textContent).toContain("Mode lihat");
     expect(root.textContent).not.toContain("Tambah Produk");
+
+    window.history.pushState(null, "", "/soon/purchasing");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(300);
+
+    expect(root.textContent).toContain("Akses ditolak");
+  });
+
+  it("opens the off-canvas sidebar from the mobile menu toggle", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    const sidebar = root.querySelector("aside");
+    expect(sidebar).not.toBeNull();
+    expect(sidebar!.className).toContain("-translate-x-full");
+
+    const toggle = root.querySelector('button[aria-label="Buka menu"]');
+    expect(toggle).not.toBeNull();
+    click(toggle!);
+    await wait(30);
+
+    expect(sidebar!.className).toContain("translate-x-0");
+    expect(sidebar!.className).not.toContain("-translate-x-full");
   });
 });

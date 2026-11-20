@@ -57,3 +57,37 @@ describe("repository reads", () => {
     expect(settings.name).toBe("TOKO JOJO");
   });
 });
+
+describe("repository.saveProduct", () => {
+  it("updates an existing product by id", async () => {
+    const [first] = await repository.listProducts();
+    expect(first).toBeDefined();
+
+    const saved = await repository.saveProduct({
+      ...first!,
+      name: "Beras Uji Coba",
+    });
+
+    expect(saved.id).toBe(first!.id);
+    expect(saved.name).toBe("Beras Uji Coba");
+    const products = await repository.listProducts();
+    expect(products.find((item) => item.id === first!.id)?.name).toBe(
+      "Beras Uji Coba",
+    );
+  });
+
+  it("adds a new product with a generated id", async () => {
+    const [first] = await repository.listProducts();
+    const saved = await repository.saveProduct({
+      ...first!,
+      id: "",
+      name: "Produk Baru Uji",
+      sku: "UJI-BARU-001",
+      barcode: "2000000000001",
+    });
+
+    expect(saved.id).toMatch(/^PRD-\d{3}$/);
+    const products = await repository.listProducts();
+    expect(products.some((item) => item.sku === "UJI-BARU-001")).toBe(true);
+  });
+});

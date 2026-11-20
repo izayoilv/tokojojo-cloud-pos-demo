@@ -155,6 +155,8 @@ export function DashboardPage() {
     auth.user() ? canAccess(auth.user()!.role, "WAREHOUSE") : false;
   const canSeePurchasing = () =>
     auth.user() ? canAccess(auth.user()!.role, "PURCHASING") : false;
+  const canSeeSales = () =>
+    auth.user() ? canAccess(auth.user()!.role, "SALES") : false;
 
   const lowStockTarget = (stockInWarehouse: boolean) => {
     if (stockInWarehouse && canSeeWarehouse()) {
@@ -291,10 +293,17 @@ export function DashboardPage() {
               color="#F59E0B"
               icon={<AlertTriangle size={16} />}
               footer={
-                <>
+                <Show
+                  when={canSeePurchasing()}
+                  fallback={
+                    <>
+                      Stok habis: <b class="text-danger">{outOfStock()} SKU</b>
+                    </>
+                  }
+                >
                   Hutang supplier:{" "}
                   <b class="text-danger">{formatRupiah(payablesTotal())}</b>
-                </>
+                </Show>
               }
             />
           </div>
@@ -430,73 +439,87 @@ export function DashboardPage() {
               </Show>
             </Card>
 
-            <Card>
-              <CardHeader
-                title="Jatuh Tempo & Mutasi Pending"
-                actions={
-                  <A href="/soon/purchasing">
-                    <Button size="sm">Kelola &rarr;</Button>
-                  </A>
-                }
-              />
-              <div class="max-h-[260px] overflow-y-auto">
-                <For each={payables()}>
-                  {(payable) => (
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-[18px] py-2.5">
-                      <div class="min-w-0">
-                        <b class="block truncate text-[12.5px] text-ink">
-                          {payable.supplierName}
-                        </b>
-                        <div class="text-[11px] text-faint">
-                          Faktur {payable.invoice} &bull; tempo{" "}
-                          <b class="text-danger">{formatDate(payable.due)}</b>
-                        </div>
-                      </div>
-                      <div class="shrink-0 text-right">
-                        <b class="block text-[12.5px] text-danger">
-                          {formatRupiah(payable.total - payable.paid)}
-                        </b>
-                        <Pill
-                          tone={payable.status === "PARTIAL" ? "amber" : "red"}
-                        >
-                          {payable.status === "PARTIAL"
-                            ? "Cicilan"
-                            : "Belum Bayar"}
-                        </Pill>
-                      </div>
-                    </div>
-                  )}
-                </For>
-                <For each={pendingTransfers()}>
-                  {(transfer) => (
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-blue-50/40 px-[18px] py-2.5">
-                      <div class="min-w-0">
-                        <b class="block truncate text-[12.5px] text-royal">
-                          Mutasi {transfer.number}
-                        </b>
-                        <div class="text-[11px] text-faint">
-                          {transfer.createdBy} &bull; {transfer.itemCount} jenis
-                          barang
-                        </div>
-                      </div>
-                      <A href="/soon/warehouse">
-                        <Button size="sm">Selesaikan</Button>
+            <Show when={canSeePurchasing() || canSeeWarehouse()}>
+              <Card>
+                <CardHeader
+                  title="Jatuh Tempo & Mutasi Pending"
+                  actions={
+                    <Show when={canSeePurchasing()}>
+                      <A href="/soon/purchasing">
+                        <Button size="sm">Kelola &rarr;</Button>
                       </A>
-                    </div>
-                  )}
-                </For>
-                <Show
-                  when={
-                    payables().length === 0 && pendingTransfers().length === 0
+                    </Show>
                   }
-                >
-                  <EmptyState
-                    title="Tidak ada tagihan atau mutasi tertunda"
-                    description="Semua kewajiban supplier dan mutasi stok sudah selesai."
-                  />
-                </Show>
-              </div>
-            </Card>
+                />
+                <div class="max-h-[260px] overflow-y-auto">
+                  <Show when={canSeePurchasing()}>
+                    <For each={payables()}>
+                      {(payable) => (
+                        <div class="flex items-center justify-between gap-2 border-b border-slate-100 px-[18px] py-2.5">
+                          <div class="min-w-0">
+                            <b class="block truncate text-[12.5px] text-ink">
+                              {payable.supplierName}
+                            </b>
+                            <div class="text-[11px] text-faint">
+                              Faktur {payable.invoice} &bull; tempo{" "}
+                              <b class="text-danger">
+                                {formatDate(payable.due)}
+                              </b>
+                            </div>
+                          </div>
+                          <div class="shrink-0 text-right">
+                            <b class="block text-[12.5px] text-danger">
+                              {formatRupiah(payable.total - payable.paid)}
+                            </b>
+                            <Pill
+                              tone={
+                                payable.status === "PARTIAL" ? "amber" : "red"
+                              }
+                            >
+                              {payable.status === "PARTIAL"
+                                ? "Cicilan"
+                                : "Belum Bayar"}
+                            </Pill>
+                          </div>
+                        </div>
+                      )}
+                    </For>
+                  </Show>
+                  <Show when={canSeeWarehouse()}>
+                    <For each={pendingTransfers()}>
+                      {(transfer) => (
+                        <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-blue-50/40 px-[18px] py-2.5">
+                          <div class="min-w-0">
+                            <b class="block truncate text-[12.5px] text-royal">
+                              Mutasi {transfer.number}
+                            </b>
+                            <div class="text-[11px] text-faint">
+                              {transfer.createdBy} &bull; {transfer.itemCount}{" "}
+                              jenis barang
+                            </div>
+                          </div>
+                          <A href="/soon/warehouse">
+                            <Button size="sm">Selesaikan</Button>
+                          </A>
+                        </div>
+                      )}
+                    </For>
+                  </Show>
+                  <Show
+                    when={
+                      (canSeePurchasing() ? payables().length : 0) +
+                        (canSeeWarehouse() ? pendingTransfers().length : 0) ===
+                      0
+                    }
+                  >
+                    <EmptyState
+                      title="Tidak ada tagihan atau mutasi tertunda"
+                      description="Semua kewajiban supplier dan mutasi stok sudah selesai."
+                    />
+                  </Show>
+                </div>
+              </Card>
+            </Show>
           </div>
 
           <Card>
@@ -504,9 +527,11 @@ export function DashboardPage() {
               title="Transaksi POS Terbaru"
               subtitle="Tersinkron dari Desktop POS"
               actions={
-                <A href="/soon/sales">
-                  <Button size="sm">Semua Penjualan &rarr;</Button>
-                </A>
+                <Show when={canSeeSales()}>
+                  <A href="/soon/sales">
+                    <Button size="sm">Semua Penjualan &rarr;</Button>
+                  </A>
+                </Show>
               }
             />
             <Show

@@ -25,7 +25,13 @@ import {
 import { repository } from "../data/repository";
 import { stockStatus } from "../lib/calc";
 import { useAuth } from "./auth";
-import { initials, moduleByPath, roleMeta, visibleSections } from "./rbac";
+import {
+  canAccess,
+  initials,
+  moduleByPath,
+  roleMeta,
+  visibleSections,
+} from "./rbac";
 import { useToast } from "./toast";
 
 type NotificationItem = {
@@ -64,6 +70,7 @@ export function AppLayout(props: { children?: JSX.Element }) {
 
   const notifications = createMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
+    const role = user()?.role;
 
     for (const product of productsQuery.data ?? []) {
       const status = stockStatus(product);
@@ -82,9 +89,9 @@ export function AppLayout(props: { children?: JSX.Element }) {
       }
     }
 
-    for (const transfer of (transfersQuery.data ?? []).filter(
-      (item) => item.status === "PENDING",
-    )) {
+    for (const transfer of role && canAccess(role, "WAREHOUSE")
+      ? (transfersQuery.data ?? []).filter((item) => item.status === "PENDING")
+      : []) {
       items.push({
         tone: "#2563EB",
         title: `Mutasi pending: ${transfer.number}`,
@@ -92,7 +99,9 @@ export function AppLayout(props: { children?: JSX.Element }) {
       });
     }
 
-    for (const payable of payablesQuery.data ?? []) {
+    for (const payable of role && canAccess(role, "PURCHASING")
+      ? (payablesQuery.data ?? [])
+      : []) {
       const remaining = payable.total - payable.paid;
       if (remaining > 0) {
         items.push({
