@@ -1,4 +1,4 @@
-import { Navigate, Route, Router } from "@solidjs/router";
+import { Navigate, Route, Router, useLocation } from "@solidjs/router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 
@@ -11,12 +11,16 @@ import { ProductsPage } from "./features/products/ProductsPage";
 import { ReportsPage } from "./features/reports/ReportsPage";
 import { SoonPage } from "./features/soon/SoonPage";
 
-function ProtectedLayout(props: { children?: JSX.Element }) {
+function RootLayout(props: { children?: JSX.Element }) {
   const auth = useAuth();
+  const location = useLocation();
+  const onLogin = () => location.pathname === "/login";
 
   return (
-    <Show when={auth.user()} fallback={<Navigate href="/login" />}>
-      <AppLayout>{props.children}</AppLayout>
+    <Show when={onLogin() || auth.user()} fallback={<Navigate href="/login" />}>
+      <Show when={onLogin()} fallback={<AppLayout>{props.children}</AppLayout>}>
+        {props.children}
+      </Show>
     </Show>
   );
 }
@@ -25,14 +29,12 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <Router>
+        <Router root={RootLayout}>
           <Route path="/login" component={LoginPage} />
-          <Route path="/" component={ProtectedLayout}>
-            <Route path="" component={DashboardPage} />
-            <Route path="products" component={ProductsPage} />
-            <Route path="reports" component={ReportsPage} />
-            <Route path="soon/:module" component={SoonPage} />
-          </Route>
+          <Route path="/" component={DashboardPage} />
+          <Route path="/products" component={ProductsPage} />
+          <Route path="/reports" component={ReportsPage} />
+          <Route path="/soon/:module" component={SoonPage} />
           <Route path="*" component={() => <Navigate href="/" />} />
         </Router>
       </ToastProvider>
