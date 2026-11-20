@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { Product, Sale } from "../data/types";
 import {
+  dailySalesSeries,
   inventoryValue,
   lowStockProducts,
+  salesInRange,
   salesKpis,
   saleTotals,
   stockStatus,
+  stockValuationByLocation,
 } from "./calc";
 
 const product = (overrides: Partial<Product> = {}): Product => ({
@@ -124,5 +127,82 @@ describe("salesKpis", () => {
       grossProfit: 0,
       margin: 0,
     });
+  });
+});
+
+describe("salesInRange", () => {
+  const dated = [
+    sale({ id: "TODAY", time: "2025-05-14T09:00:00+07:00" }),
+    sale({ id: "SIX", time: "2025-05-08T09:00:00+07:00" }),
+    sale({ id: "OLD", time: "2025-05-06T09:00:00+07:00" }),
+    sale({ id: "PREV", time: "2025-04-30T09:00:00+07:00" }),
+  ];
+
+  it("keeps only the reference calendar day for TODAY", () => {
+    expect(salesInRange(dated, "TODAY").map((item) => item.id)).toEqual([
+      "TODAY",
+    ]);
+  });
+
+  it("keeps the last seven days including the reference day", () => {
+    expect(salesInRange(dated, "7DAYS").map((item) => item.id)).toEqual([
+      "TODAY",
+      "SIX",
+    ]);
+  });
+
+  it("keeps the reference month for MONTH", () => {
+    expect(salesInRange(dated, "MONTH").map((item) => item.id)).toEqual([
+      "TODAY",
+      "SIX",
+      "OLD",
+    ]);
+  });
+
+  it("returns everything for ALL and nothing for an empty list", () => {
+    expect(salesInRange(dated, "ALL")).toHaveLength(4);
+    expect(salesInRange([], "ALL")).toEqual([]);
+  });
+});
+
+describe("dailySalesSeries", () => {
+  it("groups sales by date in ascending order", () => {
+    const series = dailySalesSeries(
+      [
+        sale({ id: "B", time: "2025-05-14T15:00:00+07:00" }),
+        sale({ id: "A", time: "2025-05-13T09:00:00+07:00" }),
+        sale({ id: "C", time: "2025-05-14T10:00:00+07:00" }),
+      ],
+      "ALL",
+    );
+
+    expect(series.map((point) => point.date)).toEqual([
+      "2025-05-13",
+      "2025-05-14",
+    ]);
+    expect(series[1]?.revenue).toBe(517000);
+    expect(series[1]?.grossProfit).toBe(128200);
+  });
+
+  it("returns an empty series for no sales", () => {
+    expect(dailySalesSeries([], "ALL")).toEqual([]);
+  });
+});
+
+describe("stockValuationByLocation", () => {
+  it("splits value between warehouse and store", () => {
+    const result = stockValuationByLocation([product()]);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]?.location).toBe("WH-BACK");
+    expect(result[0]?.value).toBe(2889000);
+    expect(result[1]?.location).toBe("STORE-FRONT");
+    expect(result[1]?.value).toBe(770400);
+  });
+
+  it("returns zero-valued slices for an empty catalogue", () => {
+    expect(stockValuationByLocation([]).map((slice) => slice.value)).toEqual([
+      0, 0,
+    ]);
   });
 });
