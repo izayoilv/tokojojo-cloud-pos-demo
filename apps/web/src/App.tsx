@@ -1,28 +1,43 @@
-import { Route, Router } from "@solidjs/router";
+import { Navigate, Route, Router, useLocation } from "@solidjs/router";
+import type { JSX } from "solid-js";
+import { Show } from "solid-js";
 
-function Dashboard() {
+import { AppLayout } from "./app/AppLayout";
+import { AuthProvider, useAuth } from "./app/auth";
+import { ToastProvider } from "./app/toast";
+import { LoginPage } from "./features/auth/LoginPage";
+import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { ProductsPage } from "./features/products/ProductsPage";
+import { ReportsPage } from "./features/reports/ReportsPage";
+import { SoonPage } from "./features/soon/SoonPage";
+
+function RootLayout(props: { children?: JSX.Element }) {
+  const auth = useAuth();
+  const location = useLocation();
+  const onLogin = () => location.pathname === "/login";
+
   return (
-    <main class="mx-auto flex max-w-5xl flex-col gap-6 p-8">
-      <header>
-        <p class="text-sm font-medium uppercase tracking-wide text-slate-500">
-          TokoJojo
-        </p>
-        <h1 class="text-3xl font-semibold text-slate-900">Admin dashboard</h1>
-      </header>
-      <section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p class="text-slate-600">
-          The API and dashboard data will be connected after the server contract
-          is finalized.
-        </p>
-      </section>
-    </main>
+    <Show when={onLogin() || auth.user()} fallback={<Navigate href="/login" />}>
+      <Show when={onLogin()} fallback={<AppLayout>{props.children}</AppLayout>}>
+        {props.children}
+      </Show>
+    </Show>
   );
 }
 
 export default function App() {
   return (
-    <Router>
-      <Route path="/" component={Dashboard} />
-    </Router>
+    <AuthProvider>
+      <ToastProvider>
+        <Router root={RootLayout}>
+          <Route path="/login" component={LoginPage} />
+          <Route path="/" component={DashboardPage} />
+          <Route path="/products" component={ProductsPage} />
+          <Route path="/reports" component={ReportsPage} />
+          <Route path="/soon/:module" component={SoonPage} />
+          <Route path="*" component={() => <Navigate href="/" />} />
+        </Router>
+      </ToastProvider>
+    </AuthProvider>
   );
 }
