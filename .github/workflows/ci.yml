@@ -33,6 +33,7 @@ jobs:
       web: ${{ steps.filter.outputs.web || steps.force.outputs.web }}
       rust: ${{ steps.filter.outputs.rust || steps.force.outputs.rust }}
       android: ${{ steps.filter.outputs.android || steps.force.outputs.android }}
+      api: ${{ steps.filter.outputs.api || steps.force.outputs.api }}
     steps:
       - uses: dorny/paths-filter@v4
         id: filter
@@ -80,6 +81,20 @@ jobs:
               - '!**/*.md'
               - '!**/*.mdx'
               - '!LICENSE'
+            api:
+              - 'apps/api/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'eslint.config.mjs'
+              - 'commitlint.config.cjs'
+              - '.prettierrc'
+              - '.prettierignore'
+              - '.editorconfig'
+              - '.github/workflows/ci.yml'
+              - '!**/*.md'
+              - '!**/*.mdx'
+              - '!LICENSE'
       - name: Force all jobs on main/manual
         id: force
         if: github.event_name != 'pull_request'
@@ -88,6 +103,7 @@ jobs:
             echo "web=true"
             echo "rust=true"
             echo "android=true"
+            echo "api=true"
           } >> "$GITHUB_OUTPUT"
 
   web:
@@ -168,9 +184,53 @@ jobs:
         working-directory: apps/android
         run: ./gradlew :app:assembleDebug --no-daemon
 
+  api:
+    name: api
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: tokojojo
+          POSTGRES_USER: tokojojo
+          POSTGRES_PASSWORD: tokojojo_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tokojojo -d tokojojo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tokojojo:tokojojo_dev@127.0.0.1:5432/tokojojo
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.21.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.13.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tokojojo/api db:docs:check
+      - run: pnpm --filter @tokojojo/api typecheck
+      - run: pnpm --filter @tokojojo/api lint
+      - run: pnpm exec prettier --check apps/api
+      - run: pnpm --filter @tokojojo/api db:check
+      - run: pnpm --filter @tokojojo/api db:migrate
+      - run: pnpm --filter @tokojojo/api db:seed
+      - run: pnpm --filter @tokojojo/api db:seed
+      - run: pnpm --filter @tokojojo/api test
+
   ci-gate:
     name: ci-gate
-    needs: [changes, web, rust, android]
+    needs: [changes, web, rust, android, api]
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -181,11 +241,13 @@ jobs:
           echo "web=${{ needs.web.result }}"
           echo "rust=${{ needs.rust.result }}"
           echo "android=${{ needs.android.result }}"
+          echo "api=${{ needs.api.result }}"
           for result in \
             "${{ needs.changes.result }}" \
             "${{ needs.web.result }}" \
             "${{ needs.rust.result }}" \
-            "${{ needs.android.result }}"; do
+            "${{ needs.android.result }}" \
+            "${{ needs.api.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
               exit 1
             fi

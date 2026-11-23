@@ -15,8 +15,9 @@
 Cloud POS demo for TokoJojo: a SolidJS admin dashboard, a Kotlin Android stock app, a
 Tauri + Rust POS, and an Express GraphQL API.
 
-**This repository is scaffolding only.** The client shells and development tooling are
-in place; the API and database schema are the next implementation step.
+**This repository is scaffolding only.** The core PostgreSQL schema, migrations,
+seed, and schema tests are in place; the GraphQL server and client features are
+the next implementation step.
 
 ## Stack
 
@@ -41,15 +42,24 @@ proto install
 pnpm install
 pre-commit install
 
+cp .env.example .env
 podman-compose -f compose.dev.yaml up -d
+
+pnpm db:migrate
+pnpm db:seed
 
 pnpm dev:web
 pnpm dev:pos
 (cd apps/android && ./gradlew :app:assembleDebug)
 ```
 
-The API is not scaffolded yet. `pnpm dev:web` proxies `/graphql` to
-`http://localhost:3000`; data calls fail until the API exists.
+`pnpm db:*` delegates to `@tokojojo/api` and reads `DATABASE_URL` from the
+repo-root `.env`. `pnpm db:seed` is idempotent and creates the development
+store, staff accounts, catalog, suppliers, and opening stock.
+
+The GraphQL API server is not implemented yet; the core PostgreSQL schema is.
+`pnpm dev:web` proxies `/graphql` to `http://localhost:3000`; data calls fail
+until the API exists.
 
 ## Structure
 
@@ -148,7 +158,9 @@ Closes #2
 ### CI expectations
 
 - Required check: `ci-gate`.
-- `web`, `rust`, and `android` run only when their paths change.
+- `web`, `rust`, `android`, and `api` run only when their paths change.
+- The `api` job starts PostgreSQL 18, applies migrations, seeds twice, and runs
+  the schema tests.
 - Docs-only PRs skip the build jobs, but `ci-gate` still runs.
 - A failed check is fixed on the same branch; push again and CI reruns.
 - A new push after approval dismisses the old approval; request review again.
