@@ -4,9 +4,10 @@ One schema and one set of operations for every client.
 
 ## Status
 
-Placeholder. The API is not scaffolded yet, so `schema.graphql` and generated
-clients do not exist. This package becomes the source of truth before the first
-feature is implemented.
+The core PostgreSQL schema is implemented. The GraphQL server is not scaffolded
+yet, so `schema.graphql` and generated clients do not exist. This package becomes
+the source of truth before the first feature is implemented. The Phase 2
+auth/device/offline contract is the current design input.
 
 ## Source of truth
 
@@ -23,9 +24,11 @@ packages/graphql/
   schema.graphql
   operations/
     auth.graphql
+    devices.graphql
     products.graphql
     sales.graphql
     stock.graphql
+    sync.graphql
   codegen.ts
 ```
 
@@ -56,5 +59,8 @@ change is backward-compatible.
 - Dates are ISO-8601 UTC strings.
 - Use explicit input types; do not pass arbitrary JSON blobs.
 - Add fields compatibly; coordinate before removing or renaming fields.
-- Every operation is tenant-scoped by the server from auth context.
-- Offline operations are idempotent by client-generated order IDs.
+- Single store: every operation is authorized from the auth context; there is no
+  `tenant_id` or tenant scoping.
+- Roles are `OWNER`, `ADMIN`, `CASHIER`, and `WAREHOUSE`.
+- Offline operations are idempotent by device + client-generated IDs (`device_id`,
+  `client_order_id`); shifts sync before their sales.

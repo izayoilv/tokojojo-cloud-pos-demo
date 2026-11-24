@@ -14,7 +14,12 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "pnpm -r --if-present lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @tokojojo/api db:generate",
+    "db:check": "pnpm --filter @tokojojo/api db:check",
+    "db:migrate": "pnpm --filter @tokojojo/api db:migrate",
+    "db:seed": "pnpm --filter @tokojojo/api db:seed",
+    "db:studio": "pnpm --filter @tokojojo/api db:studio"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
