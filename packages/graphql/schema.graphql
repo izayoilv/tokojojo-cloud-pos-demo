@@ -1,0 +1,1468 @@
+# TokoJojo shared GraphQL contract — single store, no tenant scoping.
+# Money and quantities are decimal strings; IDs are UUIDv7 strings.
+
+scalar DateTime
+
+input PageInput {
+  page: Int = 1
+  pageSize: Int = 20
+}
+
+type PageInfo {
+  page: Int!
+  pageSize: Int!
+  total: Int!
+  totalPages: Int!
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+input SortInput {
+  field: String!
+  direction: SortDirection!
+}
+
+# Null bounds are open-ended; the "Semua" preset sends no bounds.
+input DateRangeInput {
+  from: DateTime
+  to: DateTime
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  CASHIER
+  WAREHOUSE
+}
+
+enum StockLocation {
+  WAREHOUSE
+  STORE
+}
+
+enum PaymentMethod {
+  CASH
+  QRIS
+  TRANSFER
+  DEBIT
+}
+
+# Reporting label derived by the server; sale payments stay authoritative.
+enum SaleSettlement {
+  CASH
+  QRIS
+  TRANSFER
+  DEBIT
+  MIXED
+  DEBT
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum PurchaseStatus {
+  OPEN
+  CANCELLED
+}
+
+enum StockMovementType {
+  PURCHASE
+  PURCHASE_CANCEL
+  SALE
+  TRANSFER_OUT
+  TRANSFER_IN
+  OPNAME
+  RETURN
+  SALE_VOID
+  ADJUSTMENT
+}
+
+enum MovementReferenceType {
+  PURCHASE
+  SALE
+  TRANSFER
+  OPNAME
+  RETURN
+  MANUAL
+}
+
+enum TransferStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum OpnameStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+}
+
+enum CashFlowType {
+  IN
+  OUT
+}
+
+enum CashFlowCategory {
+  SALES
+  DEBT_PAYMENT
+  REFUND
+  PURCHASE
+  EXPENSE
+  CAPITAL
+  OTHER
+}
+
+enum CashFlowSource {
+  AUTO
+  MANUAL
+}
+
+enum CashFlowReferenceType {
+  SALE_PAYMENT
+  PURCHASE_PAYMENT
+  SALE_RETURN
+  PURCHASE_CANCEL
+  MANUAL
+}
+
+enum DevicePlatform {
+  ANDROID
+  TAURI
+}
+
+enum DeviceStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+enum DeviceKeyStatus {
+  ACTIVE
+  RETIRED
+  REVOKED
+}
+
+enum ShiftSource {
+  ONLINE
+  OFFLINE
+}
+
+enum SaleSource {
+  ONLINE
+  OFFLINE
+  GRACE
+}
+
+enum SyncItemStatus {
+  ACCEPTED
+  DUPLICATE
+  FLAGGED
+  REJECTED
+}
+
+# OK/LOW/OUT map to the UI labels Aman/Menipis/Habis.
+enum StockStatus {
+  OK
+  LOW
+  OUT
+}
+
+enum ReceiptPaperSize {
+  MM58
+  MM80
+}
+
+enum CatalogEntityType {
+  PRODUCT
+  CATEGORY
+  SUPPLIER
+}
+
+enum SalesReportGroupBy {
+  DAY
+  PRODUCT
+  CASHIER
+}
+
+type User {
+  id: ID!
+  name: String!
+  username: String!
+  role: UserRole!
+  isActive: Boolean!
+  # Derived from the latest session; never a stored column.
+  lastLoginAt: DateTime
+  passwordChangedAt: DateTime!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Customer {
+  id: ID!
+  name: String!
+  phone: String
+  address: String
+  notes: String
+  isActive: Boolean!
+  # Derived from v_sale_balances across this customer's sales.
+  outstandingReceivable: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Public verification keys only; signing keys never leave the server.
+type PasetoKey {
+  kid: String!
+  publicKey: String!
+  alg: String!
+}
+
+# Web login sets an HttpOnly cookie and leaves token fields null; native
+# login returns PASETO access/refresh tokens; only Tauri gets offlineToken.
+type AuthPayload {
+  accessToken: String
+  accessExpiresAt: DateTime!
+  refreshToken: String
+  refreshExpiresAt: DateTime
+  offlineToken: String
+  offlineExpiresAt: DateTime
+  graceUntil: DateTime
+  device: Device
+  serverTime: DateTime!
+  keySet: [PasetoKey!]!
+  user: User!
+}
+
+# Token and CSRF hashes are never exposed.
+type Session {
+  id: ID!
+  user: User!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+  lastSeenAt: DateTime
+  revokedAt: DateTime
+  userAgent: String
+  ip: String
+}
+
+type Device {
+  id: ID!
+  name: String!
+  platform: DevicePlatform!
+  status: DeviceStatus!
+  enrolledBy: User!
+  enrolledAt: DateTime
+  lastSeenAt: DateTime
+  revokedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  keys: [DeviceKey!]!
+}
+
+type DeviceKey {
+  id: ID!
+  deviceId: ID!
+  keyId: String!
+  publicKey: String!
+  keyAlg: String!
+  status: DeviceKeyStatus!
+  createdAt: DateTime!
+  activatedAt: DateTime
+  retiredAt: DateTime
+  # Old signatures stay verifiable until this instant (retiredAt + 14 days).
+  acceptedUntil: DateTime
+  revokedAt: DateTime
+}
+
+type SyncBatch {
+  id: ID!
+  deviceId: ID!
+  clientBatchId: ID!
+  batchHash: String!
+  receivedAt: DateTime!
+  acceptedCount: Int!
+  flaggedCount: Int!
+  rejectedCount: Int!
+}
+
+type SyncStatus {
+  serverTime: DateTime!
+  deviceStatus: DeviceStatus
+  offlineExpiresAt: DateTime
+  graceUntil: DateTime
+  lastSyncAt: DateTime
+  lastBatch: SyncBatch
+}
+
+type Category {
+  id: ID!
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# No stock fields here: balances come from stockBalances (ledger-derived).
+type Product {
+  id: ID!
+  sku: String!
+  name: String!
+  categoryId: ID!
+  category: Category!
+  baseUnit: String!
+  avgCost: String!
+  isActive: Boolean!
+  units: [ProductUnit!]!
+  thresholds: [ProductStockThreshold!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ProductUnit {
+  id: ID!
+  productId: ID!
+  unitName: String!
+  conversionQty: String!
+  sellingPrice: String!
+  barcode: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ProductStockThreshold {
+  productId: ID!
+  location: StockLocation!
+  minQty: String!
+}
+
+type Supplier {
+  id: ID!
+  name: String!
+  phone: String
+  address: String
+  notes: String
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Delta since `since`; every entry carries updatedAt. Archived masters arrive
+# with isActive = false; tombstones cover rows removed from the catalog.
+type CatalogSyncPayload {
+  serverTime: DateTime!
+  products: [Product!]!
+  categories: [Category!]!
+  suppliers: [Supplier!]!
+  tombstones: [CatalogTombstone!]!
+}
+
+type CatalogTombstone {
+  entityType: CatalogEntityType!
+  entityId: ID!
+  deletedAt: DateTime!
+}
+
+type StockBalance {
+  productId: ID!
+  product: Product!
+  location: StockLocation!
+  qty: String!
+  minQty: String
+  status: StockStatus!
+  isNegative: Boolean!
+}
+
+type StockMovement {
+  id: ID!
+  productId: ID!
+  product: Product!
+  location: StockLocation!
+  qtyChange: String!
+  movementType: StockMovementType!
+  referenceType: MovementReferenceType!
+  referenceId: ID
+  notes: String
+  flagged: Boolean!
+  flagReason: String
+  createdBy: User!
+  createdAt: DateTime!
+}
+
+type StockSummary {
+  asOf: DateTime!
+  okCount: Int!
+  lowCount: Int!
+  outCount: Int!
+  negativeCount: Int!
+  totalValue: String!
+  byLocation: [StockLocationSummary!]!
+}
+
+type StockLocationSummary {
+  location: StockLocation!
+  totalQty: String!
+  value: String!
+}
+
+type StockTransfer {
+  id: ID!
+  transferNo: String!
+  fromLocation: StockLocation!
+  toLocation: StockLocation!
+  status: TransferStatus!
+  createdBy: User!
+  reviewedBy: User
+  reviewedAt: DateTime
+  completedAt: DateTime
+  cancelledBy: User
+  cancelledAt: DateTime
+  items: [StockTransferItem!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type StockTransferItem {
+  id: ID!
+  productId: ID!
+  productUnitId: ID!
+  product: Product!
+  unit: ProductUnit!
+  qty: String!
+  qtyBase: String!
+}
+
+type StockOpname {
+  id: ID!
+  opnameNo: String!
+  location: StockLocation!
+  status: OpnameStatus!
+  createdBy: User!
+  reviewedBy: User
+  reviewedAt: DateTime
+  # Set by submitOpname; while non-null the service locks item updates.
+  submittedAt: DateTime
+  items: [StockOpnameItem!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type StockOpnameItem {
+  id: ID!
+  productId: ID!
+  product: Product!
+  # May be negative when the ledger balance is negative; never clamped.
+  systemQty: String!
+  physicalQty: String!
+  diffQty: String!
+}
+
+# receiveStock returns purchase + movements; adjustStock returns a PENDING
+# opname and no movements until approval appends them.
+type StockPayload {
+  purchase: Purchase
+  opname: StockOpname
+  movements: [StockMovement!]!
+}
+
+type Purchase {
+  id: ID!
+  purchaseNo: String!
+  supplierId: ID!
+  supplier: Supplier!
+  supplierName: String!
+  createdBy: User!
+  supplierInvoiceNo: String
+  # Calendar date YYYY-MM-DD (DB column is date, not timestamptz).
+  dueDate: String
+  totalAmount: String!
+  paid: String!
+  outstanding: String!
+  paymentStatus: PaymentStatus!
+  receivedAt: DateTime!
+  status: PurchaseStatus!
+  items: [PurchaseItem!]!
+  payments: [PurchasePayment!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type PurchaseItem {
+  id: ID!
+  productId: ID!
+  productUnitId: ID!
+  product: Product!
+  unit: ProductUnit!
+  productName: String!
+  unitName: String!
+  qty: String!
+  qtyBase: String!
+  unitCost: String!
+  subtotal: String!
+}
+
+type PurchasePayment {
+  id: ID!
+  amount: String!
+  paymentMethod: PaymentMethod!
+  reference: String
+  paidAt: DateTime!
+  createdBy: User!
+}
+
+type Payable {
+  purchase: Purchase!
+  purchaseNo: String!
+  supplier: Supplier!
+  supplierInvoiceNo: String
+  dueDate: String
+  totalAmount: String!
+  paid: String!
+  outstanding: String!
+  paymentStatus: PaymentStatus!
+}
+
+type CashierShift {
+  id: ID!
+  userId: ID!
+  user: User!
+  status: ShiftStatus!
+  openedAt: DateTime!
+  closedAt: DateTime
+  openingCash: String!
+  expectedCash: String
+  actualCash: String
+  deviceId: ID
+  device: Device
+  source: ShiftSource!
+  openedAtClient: DateTime
+  closedAtClient: DateTime
+  receivedAt: DateTime!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Sale {
+  id: ID!
+  invoiceNo: String!
+  shiftId: ID!
+  shift: CashierShift!
+  user: User!
+  customer: Customer
+  items: [SaleItem!]!
+  payments: [SalePayment!]!
+  returns: [SaleReturn!]!
+  subtotal: String!
+  discount: String!
+  totalAmount: String!
+  # Derived from v_sale_balances; null for VOIDED sales.
+  paid: String
+  outstanding: String
+  paymentStatus: PaymentStatus
+  settlementMethod: SaleSettlement!
+  status: SaleStatus!
+  voidedAt: DateTime
+  voidedBy: User
+  voidReason: String
+  source: SaleSource!
+  deviceId: ID
+  device: Device
+  # Client fields are required when source is OFFLINE or GRACE.
+  clientOrderId: ID
+  # Per-device monotonic counter; DB is bigint, so the wire uses a string.
+  clientSeq: String
+  clientCreatedAt: DateTime
+  receivedAt: DateTime!
+  signatureVerified: Boolean!
+  # Rupiah variance between client prices and the server catalog at sync.
+  priceVariance: String!
+  syncBatchId: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type SaleItem {
+  id: ID!
+  productId: ID!
+  productUnitId: ID!
+  product: Product!
+  unit: ProductUnit!
+  productName: String!
+  unitName: String!
+  qty: String!
+  qtyBase: String!
+  unitPrice: String!
+  discount: String!
+  unitCost: String!
+  subtotal: String!
+}
+
+type SalePayment {
+  id: ID!
+  method: PaymentMethod!
+  amount: String!
+  cashReceived: String!
+  change: String!
+  paymentRef: String
+  receivedBy: User!
+  shiftId: ID
+  paidAt: DateTime!
+}
+
+type SaleReturn {
+  id: ID!
+  returnNo: String!
+  saleId: ID!
+  createdBy: User!
+  reason: String!
+  totalRefund: String!
+  cashRefund: String!
+  refundMethod: PaymentMethod
+  refundedAt: DateTime
+  shiftId: ID
+  items: [SaleReturnItem!]!
+  createdAt: DateTime!
+}
+
+type SaleReturnItem {
+  id: ID!
+  saleItemId: ID!
+  saleItem: SaleItem!
+  qty: String!
+  qtyBase: String!
+  refundAmount: String!
+}
+
+# duplicate = true marks an idempotent replay of the same client order;
+# stock is never double-decremented.
+type SalePayload {
+  sale: Sale!
+  duplicate: Boolean!
+}
+
+type Receivable {
+  sale: Sale!
+  invoiceNo: String!
+  customer: Customer!
+  totalAmount: String!
+  paid: String!
+  outstanding: String!
+  paymentStatus: PaymentStatus!
+}
+
+type CashFlow {
+  id: ID!
+  type: CashFlowType!
+  paymentMethod: PaymentMethod!
+  category: CashFlowCategory!
+  amount: String!
+  shiftId: ID
+  referenceType: CashFlowReferenceType!
+  referenceId: ID
+  source: CashFlowSource!
+  notes: String
+  createdBy: User!
+  createdAt: DateTime!
+}
+
+type DashboardSummary {
+  asOf: DateTime!
+  salesTotal: String!
+  cogsTotal: String!
+  grossProfit: String!
+  marginPercent: String!
+  salesSeries: [SalesSeriesPoint!]!
+  stockStatus: StockStatusCounts!
+  lowStock: [StockBalance!]!
+  payablesDue: [Payable!]!
+  recentSales: [Sale!]!
+  pendingTransfers: [StockTransfer!]!
+  pendingOpnames: [StockOpname!]!
+}
+
+type SalesSeriesPoint {
+  # Day bucket YYYY-MM-DD in Asia/Jakarta.
+  date: String!
+  saleCount: Int!
+  total: String!
+}
+
+type StockStatusCounts {
+  ok: Int!
+  low: Int!
+  out: Int!
+}
+
+type SalesReport {
+  generatedAt: DateTime!
+  rows: [SalesReportRow!]!
+  saleCount: Int!
+  salesTotal: String!
+  discountTotal: String!
+  returnsTotal: String!
+  cogsTotal: String!
+  grossProfitTotal: String!
+}
+
+type SalesReportRow {
+  groupKey: String!
+  groupLabel: String!
+  saleCount: Int!
+  qtyBase: String!
+  sales: String!
+  discount: String!
+  returns: String!
+  cogs: String!
+  grossProfit: String!
+}
+
+type InventoryReport {
+  generatedAt: DateTime!
+  rows: [InventoryReportRow!]!
+  totalValue: String!
+  lowCount: Int!
+  outCount: Int!
+}
+
+type InventoryReportRow {
+  product: Product!
+  location: StockLocation!
+  openingQty: String!
+  receivedQty: String!
+  soldQty: String!
+  adjustedQty: String!
+  closingQty: String!
+  avgCost: String!
+  value: String!
+  minQty: String
+  status: StockStatus!
+}
+
+type FinanceReport {
+  generatedAt: DateTime!
+  cashIn: String!
+  cashOut: String!
+  netCash: String!
+  byCategory: [FinanceCategoryRow!]!
+  receivablesOutstanding: String!
+  payablesOutstanding: String!
+}
+
+type FinanceCategoryRow {
+  category: CashFlowCategory!
+  type: CashFlowType!
+  amount: String!
+  count: Int!
+}
+
+type AuditEvent {
+  id: ID!
+  eventType: String!
+  actor: User
+  deviceId: ID
+  device: Device
+  entityType: String
+  entityId: ID
+  # JSON-encoded object; clients render a summary, never token material.
+  metadata: String!
+  createdAt: DateTime!
+  retentionUntil: DateTime!
+}
+
+type StoreSettings {
+  storeName: String!
+  tagline: String
+  address: String
+  city: String
+  phone: String
+  npwp: String
+  defaultLocation: StockLocation!
+  updatedAt: DateTime!
+}
+
+type ReceiptSettings {
+  paperSize: ReceiptPaperSize!
+  showPrice: Boolean!
+  footerText: String
+  autoPrint: Boolean!
+  updatedAt: DateTime!
+}
+
+# Temporary password is shown once; there is no email service.
+type ResetUserPasswordPayload {
+  user: User!
+  temporaryPassword: String!
+}
+
+type SyncItemResult {
+  clientId: ID!
+  status: SyncItemStatus!
+  serverId: ID
+  # Error code from the README table when status is FLAGGED or REJECTED.
+  code: String
+  message: String
+}
+
+type SyncOfflineBatchPayload {
+  batchId: ID!
+  shifts: [SyncItemResult!]!
+  orders: [SyncItemResult!]!
+}
+
+input LoginInput {
+  username: String!
+  password: String!
+}
+
+input RefreshInput {
+  refreshToken: String!
+}
+
+input EnrollDeviceInput {
+  username: String!
+  password: String!
+  name: String!
+  platform: DevicePlatform!
+  keyId: String!
+  publicKey: String!
+}
+
+input RotateDeviceKeyInput {
+  deviceId: ID!
+  keyId: String!
+  publicKey: String!
+}
+
+input UpgradeOfflineSessionInput {
+  username: String!
+  password: String!
+}
+
+# productUnitId identifies an existing unit on update; null creates a new one.
+input ProductUnitInput {
+  productUnitId: ID
+  unitName: String!
+  conversionQty: String!
+  sellingPrice: String!
+  barcode: String
+}
+
+input StockThresholdInput {
+  location: StockLocation!
+  minQty: String!
+}
+
+input CreateProductInput {
+  sku: String!
+  name: String!
+  categoryId: ID!
+  baseUnit: String!
+  units: [ProductUnitInput!]!
+  thresholds: [StockThresholdInput!]
+}
+
+input UpdateProductInput {
+  name: String
+  categoryId: ID
+  baseUnit: String
+  units: [ProductUnitInput!]
+  thresholds: [StockThresholdInput!]
+}
+
+input CategoryInput {
+  name: String!
+}
+
+input SupplierInput {
+  name: String!
+  phone: String
+  address: String
+  notes: String
+}
+
+input CustomerInput {
+  name: String!
+  phone: String
+  address: String
+  notes: String
+}
+
+input ReceiveStockItemInput {
+  productId: ID!
+  productUnitId: ID!
+  qty: String!
+  unitCost: String!
+}
+
+# Supplier is required in v1; the server derives qtyBase and the purchase
+# number, and appends PURCHASE movements in the same transaction.
+input ReceiveStockInput {
+  supplierId: ID!
+  supplierInvoiceNo: String
+  dueDate: String
+  location: StockLocation
+  notes: String
+  items: [ReceiveStockItemInput!]!
+}
+
+# systemQty is the client-observed balance; the server re-derives it and
+# rejects drift with CONFLICT. Approval happens in web Gudang.
+input AdjustStockInput {
+  location: StockLocation!
+  productId: ID!
+  physicalQty: String!
+  systemQty: String
+  reason: String!
+}
+
+input TransferItemInput {
+  productId: ID!
+  productUnitId: ID!
+  qty: String!
+}
+
+input CreateTransferInput {
+  fromLocation: StockLocation!
+  toLocation: StockLocation!
+  items: [TransferItemInput!]!
+}
+
+input OpnameItemInput {
+  productId: ID!
+  physicalQty: String!
+}
+
+input CreateOpnameInput {
+  location: StockLocation!
+  items: [OpnameItemInput!]!
+}
+
+input UpdateOpnameInput {
+  items: [OpnameItemInput!]!
+}
+
+input PurchaseItemInput {
+  productId: ID!
+  productUnitId: ID!
+  qty: String!
+  unitCost: String!
+}
+
+input CreatePurchaseInput {
+  supplierId: ID!
+  supplierInvoiceNo: String
+  dueDate: String
+  items: [PurchaseItemInput!]!
+}
+
+input AddPurchasePaymentInput {
+  purchaseId: ID!
+  amount: String!
+  paymentMethod: PaymentMethod!
+  reference: String
+  paidAt: DateTime
+}
+
+input CreateSaleItemInput {
+  productId: ID!
+  productUnitId: ID!
+  qty: String!
+  unitPrice: String!
+  # Per-unit rupiah discount; online only.
+  discount: String
+}
+
+input SalePaymentInput {
+  method: PaymentMethod!
+  amount: String!
+  cashReceived: String
+  paymentRef: String
+}
+
+# Client order fields and signature are required for OFFLINE/GRACE replay;
+# settlementMethod is derived by the server, never sent by the client.
+input CreateSaleInput {
+  shiftId: ID!
+  customerId: ID
+  items: [CreateSaleItemInput!]!
+  payments: [SalePaymentInput!]!
+  clientOrderId: ID
+  clientSeq: String
+  clientCreatedAt: DateTime
+  signature: String
+}
+
+input CreateSaleReturnItemInput {
+  saleItemId: ID!
+  qty: String!
+}
+
+# Refund amounts are derived by the server at net unit price; refundMethod
+# null means no cash moves (for example an unpaid kasbon return).
+input CreateSaleReturnInput {
+  saleId: ID!
+  reason: String!
+  items: [CreateSaleReturnItemInput!]!
+  refundMethod: PaymentMethod
+}
+
+# id is a client-generated UUIDv7 accepted idempotently; openedAtClient is
+# required when the shift is opened offline.
+input OpenShiftInput {
+  id: ID
+  openingCash: String!
+  openedAtClient: DateTime
+}
+
+input CloseShiftInput {
+  shiftId: ID!
+  actualCash: String!
+  closedAtClient: DateTime
+}
+
+# Manual entries only; the server sets source = MANUAL and reference MANUAL.
+input CreateCashFlowInput {
+  type: CashFlowType!
+  paymentMethod: PaymentMethod!
+  category: CashFlowCategory!
+  amount: String!
+  notes: String
+}
+
+input CreateUserInput {
+  name: String!
+  username: String!
+  password: String!
+  role: UserRole!
+}
+
+input UpdateUserInput {
+  name: String
+  role: UserRole
+}
+
+input UpdateStoreSettingsInput {
+  storeName: String
+  tagline: String
+  address: String
+  city: String
+  phone: String
+  npwp: String
+  defaultLocation: StockLocation
+}
+
+input UpdateReceiptSettingsInput {
+  paperSize: ReceiptPaperSize
+  showPrice: Boolean
+  footerText: String
+  autoPrint: Boolean
+}
+
+# Offline shift open/close; the server accepts the client id idempotently.
+input SyncShiftInput {
+  id: ID!
+  # Server must reject userId != the authenticated user.
+  userId: ID!
+  openingCash: String!
+  openedAtClient: DateTime!
+  closedAtClient: DateTime
+  expectedCash: String
+  actualCash: String
+}
+
+# Offline lines carry no discounts; payments are cash only.
+input SyncOrderItemInput {
+  productId: ID!
+  productUnitId: ID!
+  qty: String!
+  unitPrice: String!
+}
+
+input SyncOrderInput {
+  clientOrderId: ID!
+  clientSeq: String!
+  clientCreatedAt: DateTime!
+  shiftId: ID!
+  customerId: ID
+  items: [SyncOrderItemInput!]!
+  payments: [SalePaymentInput!]!
+  signature: String!
+}
+
+# Shifts are processed before orders; idempotency is (device, clientBatchId)
+# and (device, clientOrderId).
+input SyncOfflineBatchInput {
+  clientBatchId: ID!
+  batchHash: String!
+  shifts: [SyncShiftInput!]!
+  orders: [SyncOrderInput!]!
+}
+
+input ProductFilter {
+  search: String
+  barcode: String
+  categoryId: ID
+  isActive: Boolean
+  location: StockLocation
+}
+
+input CustomerFilter {
+  search: String
+  isActive: Boolean
+}
+
+input SupplierFilter {
+  search: String
+  isActive: Boolean
+}
+
+input StockBalanceFilter {
+  productId: ID
+  search: String
+  location: StockLocation
+  status: StockStatus
+  belowMinimum: Boolean
+}
+
+input StockMovementFilter {
+  productId: ID
+  location: StockLocation
+  movementType: StockMovementType
+  referenceType: MovementReferenceType
+  flagged: Boolean
+  range: DateRangeInput
+}
+
+input TransferFilter {
+  search: String
+  status: TransferStatus
+  location: StockLocation
+  range: DateRangeInput
+}
+
+input OpnameFilter {
+  search: String
+  status: OpnameStatus
+  location: StockLocation
+  range: DateRangeInput
+}
+
+input PurchaseFilter {
+  search: String
+  supplierId: ID
+  status: PurchaseStatus
+  paymentStatus: PaymentStatus
+  range: DateRangeInput
+}
+
+input PayableFilter {
+  search: String
+  supplierId: ID
+  paymentStatus: PaymentStatus
+  dueBefore: String
+}
+
+input SaleFilter {
+  search: String
+  customerId: ID
+  userId: ID
+  shiftId: ID
+  settlementMethod: SaleSettlement
+  status: SaleStatus
+  paymentStatus: PaymentStatus
+  source: SaleSource
+  deviceId: ID
+  range: DateRangeInput
+}
+
+input ReceivableFilter {
+  search: String
+  customerId: ID
+  paymentStatus: PaymentStatus
+}
+
+input ShiftFilter {
+  userId: ID
+  status: ShiftStatus
+  source: ShiftSource
+  deviceId: ID
+  range: DateRangeInput
+}
+
+input CashFlowFilter {
+  type: CashFlowType
+  category: CashFlowCategory
+  paymentMethod: PaymentMethod
+  source: CashFlowSource
+  range: DateRangeInput
+}
+
+input UserFilter {
+  search: String
+  role: UserRole
+  isActive: Boolean
+}
+
+input AuditEventFilter {
+  eventType: String
+  actorUserId: ID
+  deviceId: ID
+  entityType: String
+  entityId: ID
+  range: DateRangeInput
+}
+
+input DeviceFilter {
+  search: String
+  platform: DevicePlatform
+  status: DeviceStatus
+}
+
+type ProductPage {
+  items: [Product!]!
+  pageInfo: PageInfo!
+}
+
+type CustomerPage {
+  items: [Customer!]!
+  pageInfo: PageInfo!
+}
+
+type SupplierPage {
+  items: [Supplier!]!
+  pageInfo: PageInfo!
+}
+
+type StockBalancePage {
+  items: [StockBalance!]!
+  pageInfo: PageInfo!
+}
+
+type StockMovementPage {
+  items: [StockMovement!]!
+  pageInfo: PageInfo!
+}
+
+type TransferPage {
+  items: [StockTransfer!]!
+  pageInfo: PageInfo!
+}
+
+type OpnamePage {
+  items: [StockOpname!]!
+  pageInfo: PageInfo!
+}
+
+type PurchasePage {
+  items: [Purchase!]!
+  pageInfo: PageInfo!
+}
+
+type PayablePage {
+  items: [Payable!]!
+  pageInfo: PageInfo!
+}
+
+type SalePage {
+  items: [Sale!]!
+  pageInfo: PageInfo!
+}
+
+type ReceivablePage {
+  items: [Receivable!]!
+  pageInfo: PageInfo!
+}
+
+type ShiftPage {
+  items: [CashierShift!]!
+  pageInfo: PageInfo!
+}
+
+type CashFlowPage {
+  items: [CashFlow!]!
+  pageInfo: PageInfo!
+}
+
+type UserPage {
+  items: [User!]!
+  pageInfo: PageInfo!
+}
+
+type AuditEventPage {
+  items: [AuditEvent!]!
+  pageInfo: PageInfo!
+}
+
+type DevicePage {
+  items: [Device!]!
+  pageInfo: PageInfo!
+}
+
+type Query {
+  me: User!
+  device(deviceId: ID!): Device
+  devices(filter: DeviceFilter, page: PageInput): DevicePage!
+  sessions: [Session!]!
+  syncStatus: SyncStatus!
+
+  products(
+    filter: ProductFilter
+    page: PageInput
+    sort: SortInput
+  ): ProductPage!
+  product(id: ID!): Product
+  categories: [Category!]!
+  suppliers(
+    filter: SupplierFilter
+    page: PageInput
+    sort: SortInput
+  ): SupplierPage!
+  supplier(id: ID!): Supplier
+  customers(
+    filter: CustomerFilter
+    page: PageInput
+    sort: SortInput
+  ): CustomerPage!
+  customer(id: ID!): Customer
+  catalogSync(since: DateTime): CatalogSyncPayload!
+
+  stockBalances(
+    filter: StockBalanceFilter
+    page: PageInput
+    sort: SortInput
+  ): StockBalancePage!
+  stockMovements(
+    filter: StockMovementFilter
+    page: PageInput
+    sort: SortInput
+  ): StockMovementPage!
+  lowStockProducts(location: StockLocation): [StockBalance!]!
+  stockSummary(location: StockLocation): StockSummary!
+  transfers(
+    filter: TransferFilter
+    page: PageInput
+    sort: SortInput
+  ): TransferPage!
+  transfer(id: ID!): StockTransfer
+  opnames(filter: OpnameFilter, page: PageInput, sort: SortInput): OpnamePage!
+  opname(id: ID!): StockOpname
+
+  purchases(
+    filter: PurchaseFilter
+    page: PageInput
+    sort: SortInput
+  ): PurchasePage!
+  purchase(id: ID!): Purchase
+  payables(
+    filter: PayableFilter
+    page: PageInput
+    sort: SortInput
+  ): PayablePage!
+
+  sales(filter: SaleFilter, page: PageInput, sort: SortInput): SalePage!
+  sale(id: ID!): Sale
+  receivables(
+    filter: ReceivableFilter
+    page: PageInput
+    sort: SortInput
+  ): ReceivablePage!
+  shifts(filter: ShiftFilter, page: PageInput, sort: SortInput): ShiftPage!
+  shift(id: ID!): CashierShift
+  currentShift: CashierShift
+  cashFlows(
+    filter: CashFlowFilter
+    page: PageInput
+    sort: SortInput
+  ): CashFlowPage!
+
+  dashboardSummary(
+    range: DateRangeInput
+    location: StockLocation
+  ): DashboardSummary!
+  salesReport(range: DateRangeInput, groupBy: SalesReportGroupBy!): SalesReport!
+  inventoryReport(
+    range: DateRangeInput
+    location: StockLocation
+  ): InventoryReport!
+  financeReport(range: DateRangeInput): FinanceReport!
+
+  users(filter: UserFilter, page: PageInput, sort: SortInput): UserPage!
+  user(id: ID!): User
+  auditEvents(
+    filter: AuditEventFilter
+    page: PageInput
+    sort: SortInput
+  ): AuditEventPage!
+  storeSettings: StoreSettings!
+  receiptSettings: ReceiptSettings!
+}
+
+type Mutation {
+  login(input: LoginInput!): AuthPayload!
+  refresh(input: RefreshInput!): AuthPayload!
+  logout: Boolean!
+  enrollDevice(input: EnrollDeviceInput!): AuthPayload!
+  approveDevice(deviceId: ID!): Device!
+  revokeDevice(deviceId: ID!): Device!
+  rotateDeviceKey(input: RotateDeviceKeyInput!): Device!
+  upgradeOfflineSession(input: UpgradeOfflineSessionInput!): AuthPayload!
+  revokeSession(sessionId: ID!): Boolean!
+
+  createProduct(input: CreateProductInput!): Product!
+  updateProduct(id: ID!, input: UpdateProductInput!): Product!
+  setProductActive(id: ID!, active: Boolean!): Product!
+  createCategory(input: CategoryInput!): Category!
+  updateCategory(id: ID!, input: CategoryInput!): Category!
+  createSupplier(input: SupplierInput!): Supplier!
+  updateSupplier(id: ID!, input: SupplierInput!): Supplier!
+  setSupplierActive(id: ID!, active: Boolean!): Supplier!
+  createCustomer(input: CustomerInput!): Customer!
+  updateCustomer(id: ID!, input: CustomerInput!): Customer!
+  setCustomerActive(id: ID!, active: Boolean!): Customer!
+
+  receiveStock(input: ReceiveStockInput!): StockPayload!
+  adjustStock(input: AdjustStockInput!): StockPayload!
+  createTransfer(input: CreateTransferInput!): StockTransfer!
+  completeTransfer(id: ID!): StockTransfer!
+  cancelTransfer(id: ID!): StockTransfer!
+  createOpname(input: CreateOpnameInput!): StockOpname!
+  updateOpname(id: ID!, input: UpdateOpnameInput!): StockOpname!
+  submitOpname(id: ID!): StockOpname!
+  approveOpname(id: ID!): StockOpname!
+  rejectOpname(id: ID!): StockOpname!
+
+  createPurchase(input: CreatePurchaseInput!): Purchase!
+  cancelPurchase(id: ID!): Purchase!
+  addPurchasePayment(input: AddPurchasePaymentInput!): Purchase!
+
+  createSale(input: CreateSaleInput!): SalePayload!
+  createSaleReturn(input: CreateSaleReturnInput!): SaleReturn!
+  voidSale(id: ID!, reason: String!): Sale!
+  openShift(input: OpenShiftInput!): CashierShift!
+  closeShift(input: CloseShiftInput!): CashierShift!
+  createCashFlow(input: CreateCashFlowInput!): CashFlow!
+
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  setUserActive(id: ID!, active: Boolean!): User!
+  resetUserPassword(id: ID!): ResetUserPasswordPayload!
+  updateStoreSettings(input: UpdateStoreSettingsInput!): StoreSettings!
+  updateReceiptSettings(input: UpdateReceiptSettingsInput!): ReceiptSettings!
+
+  syncOfflineBatch(input: SyncOfflineBatchInput!): SyncOfflineBatchPayload!
+}

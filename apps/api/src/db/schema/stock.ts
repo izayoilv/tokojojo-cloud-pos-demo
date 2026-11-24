@@ -181,6 +181,7 @@ export const stockOpnames = pgTable(
       onDelete: "restrict",
     }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
