@@ -1,35 +1,50 @@
 package dev.hasino.tokojojo.stock.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
-private val LightColors =
+private val TokoJojoColors =
     lightColorScheme(
-        primary = Color(0xFF0F172A),
-        secondary = Color(0xFF475569),
-        background = Color(0xFFF8FAFC),
-        surface = Color(0xFFFFFFFF),
+        primary = Royal,
+        onPrimary = White,
+        primaryContainer = BlueSoft,
+        onPrimaryContainer = Navy,
+        secondary = Blue,
+        onSecondary = White,
+        background = Canvas,
+        onBackground = Ink,
+        surface = White,
+        onSurface = Ink,
+        surfaceVariant = Canvas,
+        onSurfaceVariant = Muted,
+        outline = Line,
+        error = Danger,
+        onError = White,
     )
 
-private val DarkColors =
-    darkColorScheme(
-        primary = Color(0xFFE2E8F0),
-        secondary = Color(0xFF94A3B8),
-        background = Color(0xFF0F172A),
-        surface = Color(0xFF1E293B),
+private val TokoJojoTypography =
+    Typography(
+        headlineMedium = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.ExtraBold),
+        titleLarge = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold),
+        titleMedium = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold),
+        bodyLarge = TextStyle(fontSize = 14.sp),
+        bodyMedium = TextStyle(fontSize = 13.sp),
+        bodySmall = TextStyle(fontSize = 11.sp),
+        labelLarge = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+        labelMedium = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+        labelSmall = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold),
     )
 
 @Composable
-fun TokoJojoTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun TokoJojoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = TokoJojoColors,
+        typography = TokoJojoTypography,
         content = content,
     )
 }
