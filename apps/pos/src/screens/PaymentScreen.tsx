@@ -6,17 +6,11 @@ import {
   CloudOff,
   ShieldAlert,
 } from "lucide-solid";
-import {
-  type Component,
-  createEffect,
-  createMemo,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { type Component, createEffect, createMemo, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { usePos } from "../app/PosProvider";
+import { useShortcuts } from "../app/useShortcuts";
 import { PaymentMethodSelector } from "../components/PaymentMethodSelector";
 import { paymentMethodLabel, paymentReferenceLabels } from "../lib/payment";
 import { changeDue, formatRupiah } from "../lib/posCalc";
@@ -106,22 +100,8 @@ export function PaymentScreen() {
     }
   });
 
-  onMount(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        pos.actions.go("SELL");
-        return;
-      }
-
-      if (event.key === "F2") {
-        event.preventDefault();
-        complete();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+  useShortcuts({
+    F2: () => complete(),
   });
 
   return (

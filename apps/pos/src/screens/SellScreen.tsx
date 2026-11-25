@@ -11,16 +11,10 @@ import {
   Trash2,
   X,
 } from "lucide-solid";
-import {
-  createMemo,
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { usePos } from "../app/PosProvider";
+import { useShortcuts } from "../app/useShortcuts";
 import { CartLineItem } from "../components/CartLine";
 import { ProductTile } from "../components/ProductTile";
 import { UnitPicker } from "../components/UnitPicker";
@@ -85,52 +79,15 @@ export function SellScreen() {
     }
   };
 
-  onMount(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const typing = Boolean(
-        target?.closest("input, textarea, select, [contenteditable='true']"),
-      );
-
-      if (event.key === "F3") {
-        event.preventDefault();
-        searchRef?.focus();
-        searchRef?.select();
-        return;
-      }
-
-      if (typing) return;
-
-      switch (event.key) {
-        case "F2":
-          if (!emptyCart()) {
-            event.preventDefault();
-            pos.actions.go("PAYMENT");
-          }
-          break;
-        case "F8":
-          event.preventDefault();
-          pos.actions.holdCart();
-          break;
-        case "F9":
-          event.preventDefault();
-          pos.actions.go("HISTORY");
-          break;
-        case "F12":
-          event.preventDefault();
-          pos.actions.lock();
-          break;
-        case "Escape":
-          if (query()) {
-            event.preventDefault();
-            setQuery("");
-          }
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+  useShortcuts({
+    F3: () => {
+      searchRef?.focus();
+      searchRef?.select();
+    },
+    F8: () => pos.actions.holdCart(),
+    Escape: () => {
+      if (query()) setQuery("");
+    },
   });
 
   return (
@@ -154,9 +111,6 @@ export function SellScreen() {
                   if (event.key === "Enter") {
                     event.preventDefault();
                     submitSearch();
-                  }
-                  if (event.key === "Escape") {
-                    setQuery("");
                   }
                 }}
                 autofocus

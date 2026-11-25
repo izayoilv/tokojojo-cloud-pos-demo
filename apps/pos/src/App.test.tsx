@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { PreferencesProvider, ToastProvider } from "@tokojojo/ui";
 import { render } from "solid-js/web";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -54,9 +55,13 @@ function mount() {
 
   dispose = render(
     () => (
-      <PosProvider store={store}>
-        <App />
-      </PosProvider>
+      <PreferencesProvider defaultTheme="light">
+        <ToastProvider>
+          <PosProvider store={store}>
+            <App />
+          </PosProvider>
+        </ToastProvider>
+      </PreferencesProvider>
     ),
     root,
   );
@@ -68,6 +73,7 @@ afterEach(() => {
   dispose?.();
   dispose = undefined;
   document.body.innerHTML = "";
+  window.localStorage.clear();
 });
 
 describe("app shell", () => {
@@ -388,6 +394,106 @@ describe("app shell", () => {
     click(findButton(root, "Coba online")!);
     expect(store.state.connection()).toBe("ONLINE");
     expect(store.state.screen()).toBe("SELL");
+  });
+
+  it("opens settings and applies display, printer, and PIN changes", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    const openSettings = root.querySelector<HTMLButtonElement>(
+      '[aria-label="Pengaturan"]',
+    );
+    expect(openSettings).not.toBeNull();
+    click(openSettings!);
+
+    expect(store.state.screen()).toBe("SETTINGS");
+    expect(root.textContent).toContain("Printer & Struk");
+    expect(root.textContent).toContain("Pintasan");
+    expect(root.textContent).toContain("Keamanan");
+    expect(root.textContent).toContain("Perangkat & Sinkronisasi");
+    expect(root.textContent).toContain("Tentang");
+
+    click(findButton(root, "Gelap")!);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    click(findButton(root, "Besar")!);
+    expect(document.documentElement.dataset.textSize).toBe("large");
+
+    click(findButton(root, "58 mm")!);
+    expect(store.state.settings().paperSize).toBe("58mm");
+
+    const autoPrint = root.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    );
+    expect(autoPrint).not.toBeNull();
+    autoPrint!.click();
+    expect(store.state.settings().autoPrint).toBe(true);
+
+    click(findButton(root, "Ubah PIN")!);
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+
+    const setPin = (selector: string, value: string) => {
+      const input = dialog!.querySelector<HTMLInputElement>(selector);
+      expect(input).not.toBeNull();
+      input!.value = value;
+      input!.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+
+    setPin("#current-pin", "4321");
+    setPin("#new-pin", "1111");
+    setPin("#confirm-pin", "1111");
+    click(findButton(root, "Simpan PIN", dialog!)!);
+
+    expect(store.state.settings().localPin).toBe("1111");
+    expect(root.textContent).toContain("PIN lokal diperbarui");
+
+    store.actions.lock();
+    store.actions.unlockPin("4321");
+    expect(store.state.pinError()).toBe("PIN salah");
+    store.actions.unlockPin("1111");
+    expect(store.state.screen()).toBe("SELL");
+  });
+
+  it("supports keyboard shortcuts on the sell screen", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    const search = root.querySelector<HTMLInputElement>(
+      'input[aria-label="Cari produk"]',
+    );
+    expect(search).not.toBeNull();
+    search!.blur();
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F3", bubbles: true }),
+    );
+    expect(document.activeElement).toBe(search);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F2", bubbles: true }),
+    );
+    expect(store.state.screen()).toBe("PAYMENT");
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(store.state.screen()).toBe("SELL");
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F9", bubbles: true }),
+    );
+    expect(store.state.screen()).toBe("HISTORY");
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(store.state.screen()).toBe("SELL");
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F12", bubbles: true }),
+    );
+    expect(store.state.screen()).toBe("LOCK");
   });
 
   it("shows revoked copy and retries back to pending", () => {

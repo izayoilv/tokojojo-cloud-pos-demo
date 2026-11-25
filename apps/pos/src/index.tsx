@@ -9,7 +9,7 @@ import { PosProvider } from "./app/PosProvider";
 
 render(
   () => (
-    <PreferencesProvider>
+    <PreferencesProvider defaultTheme="light">
       <ToastProvider>
         <PosProvider>
           <App />

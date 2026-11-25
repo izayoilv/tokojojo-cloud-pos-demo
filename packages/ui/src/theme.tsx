@@ -48,11 +48,17 @@ function writePreferences(value: StoredPreferences): void {
   }
 }
 
-export function PreferencesProvider(props: { children: JSX.Element }) {
+export function PreferencesProvider(props: {
+  children: JSX.Element;
+  defaultTheme?: ThemeMode;
+  defaultTextSize?: TextSize;
+}) {
   const stored = readPreferences();
-  const [theme, setTheme] = createSignal<ThemeMode>(stored.theme ?? "system");
+  const [theme, setTheme] = createSignal<ThemeMode>(
+    stored.theme ?? props.defaultTheme ?? "system",
+  );
   const [textSize, setTextSize] = createSignal<TextSize>(
-    stored.textSize ?? "normal",
+    stored.textSize ?? props.defaultTextSize ?? "normal",
   );
   const [systemDark, setSystemDark] = createSignal(false);
 

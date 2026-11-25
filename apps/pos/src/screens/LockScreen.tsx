@@ -197,7 +197,7 @@ export function LockScreen() {
         </div>
 
         <p class="mt-1.5 text-center text-[10px] font-semibold text-ink-muted">
-          Demo: PIN 4321 · Kata sandi tokojojo
+          Demo: PIN awal 4321 · Kata sandi tokojojo
         </p>
       </div>
     </div>

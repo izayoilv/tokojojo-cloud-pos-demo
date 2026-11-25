@@ -1,4 +1,4 @@
-import { Lock, LogOut, Store } from "lucide-solid";
+import { Lock, LogOut, Settings, Store } from "lucide-solid";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { usePos } from "../app/PosProvider";
@@ -109,15 +109,26 @@ export function AppTopBar() {
         </div>
 
         <Show when={pos.state.session()}>
-          <button
-            type="button"
-            aria-label="Kunci layar (F12)"
-            title="Kunci layar (F12)"
-            onClick={() => pos.actions.lock()}
-            class="flex size-10 cursor-pointer items-center justify-center rounded-[6px] border border-line-control bg-surface text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            <Lock size={17} />
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              aria-label="Pengaturan"
+              title="Pengaturan"
+              onClick={() => pos.actions.go("SETTINGS")}
+              class="flex size-10 cursor-pointer items-center justify-center rounded-[6px] border border-line-control bg-surface text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Settings size={17} />
+            </button>
+            <button
+              type="button"
+              aria-label="Kunci layar (F12)"
+              title="Kunci layar (F12)"
+              onClick={() => pos.actions.lock()}
+              class="flex size-10 cursor-pointer items-center justify-center rounded-[6px] border border-line-control bg-surface text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Lock size={17} />
+            </button>
+          </div>
         </Show>
       </div>
     </header>

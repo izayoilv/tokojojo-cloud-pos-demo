@@ -2,6 +2,7 @@ import { MonitorSmartphone } from "lucide-solid";
 import { Match, Switch } from "solid-js";
 
 import { usePos } from "./app/PosProvider";
+import { useShortcuts } from "./app/useShortcuts";
 import { AppTopBar } from "./components/AppTopBar";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ShortcutFooter } from "./components/ShortcutFooter";
@@ -15,6 +16,7 @@ import { OpenShiftScreen } from "./screens/OpenShiftScreen";
 import { PaymentScreen } from "./screens/PaymentScreen";
 import { ReceiptScreen } from "./screens/ReceiptScreen";
 import { SellScreen } from "./screens/SellScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 import { SyncScreen } from "./screens/SyncScreen";
 
 const screenCopy: Record<PosScreen, { title: string; description: string }> = {
@@ -83,6 +85,46 @@ function ScreenPlaceholder(props: { screen: PosScreen }) {
 export default function App() {
   const pos = usePos();
 
+  useShortcuts({
+    F2: () => {
+      if (pos.state.screen() === "SELL" && pos.state.cart().length > 0) {
+        pos.actions.go("PAYMENT");
+      }
+    },
+    F9: () => {
+      const screen = pos.state.screen();
+      if (screen !== "ENROLLMENT" && screen !== "LOCK") {
+        pos.actions.go("HISTORY");
+      }
+    },
+    F12: () => {
+      if (pos.state.session()) {
+        pos.actions.lock();
+      }
+    },
+    Escape: () => {
+      const screen = pos.state.screen();
+      if (screen === "RECEIPT") {
+        pos.actions.newTransaction();
+        return;
+      }
+
+      if (
+        screen === "SETTINGS" ||
+        screen === "HISTORY" ||
+        screen === "SYNC" ||
+        screen === "CLOSE_SHIFT" ||
+        screen === "PAYMENT"
+      ) {
+        if (pos.state.connection() === "LOCKED") {
+          pos.actions.go("HARD_LOCK");
+        } else {
+          pos.actions.go("SELL");
+        }
+      }
+    },
+  });
+
   return (
     <div class="flex h-dvh flex-col overflow-hidden bg-canvas text-ink">
       <AppTopBar />
@@ -119,6 +161,9 @@ export default function App() {
           </Match>
           <Match when={pos.state.screen() === "HARD_LOCK"}>
             <HardLockScreen />
+          </Match>
+          <Match when={pos.state.screen() === "SETTINGS"}>
+            <SettingsScreen />
           </Match>
         </Switch>
       </main>
