@@ -2,6 +2,7 @@ import { createMemo, createSignal } from "solid-js";
 
 import {
   demoCart,
+  demoUser,
   initialHeldCarts,
   initialSales,
   initialSync,
@@ -100,11 +101,7 @@ export function createPosStore() {
   const currentTotals = () => cartTotals(cart());
 
   const beginSession = () => {
-    setSession({
-      username: "dewi.lestari",
-      name: "Dewi Lestari",
-      role: "CASHIER",
-    });
+    setSession({ ...demoUser });
     setPinError(null);
     setPinAttempts(0);
     setError(null);
@@ -154,6 +151,8 @@ export function createPosStore() {
       setPinError("Terlalu banyak percobaan. Coba lagi dalam 5 menit.");
       return;
     }
+
+    setPinError(null);
 
     if (pin === posSettings().localPin) {
       beginSession();

@@ -1,11 +1,13 @@
 import { MonitorSmartphone } from "lucide-solid";
-import { Show } from "solid-js";
+import { Match, Switch } from "solid-js";
 
 import { usePos } from "./app/PosProvider";
 import { AppTopBar } from "./components/AppTopBar";
 import { ShortcutFooter } from "./components/ShortcutFooter";
 import type { PosScreen } from "./data/types";
 import { EnrollmentScreen } from "./screens/EnrollmentScreen";
+import { LockScreen } from "./screens/LockScreen";
+import { OpenShiftScreen } from "./screens/OpenShiftScreen";
 
 const screenCopy: Record<PosScreen, { title: string; description: string }> = {
   ENROLLMENT: {
@@ -78,12 +80,17 @@ export default function App() {
       <AppTopBar />
 
       <main class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        <Show
-          when={pos.state.screen() === "ENROLLMENT"}
-          fallback={<ScreenPlaceholder screen={pos.state.screen()} />}
-        >
-          <EnrollmentScreen />
-        </Show>
+        <Switch fallback={<ScreenPlaceholder screen={pos.state.screen()} />}>
+          <Match when={pos.state.screen() === "ENROLLMENT"}>
+            <EnrollmentScreen />
+          </Match>
+          <Match when={pos.state.screen() === "LOCK"}>
+            <LockScreen />
+          </Match>
+          <Match when={pos.state.screen() === "OPEN_SHIFT"}>
+            <OpenShiftScreen />
+          </Match>
+        </Switch>
       </main>
 
       <ShortcutFooter />

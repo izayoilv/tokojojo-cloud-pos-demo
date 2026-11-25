@@ -6,7 +6,14 @@ import type {
   PosSale,
   PosSettings,
   SyncSnapshot,
+  UserSession,
 } from "./types";
+
+export const demoUser: UserSession = {
+  username: "dewi.lestari",
+  name: "Dewi Lestari",
+  role: "CASHIER",
+};
 
 const unit = (
   id: string,

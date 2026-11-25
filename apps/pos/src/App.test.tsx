@@ -17,6 +17,16 @@ const findButton = (root: HTMLElement, label: string) =>
     button.textContent?.includes(label),
   );
 
+const pressPin = (root: HTMLElement, pin: string) => {
+  for (const digit of pin) {
+    const button = root.querySelector<HTMLButtonElement>(
+      `[data-pin-digit="${digit}"]`,
+    );
+    expect(button).not.toBeNull();
+    click(button!);
+  }
+};
+
 let dispose: (() => void) | undefined;
 
 function mount() {
@@ -56,6 +66,34 @@ describe("app shell", () => {
 
     expect(store.state.deviceStatus()).toBe("ACTIVE");
     expect(root.textContent).toContain("Masukkan PIN");
+  });
+
+  it("rejects a wrong PIN then opens a shift with opening cash", () => {
+    const { root, store } = mount();
+
+    click(findButton(root, "Setujui perangkat")!);
+    pressPin(root, "1111");
+
+    expect(root.textContent).toContain("PIN salah");
+    expect(store.state.screen()).toBe("LOCK");
+
+    pressPin(root, "4321");
+
+    expect(root.textContent).toContain("Buka Shift");
+    expect(store.state.screen()).toBe("OPEN_SHIFT");
+
+    const input = root.querySelector<HTMLInputElement>(
+      'input[inputmode="numeric"]',
+    );
+    expect(input).not.toBeNull();
+    input!.value = "500000";
+    input!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    click(findButton(root, "Buka shift")!);
+
+    expect(store.state.screen()).toBe("SELL");
+    expect(store.state.shift()?.openingCash).toBe(500000);
+    expect(store.state.cart()).toHaveLength(3);
   });
 
   it("shows revoked copy and retries back to pending", () => {
