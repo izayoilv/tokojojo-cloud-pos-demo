@@ -299,6 +299,8 @@ describe("app shell", () => {
     click(voidButton!);
     const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
     expect(dialog).not.toBeNull();
+    expect(dialog!.textContent).toContain("Void tunai mengembalikan Rp 31.000");
+    expect(dialog!.textContent).toContain("shift lain");
 
     const confirm = findButton(root, "Void", dialog!);
     expect(confirm).toBeDefined();
@@ -313,6 +315,33 @@ describe("app shell", () => {
 
     click(findButton(root, "Cetak")!);
     expect(document.body.textContent).toContain("VOID · STRUK TIDAK SAH");
+  });
+
+  it("explains non-cash returns without a cash-drawer effect", () => {
+    const { root } = mount();
+    openSell(root);
+    click(findButton(root, "Riwayat")!);
+
+    const nonCash = root.querySelector<HTMLButtonElement>(
+      '[data-sale-id="SALE-002"]',
+    );
+    expect(nonCash).not.toBeNull();
+    click(nonCash!);
+
+    click(findButton(root, "Aktifkan izin demo OWNER")!);
+    const returnButton = root.querySelector<HTMLButtonElement>(
+      '[data-action="return"]',
+    );
+    expect(returnButton).not.toBeNull();
+    click(returnButton!);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog!.textContent).toContain(
+      "Tandai transaksi sebagai retur dan catat jumlah refund.",
+    );
+    expect(dialog!.textContent).toContain("tidak mengurangi kas fisik");
+    expect(dialog!.textContent).not.toContain("refund tunai yang dikembalikan");
   });
 
   it("closes a shift with a cash difference", () => {

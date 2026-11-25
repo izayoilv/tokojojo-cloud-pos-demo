@@ -622,9 +622,31 @@ export function HistoryScreen() {
       >
         <p class="text-sm leading-relaxed text-ink-secondary">
           {confirmAction() === "RETURN"
-            ? "Tandai transaksi sebagai retur dan catat refund tunai yang dikembalikan."
+            ? "Tandai transaksi sebagai retur dan catat jumlah refund."
             : "Void transaksi ini? Tindakan ini tercatat dan tidak dapat dibatalkan."}
         </p>
+
+        <Show when={confirmAction() === "VOID" && selected()}>
+          {(sale) => (
+            <div class="mt-3 rounded-[6px] bg-subtle px-3 py-2 text-[0.6875rem] leading-relaxed text-ink-secondary">
+              <p>
+                {selectedHasCash()
+                  ? `Void tunai mengembalikan ${formatRupiah(sale().total)} dan mengurangi uang seharusnya pada shift aktif.`
+                  : "Void non-tunai tidak mengurangi kas fisik; proses reversal lewat metode asal."}
+              </p>
+              <Show
+                when={
+                  selectedHasCash() && sale().shiftId !== pos.state.shift()?.id
+                }
+              >
+                <p class="mt-1 font-bold text-warning">
+                  Transaksi dari shift lain; refund tunai dibebankan ke shift
+                  aktif.
+                </p>
+              </Show>
+            </div>
+          )}
+        </Show>
 
         <Show when={confirmAction() === "RETURN" && selected()}>
           {(sale) => (
