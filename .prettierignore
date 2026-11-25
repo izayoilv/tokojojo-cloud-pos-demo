@@ -11,3 +11,5 @@ Cargo.lock
 apps/pos/src-tauri/gen
 apps/pos/src-tauri/target
 apps/pos/.vscode
+apps/api/drizzle
+apps/api/schema.dbml
