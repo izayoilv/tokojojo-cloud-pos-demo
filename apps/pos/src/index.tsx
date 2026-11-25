@@ -5,12 +5,15 @@ import { PreferencesProvider, ToastProvider } from "@tokojojo/ui";
 import { render } from "solid-js/web";
 
 import App from "./App";
+import { PosProvider } from "./app/PosProvider";
 
 render(
   () => (
     <PreferencesProvider>
       <ToastProvider>
-        <App />
+        <PosProvider>
+          <App />
+        </PosProvider>
       </ToastProvider>
     </PreferencesProvider>
   ),
