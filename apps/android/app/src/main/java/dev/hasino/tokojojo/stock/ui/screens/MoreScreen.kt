@@ -14,12 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Devices
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +41,7 @@ import dev.hasino.tokojojo.stock.ui.components.SoftDangerButton
 import dev.hasino.tokojojo.stock.ui.components.TextBadge
 import dev.hasino.tokojojo.stock.ui.components.ToggleRow
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta
@@ -83,7 +78,7 @@ fun MoreScreen(
                     modifier = Modifier.size(48.dp).background(colors.primarySoft, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.Person, contentDescription = null, tint = colors.primary, modifier = Modifier.size(26.dp))
+                    Icon(TokoIcons.Rounded.Person, contentDescription = null, tint = colors.primary, modifier = Modifier.size(26.dp))
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -164,21 +159,21 @@ fun MoreScreen(
                 label = "Mutasi stok",
                 description = "Pindahkan stok antar lokasi.",
                 onClick = onTransfers,
-                control = { Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted) },
+                control = { Icon(TokoIcons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted) },
             )
             DividerLine()
             SettingsRow(
                 label = "Opname",
                 description = "Hitung fisik dan kirim approval.",
                 onClick = onOpname,
-                control = { Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted) },
+                control = { Icon(TokoIcons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted) },
             )
             DividerLine()
             SettingsRow(
                 label = "Perangkat & sesi",
                 description = "${state.device.name} · ${state.device.status.name}",
                 onClick = { onDeviceStatus(DeviceStatus.PENDING) },
-                control = { Icon(Icons.Rounded.Devices, contentDescription = null, tint = colors.inkMuted) },
+                control = { Icon(TokoIcons.Rounded.Devices, contentDescription = null, tint = colors.inkMuted) },
             )
         }
 
@@ -229,7 +224,7 @@ fun MoreScreen(
             }
         }
 
-        SoftDangerButton(text = "Keluar", onClick = onLogout, icon = Icons.AutoMirrored.Rounded.Logout)
+        SoftDangerButton(text = "Keluar", onClick = onLogout, icon = TokoIcons.Rounded.Logout)
         Text(
             text = "TokoJoJo Stock · UI mock v0.1.0",
             color = colors.inkMuted,

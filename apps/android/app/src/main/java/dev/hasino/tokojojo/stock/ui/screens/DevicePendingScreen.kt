@@ -10,10 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Logout
-import androidx.compose.material.icons.rounded.Devices
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +26,7 @@ import dev.hasino.tokojojo.stock.ui.components.PrimaryButton
 import dev.hasino.tokojojo.stock.ui.components.SecondaryButton
 import dev.hasino.tokojojo.stock.ui.components.SoftDangerButton
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.IbmPlexMono
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta
@@ -53,7 +50,7 @@ fun DevicePendingScreen(
             modifier = Modifier.size(72.dp).background(colors.warningSoft, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Devices, contentDescription = null, tint = colors.warning, modifier = Modifier.size(34.dp))
+            Icon(TokoIcons.Rounded.Devices, contentDescription = null, tint = colors.warning, modifier = Modifier.size(34.dp))
         }
         Text(
             text = if (pending) "Perangkat menunggu persetujuan" else "Perangkat dicabut",
@@ -126,7 +123,7 @@ fun DevicePendingScreen(
         SoftDangerButton(
             text = "Keluar",
             onClick = onLogout,
-            icon = Icons.AutoMirrored.Rounded.Logout,
+            icon = TokoIcons.Rounded.Logout,
             modifier = Modifier.padding(top = 8.dp),
         )
     }

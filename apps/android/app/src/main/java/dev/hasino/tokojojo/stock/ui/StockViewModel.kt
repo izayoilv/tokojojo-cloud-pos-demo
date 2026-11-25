@@ -8,11 +8,13 @@ import dev.hasino.tokojojo.stock.data.DeviceInfo
 import dev.hasino.tokojojo.stock.data.DeviceStatus
 import dev.hasino.tokojojo.stock.data.Location
 import dev.hasino.tokojojo.stock.data.MockData
+import dev.hasino.tokojojo.stock.data.NoOpStockPreferences
 import dev.hasino.tokojojo.stock.data.Opname
 import dev.hasino.tokojojo.stock.data.Product
 import dev.hasino.tokojojo.stock.data.Receipt
 import dev.hasino.tokojojo.stock.data.ReceiveLine
 import dev.hasino.tokojojo.stock.data.StockMovement
+import dev.hasino.tokojojo.stock.data.StockPreferences
 import dev.hasino.tokojojo.stock.data.Supplier
 import dev.hasino.tokojojo.stock.data.TextSize
 import dev.hasino.tokojojo.stock.data.ThemeMode
@@ -57,13 +59,20 @@ data class StockUiState(
 )
 
 class StockViewModel(
+    private val preferences: StockPreferences = NoOpStockPreferences,
     private val scope: CoroutineScope? = null,
     private val delayMillis: Long = 300,
 ) : ViewModel() {
     private val workScope: CoroutineScope
         get() = scope ?: viewModelScope
 
-    private val _uiState = MutableStateFlow(StockUiState())
+    private val _uiState =
+        MutableStateFlow(
+            StockUiState(
+                themeMode = preferences.themeMode() ?: ThemeMode.SYSTEM,
+                textSize = preferences.textSize() ?: TextSize.NORMAL,
+            ),
+        )
     val uiState: StateFlow<StockUiState> = _uiState.asStateFlow()
 
     fun login(
@@ -188,10 +197,12 @@ class StockViewModel(
     }
 
     fun setTheme(mode: ThemeMode) {
+        preferences.setThemeMode(mode)
         _uiState.update { it.copy(themeMode = mode) }
     }
 
     fun setTextSize(size: TextSize) {
+        preferences.setTextSize(size)
         _uiState.update { it.copy(textSize = size) }
     }
 

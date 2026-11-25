@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +37,7 @@ import dev.hasino.tokojojo.stock.ui.components.ProductAvatar
 import dev.hasino.tokojojo.stock.ui.components.SecondaryButton
 import dev.hasino.tokojojo.stock.ui.components.StatusBadge
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.IbmPlexMono
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta

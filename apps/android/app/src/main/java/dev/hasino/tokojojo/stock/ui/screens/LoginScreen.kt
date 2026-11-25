@@ -16,11 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -49,6 +44,7 @@ import dev.hasino.tokojojo.stock.ui.components.PrimaryButton
 import dev.hasino.tokojojo.stock.ui.components.SecondaryButton
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
 import dev.hasino.tokojojo.stock.ui.components.tokoFieldColors
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta
@@ -159,7 +155,7 @@ fun LoginScreen(
                         onValueChange = { username = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) },
+                        leadingIcon = { Icon(TokoIcons.Rounded.Person, contentDescription = null) },
                         placeholder = { Text("cth: gudang", fontSize = 14.sp) },
                         shape = RoundedCornerShape(Dimens.radiusSm),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
@@ -173,11 +169,11 @@ fun LoginScreen(
                         onValueChange = { password = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Rounded.Lock, contentDescription = null) },
+                        leadingIcon = { Icon(TokoIcons.Rounded.Lock, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = { showPassword = !showPassword }) {
                                 Icon(
-                                    if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    if (showPassword) TokoIcons.Rounded.VisibilityOff else TokoIcons.Rounded.Visibility,
                                     contentDescription = if (showPassword) "Sembunyikan password" else "Tampilkan password",
                                 )
                             }

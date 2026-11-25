@@ -40,6 +40,9 @@ data class TokoJojoColors(
     val chart3: Color,
     val chart4: Color,
     val chart5: Color,
+    val cameraBackdrop: Color,
+    val cameraFrame: Color,
+    val onCamera: Color,
 )
 
 val LightTokoJojoColors =
@@ -79,6 +82,9 @@ val LightTokoJojoColors =
         chart3 = Color(0xFF4F46E5),
         chart4 = Color(0xFFBE123C),
         chart5 = Color(0xFF64748B),
+        cameraBackdrop = Color(0xFF18181B),
+        cameraFrame = Color(0xFF27272A),
+        onCamera = Color(0xFFFAFAFA),
     )
 
 val DarkTokoJojoColors =
@@ -118,4 +124,7 @@ val DarkTokoJojoColors =
         chart3 = Color(0xFF818CF8),
         chart4 = Color(0xFFFB7185),
         chart5 = Color(0xFF94A3B8),
+        cameraBackdrop = Color(0xFF18181B),
+        cameraFrame = Color(0xFF27272A),
+        onCamera = Color(0xFFFAFAFA),
     )

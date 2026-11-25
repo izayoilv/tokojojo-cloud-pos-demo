@@ -18,24 +18,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.LocalShipping
-import androidx.compose.material.icons.outlined.MoreHoriz
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.LocalShipping
-import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.QrCodeScanner
-import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,12 +48,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavKey
+import dev.hasino.tokojojo.stock.R
 import dev.hasino.tokojojo.stock.data.ConnectionState
 import dev.hasino.tokojojo.stock.data.Location
 import dev.hasino.tokojojo.stock.data.Product
 import dev.hasino.tokojojo.stock.data.StockStatus
 import dev.hasino.tokojojo.stock.data.formatRupiah
 import dev.hasino.tokojojo.stock.data.stockAt
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.navigation.HomeKey
 import dev.hasino.tokojojo.stock.ui.navigation.MoreKey
 import dev.hasino.tokojojo.stock.ui.navigation.ReceiveKey
@@ -83,16 +68,21 @@ import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta
 data class BottomDestination(
     val key: NavKey,
     val label: String,
-    val activeIcon: ImageVector,
-    val inactiveIcon: ImageVector,
+    val activeIcon: Int,
+    val inactiveIcon: Int,
 )
 
 val bottomDestinations =
     listOf(
-        BottomDestination(HomeKey, "Beranda", Icons.Rounded.Home, Icons.Outlined.Home),
-        BottomDestination(StockKey, "Stok", Icons.Rounded.Inventory2, Icons.Outlined.Inventory2),
-        BottomDestination(ReceiveKey, "Terima", Icons.Rounded.LocalShipping, Icons.Outlined.LocalShipping),
-        BottomDestination(MoreKey, "Lainnya", Icons.Rounded.MoreHoriz, Icons.Outlined.MoreHoriz),
+        BottomDestination(HomeKey, "Beranda", R.drawable.ic_home, R.drawable.ic_home_outlined),
+        BottomDestination(StockKey, "Stok", R.drawable.ic_inventory_2, R.drawable.ic_inventory_2_outlined),
+        BottomDestination(
+            ReceiveKey,
+            "Terima",
+            R.drawable.ic_local_shipping,
+            R.drawable.ic_local_shipping_outlined,
+        ),
+        BottomDestination(MoreKey, "Lainnya", R.drawable.ic_more_horiz, R.drawable.ic_more_horiz_outlined),
     )
 
 @Composable
@@ -117,7 +107,7 @@ fun TokoTopBar(
         ) {
             if (onBack != null) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Kembali", tint = colors.ink)
+                    Icon(TokoIcons.Rounded.ArrowBack, contentDescription = "Kembali", tint = colors.ink)
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -139,7 +129,7 @@ fun TokoTopBar(
             }
             ConnectionChip(connection = connection, onClick = onConnectionClick)
             IconButton(onClick = onScan) {
-                Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Pindai barcode", tint = colors.ink)
+                Icon(TokoIcons.Rounded.QrCodeScanner, contentDescription = "Pindai barcode", tint = colors.ink)
             }
         }
         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(colors.line))
@@ -195,7 +185,7 @@ fun TokoBottomBar(
                 onClick = { onSelect(destination.key) },
                 icon = {
                     Icon(
-                        imageVector = if (active) destination.activeIcon else destination.inactiveIcon,
+                        painter = painterResource(if (active) destination.activeIcon else destination.inactiveIcon),
                         contentDescription = destination.label,
                         modifier = Modifier.size(24.dp),
                     )
@@ -295,10 +285,10 @@ fun InfoBanner(
     val colors = LocalTokoColors.current
     val (foreground, background, icon) =
         when (tone) {
-            BannerTone.INFO -> Triple(colors.info, colors.infoSoft, Icons.Rounded.Info)
-            BannerTone.WARNING -> Triple(colors.warning, colors.warningSoft, Icons.Rounded.WifiOff)
-            BannerTone.DANGER -> Triple(colors.danger, colors.dangerSoft, Icons.Rounded.ErrorOutline)
-            BannerTone.SUCCESS -> Triple(colors.success, colors.successSoft, Icons.Rounded.CheckCircle)
+            BannerTone.INFO -> Triple(colors.info, colors.infoSoft, TokoIcons.Rounded.Info)
+            BannerTone.WARNING -> Triple(colors.warning, colors.warningSoft, TokoIcons.Rounded.WifiOff)
+            BannerTone.DANGER -> Triple(colors.danger, colors.dangerSoft, TokoIcons.Rounded.ErrorOutline)
+            BannerTone.SUCCESS -> Triple(colors.success, colors.successSoft, TokoIcons.Rounded.CheckCircle)
         }
     Row(
         modifier =
@@ -538,7 +528,7 @@ fun EmptyState(
             modifier = Modifier.size(40.dp).background(colors.subtle, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Inventory2, contentDescription = null, tint = colors.inkMuted)
+            Icon(TokoIcons.Rounded.Inventory2, contentDescription = null, tint = colors.inkMuted)
         }
         Text(
             text = title,
@@ -577,7 +567,7 @@ fun ErrorState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(Icons.Rounded.ErrorOutline, contentDescription = null, tint = colors.danger, modifier = Modifier.size(40.dp))
+        Icon(TokoIcons.Rounded.ErrorOutline, contentDescription = null, tint = colors.danger, modifier = Modifier.size(40.dp))
         Text(
             text = "Gagal memuat data",
             color = colors.ink,
@@ -695,7 +685,7 @@ fun StockRow(
                 dev.hasino.tokojojo.stock.data
                     .stockStatus(product),
             )
-            Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted, modifier = Modifier.size(20.dp))
+            Icon(TokoIcons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -818,7 +808,7 @@ fun QuantityStepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = { onValueChange((value - 1).coerceAtLeast(0)) }) {
-            Icon(Icons.Rounded.Remove, contentDescription = "Kurangi", tint = colors.inkSecondary)
+            Icon(TokoIcons.Rounded.Remove, contentDescription = "Kurangi", tint = colors.inkSecondary)
         }
         Text(
             text = value.toString(),
@@ -830,7 +820,7 @@ fun QuantityStepper(
             modifier = Modifier.width(40.dp),
         )
         IconButton(onClick = { onValueChange(value + 1) }) {
-            Icon(Icons.Rounded.Add, contentDescription = "Tambah", tint = colors.primary)
+            Icon(TokoIcons.Rounded.Add, contentDescription = "Tambah", tint = colors.primary)
         }
     }
 }

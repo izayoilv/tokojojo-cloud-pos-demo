@@ -15,10 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -57,6 +53,7 @@ import dev.hasino.tokojojo.stock.ui.components.SectionHeader
 import dev.hasino.tokojojo.stock.ui.components.SegmentedControl
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
 import dev.hasino.tokojojo.stock.ui.components.tokoFieldColors
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.IbmPlexMono
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
@@ -161,7 +158,7 @@ fun AdjustScreen(
                 colors = ButtonDefaults.outlinedButtonColors(containerColor = colors.surface, contentColor = colors.inkSecondary),
             ) {
                 Text("Pilih produk dari daftar", modifier = Modifier.weight(1f), fontFamily = PlusJakarta, fontSize = 13.sp)
-                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = colors.inkMuted)
+                Icon(TokoIcons.Rounded.ArrowDropDown, contentDescription = null, tint = colors.inkMuted)
             }
             DropdownMenu(expanded = productMenu, onDismissRequest = { productMenu = false }) {
                 state.products.forEach { item ->
@@ -311,7 +308,7 @@ private fun AdjustmentRow(adjustment: Adjustment) {
                 modifier = Modifier.size(34.dp).background(colors.warningSoft, RoundedCornerShape(Dimens.radiusSm)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.Edit, contentDescription = null, tint = colors.warning, modifier = Modifier.size(18.dp))
+                Icon(TokoIcons.Rounded.Edit, contentDescription = null, tint = colors.warning, modifier = Modifier.size(18.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(

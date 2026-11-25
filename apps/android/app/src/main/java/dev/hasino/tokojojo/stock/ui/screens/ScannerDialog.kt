@@ -16,13 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.FlashOff
-import androidx.compose.material.icons.rounded.FlashOn
-import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,7 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -44,11 +38,11 @@ import androidx.compose.ui.window.DialogProperties
 import dev.hasino.tokojojo.stock.data.Product
 import dev.hasino.tokojojo.stock.data.formatRupiah
 import dev.hasino.tokojojo.stock.ui.components.EmptyState
-import dev.hasino.tokojojo.stock.ui.components.InfoBanner
 import dev.hasino.tokojojo.stock.ui.components.PrimaryButton
 import dev.hasino.tokojojo.stock.ui.components.ProductAvatar
 import dev.hasino.tokojojo.stock.ui.components.SecondaryButton
 import dev.hasino.tokojojo.stock.ui.components.tokoFieldColors
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.IbmPlexMono
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
@@ -65,7 +59,7 @@ fun ScannerDialog(
     var result by remember { mutableStateOf<Product?>(null) }
     var notFound by remember { mutableStateOf(false) }
     var torch by remember { mutableStateOf(false) }
-    var permissionDenied by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
 
     fun lookup(value: String) {
         val product =
@@ -108,17 +102,8 @@ fun ScannerDialog(
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Tutup", tint = colors.inkMuted)
+                        Icon(TokoIcons.Rounded.Close, contentDescription = "Tutup", tint = colors.inkMuted)
                     }
-                }
-
-                if (permissionDenied) {
-                    InfoBanner(
-                        title = "Izin kamera ditolak",
-                        body = "Masukkan barcode secara manual atau buka izin kamera di pengaturan perangkat.",
-                        tone = dev.hasino.tokojojo.stock.ui.components.BannerTone.WARNING,
-                        modifier = Modifier.padding(top = 12.dp),
-                    )
                 }
 
                 Box(
@@ -127,7 +112,7 @@ fun ScannerDialog(
                             .fillMaxWidth()
                             .height(250.dp)
                             .padding(top = 14.dp)
-                            .background(Color(0xFF18181B), RoundedCornerShape(Dimens.radiusMd)),
+                            .background(colors.cameraBackdrop, RoundedCornerShape(Dimens.radiusMd)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
@@ -136,20 +121,20 @@ fun ScannerDialog(
                                 .fillMaxWidth()
                                 .padding(horizontal = 28.dp)
                                 .height(150.dp)
-                                .background(Color(0xFF27272A), RoundedCornerShape(Dimens.radiusSm)),
+                                .background(colors.cameraFrame, RoundedCornerShape(Dimens.radiusSm)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Box(modifier = Modifier.fillMaxWidth(0.72f).height(2.dp).background(colors.accent))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                Icons.Rounded.CameraAlt,
+                                TokoIcons.Rounded.CameraAlt,
                                 contentDescription = null,
                                 tint = colors.inkMuted,
                                 modifier = Modifier.size(40.dp),
                             )
                             Text(
                                 "Arahkan kamera ke barcode",
-                                color = Color(0xFFFAFAFA),
+                                color = colors.onCamera,
                                 fontFamily = PlusJakarta,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -170,7 +155,7 @@ fun ScannerDialog(
                     )
                     SecondaryButton(
                         text = "Input manual",
-                        onClick = { permissionDenied = true },
+                        onClick = { focusRequester.requestFocus() },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -181,11 +166,15 @@ fun ScannerDialog(
                         code = it
                         notFound = false
                     },
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                            .focusRequester(focusRequester),
                     label = { Text("Barcode / SKU", fontSize = 12.sp) },
                     placeholder = { Text("Ketik barcode atau SKU...", fontSize = 13.sp) },
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Rounded.Keyboard, contentDescription = null) },
+                    leadingIcon = { Icon(TokoIcons.Rounded.Keyboard, contentDescription = null) },
                     shape = RoundedCornerShape(Dimens.radiusSm),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                     colors = tokoFieldColors(),
@@ -207,7 +196,6 @@ fun ScannerDialog(
                             if (random != null) {
                                 code = random.barcode
                                 lookup(random.barcode)
-                                permissionDenied = false
                             }
                         },
                         modifier = Modifier.weight(1f),
@@ -261,7 +249,7 @@ fun ScannerDialog(
                             )
                         }
                     }
-                } else if (!notFound && !permissionDenied) {
+                } else if (!notFound) {
                     EmptyState(
                         title = "Belum ada hasil",
                         body = "Arahkan kamera, masukkan kode, atau gunakan Simulasi.",

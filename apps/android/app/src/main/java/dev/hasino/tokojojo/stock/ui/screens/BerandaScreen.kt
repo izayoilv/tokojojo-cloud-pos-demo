@@ -14,12 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.LocalShipping
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -52,6 +46,7 @@ import dev.hasino.tokojojo.stock.ui.components.SkeletonBlock
 import dev.hasino.tokojojo.stock.ui.components.StatCard
 import dev.hasino.tokojojo.stock.ui.components.StatusBadge
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta
@@ -119,7 +114,7 @@ fun BerandaScreen(
                         )
                         IconButton(onClick = onRefresh, modifier = Modifier.size(32.dp)) {
                             Icon(
-                                Icons.Rounded.Refresh,
+                                TokoIcons.Rounded.Refresh,
                                 contentDescription = "Muat ulang",
                                 tint = colors.inkMuted,
                                 modifier = Modifier.size(18.dp),
@@ -161,19 +156,19 @@ fun BerandaScreen(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionHeader("Aksi cepat")
                 QuickAction(
-                    icon = Icons.Rounded.LocalShipping,
+                    icon = TokoIcons.Rounded.LocalShipping,
                     title = "Terima",
                     subtitle = "Barang masuk",
                     onClick = onReceive,
                 )
                 QuickAction(
-                    icon = Icons.Rounded.Edit,
+                    icon = TokoIcons.Rounded.Edit,
                     title = "Sesuaikan",
                     subtitle = "Opname / koreksi",
                     onClick = { onAdjust(null) },
                 )
                 QuickAction(
-                    icon = Icons.Rounded.Search,
+                    icon = TokoIcons.Rounded.Search,
                     title = "Cari stok",
                     subtitle = "Nama, SKU, barcode",
                     onClick = onOpenStock,
@@ -226,7 +221,7 @@ fun BerandaScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        Icons.Rounded.LocalShipping,
+                                        TokoIcons.Rounded.LocalShipping,
                                         contentDescription = null,
                                         tint = colors.primary,
                                         modifier = Modifier.size(18.dp),
@@ -297,7 +292,7 @@ private fun QuickAction(
                 Text(title, color = colors.ink, fontFamily = PlusJakarta, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = colors.inkMuted, fontFamily = PlusJakarta, fontSize = 12.sp)
             }
-            Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted, modifier = Modifier.size(20.dp))
+            Icon(TokoIcons.Rounded.ChevronRight, contentDescription = null, tint = colors.inkMuted, modifier = Modifier.size(20.dp))
         }
     }
 }

@@ -12,8 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -49,6 +47,7 @@ import dev.hasino.tokojojo.stock.ui.components.SegmentedControl
 import dev.hasino.tokojojo.stock.ui.components.TextBadge
 import dev.hasino.tokojojo.stock.ui.components.TokoCard
 import dev.hasino.tokojojo.stock.ui.components.tokoFieldColors
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.IbmPlexMono
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
@@ -174,7 +173,7 @@ private fun OpnameCreateDialog(
                         modifier = Modifier.weight(1f),
                     )
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Tutup", tint = colors.inkMuted)
+                        Icon(TokoIcons.Rounded.Close, contentDescription = "Tutup", tint = colors.inkMuted)
                     }
                 }
                 FieldLabel("Lokasi")

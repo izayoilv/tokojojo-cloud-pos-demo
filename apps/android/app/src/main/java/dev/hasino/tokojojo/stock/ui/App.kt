@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -22,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +34,7 @@ import dev.hasino.tokojojo.stock.data.ConnectionState
 import dev.hasino.tokojojo.stock.data.DeviceStatus
 import dev.hasino.tokojojo.stock.ui.components.TokoBottomBar
 import dev.hasino.tokojojo.stock.ui.components.TokoTopBar
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.navigation.AdjustKey
 import dev.hasino.tokojojo.stock.ui.navigation.HomeKey
 import dev.hasino.tokojojo.stock.ui.navigation.MoreKey
@@ -60,7 +60,12 @@ import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.TokoJojoTheme
 
 @Composable
-fun TokoJojoApp(viewModel: StockViewModel = viewModel()) {
+fun TokoJojoApp(
+    viewModel: StockViewModel =
+        viewModel(
+            factory = StockViewModelFactory(LocalContext.current.applicationContext),
+        ),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     TokoJojoTheme(mode = state.themeMode, textSize = state.textSize) {
@@ -271,7 +276,7 @@ private fun InlineConnectionError(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(Icons.Rounded.Warning, contentDescription = null, tint = colors.danger, modifier = Modifier.padding(2.dp))
+        Icon(TokoIcons.Rounded.Warning, contentDescription = null, tint = colors.danger, modifier = Modifier.padding(2.dp))
         Text(
             text = message,
             color = colors.danger,

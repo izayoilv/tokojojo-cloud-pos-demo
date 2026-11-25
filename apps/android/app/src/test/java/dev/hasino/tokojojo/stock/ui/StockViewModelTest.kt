@@ -4,6 +4,9 @@ import dev.hasino.tokojojo.stock.data.ConnectionState
 import dev.hasino.tokojojo.stock.data.DeviceStatus
 import dev.hasino.tokojojo.stock.data.Location
 import dev.hasino.tokojojo.stock.data.ReceiveLine
+import dev.hasino.tokojojo.stock.data.StockPreferences
+import dev.hasino.tokojojo.stock.data.TextSize
+import dev.hasino.tokojojo.stock.data.ThemeMode
 import dev.hasino.tokojojo.stock.data.TransferLine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -145,6 +148,20 @@ class StockViewModelTest {
         }
 
     @Test
+    fun `theme and text size persist across view model recreation`() =
+        runTest {
+            val preferences = FakeStockPreferences()
+            val first = StockViewModel(preferences = preferences, scope = this, delayMillis = 0)
+            first.setTheme(ThemeMode.LIGHT)
+            first.setTextSize(TextSize.LARGE)
+
+            val second = StockViewModel(preferences = preferences, scope = this, delayMillis = 0)
+
+            assertEquals(ThemeMode.LIGHT, second.uiState.value.themeMode)
+            assertEquals(TextSize.LARGE, second.uiState.value.textSize)
+        }
+
+    @Test
     fun `pending device status is exposed to the app`() =
         runTest {
             val vm = viewModel(this)
@@ -155,4 +172,21 @@ class StockViewModelTest {
             assertEquals(DeviceStatus.PENDING, vm.uiState.value.device.status)
             assertNotNull(vm.uiState.value.message)
         }
+}
+
+private class FakeStockPreferences(
+    private var theme: ThemeMode? = null,
+    private var textSize: TextSize? = null,
+) : StockPreferences {
+    override fun themeMode(): ThemeMode? = theme
+
+    override fun textSize(): TextSize? = textSize
+
+    override fun setThemeMode(mode: ThemeMode) {
+        theme = mode
+    }
+
+    override fun setTextSize(size: TextSize) {
+        textSize = size
+    }
 }

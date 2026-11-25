@@ -14,8 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -44,6 +42,7 @@ import dev.hasino.tokojojo.stock.ui.components.SegmentedControl
 import dev.hasino.tokojojo.stock.ui.components.SkeletonBlock
 import dev.hasino.tokojojo.stock.ui.components.StockRow
 import dev.hasino.tokojojo.stock.ui.components.tokoFieldColors
+import dev.hasino.tokojojo.stock.ui.icons.TokoIcons
 import dev.hasino.tokojojo.stock.ui.theme.Dimens
 import dev.hasino.tokojojo.stock.ui.theme.LocalTokoColors
 import dev.hasino.tokojojo.stock.ui.theme.PlusJakarta
@@ -78,7 +77,7 @@ fun StockListScreen(
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             placeholder = { Text("Cari stok: nama, SKU, barcode...", fontSize = 14.sp) },
-            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+            leadingIcon = { Icon(TokoIcons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
             singleLine = true,
             shape = RoundedCornerShape(Dimens.radiusSm),
             colors = tokoFieldColors(),
