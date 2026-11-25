@@ -628,7 +628,19 @@ export function createPosStore() {
   };
 
   const voidSale = (saleId: string) => {
-    if (!saleActionTarget(saleId)) return;
+    const target = saleActionTarget(saleId);
+    if (!target) return;
+
+    if (
+      shift()?.id === target.shiftId &&
+      target.payments.some((payment) => payment.method === "TUNAI")
+    ) {
+      setShift((current) =>
+        current
+          ? { ...current, refunds: current.refunds + target.total }
+          : current,
+      );
+    }
 
     setSales((current) =>
       current.map((sale) =>

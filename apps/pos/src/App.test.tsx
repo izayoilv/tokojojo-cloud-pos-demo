@@ -299,6 +299,46 @@ describe("app shell", () => {
     );
   });
 
+  it("closes a shift with a cash difference", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    const openClose = root.querySelector<HTMLButtonElement>(
+      '[data-action="open-close-shift"]',
+    );
+    expect(openClose).not.toBeNull();
+    click(openClose!);
+
+    expect(store.state.screen()).toBe("CLOSE_SHIFT");
+    expect(root.textContent).toContain("Uang seharusnya");
+    expect(root.textContent).toContain("Rp 500.000");
+
+    const actual = root.querySelector<HTMLInputElement>("#actual-cash");
+    expect(actual).not.toBeNull();
+    actual!.value = "490000";
+    actual!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(root.textContent).toContain("-Rp 10.000");
+
+    const close = root.querySelector<HTMLButtonElement>(
+      '[data-action="close-shift"]',
+    );
+    expect(close).not.toBeNull();
+    click(close!);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    const confirm = document.querySelector<HTMLButtonElement>(
+      '[data-action="confirm-close-shift"]',
+    );
+    expect(confirm).not.toBeNull();
+    click(confirm!);
+
+    expect(store.state.shift()?.status).toBe("CLOSED");
+    expect(store.state.shift()?.difference).toBe(-10000);
+    expect(store.state.screen()).toBe("LOCK");
+  });
+
   it("shows revoked copy and retries back to pending", () => {
     const { root, store } = mount();
 

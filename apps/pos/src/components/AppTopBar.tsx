@@ -1,4 +1,4 @@
-import { Lock, Store } from "lucide-solid";
+import { Lock, LogOut, Store } from "lucide-solid";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { usePos } from "../app/PosProvider";
@@ -74,6 +74,19 @@ export function AppTopBar() {
                 {shiftLabel()}
               </div>
             </div>
+            <Show when={pos.state.shift()?.status === "OPEN"}>
+              <button
+                type="button"
+                data-action="open-close-shift"
+                aria-label="Tutup shift"
+                title="Tutup shift"
+                onClick={() => pos.actions.go("CLOSE_SHIFT")}
+                class="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-[5px] border border-line-control bg-surface px-2 text-[10px] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                <LogOut size={13} />
+                <span class="hidden xl:inline">Tutup shift</span>
+              </button>
+            </Show>
           </div>
         )}
       </Show>

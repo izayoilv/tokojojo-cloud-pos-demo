@@ -5,6 +5,7 @@ import { usePos } from "./app/PosProvider";
 import { AppTopBar } from "./components/AppTopBar";
 import { ShortcutFooter } from "./components/ShortcutFooter";
 import type { PosScreen } from "./data/types";
+import { CloseShiftScreen } from "./screens/CloseShiftScreen";
 import { EnrollmentScreen } from "./screens/EnrollmentScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { LockScreen } from "./screens/LockScreen";
@@ -105,6 +106,9 @@ export default function App() {
           </Match>
           <Match when={pos.state.screen() === "HISTORY"}>
             <HistoryScreen />
+          </Match>
+          <Match when={pos.state.screen() === "CLOSE_SHIFT"}>
+            <CloseShiftScreen />
           </Match>
         </Switch>
       </main>

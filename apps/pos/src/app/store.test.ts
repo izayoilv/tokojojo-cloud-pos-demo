@@ -198,6 +198,26 @@ describe("sales history actions", () => {
     ).toBe("COMPLETED");
   });
 
+  it("accounts for voided cash sales when closing the shift", () => {
+    const store = unlockedStore();
+    store.actions.selectPaymentMethod("TUNAI");
+    store.actions.setCashReceived(200000);
+    store.actions.completeSale();
+
+    const sale = store.state.receipt()!;
+    store.actions.setSessionRole("OWNER");
+    store.actions.voidSale(sale.id);
+
+    expect(store.state.shift()?.refunds).toBe(166500);
+
+    store.actions.closeShift(490000);
+
+    const closed = store.state.shift()!;
+    expect(closed.expectedCash).toBe(500000);
+    expect(closed.actualCash).toBe(490000);
+    expect(closed.difference).toBe(-10000);
+  });
+
   it("requires admin or owner and updates completed sales online", () => {
     const store = unlockedStore();
     const completed = store.state
