@@ -12,8 +12,12 @@ const click = (element: Element) => {
   );
 };
 
-const findButton = (root: HTMLElement, label: string) =>
-  [...root.querySelectorAll("button")].find((button) =>
+const findButton = (
+  root: HTMLElement,
+  label: string,
+  scope: ParentNode = root,
+) =>
+  [...scope.querySelectorAll("button")].find((button) =>
     button.textContent?.includes(label),
   );
 
@@ -25,6 +29,20 @@ const pressPin = (root: HTMLElement, pin: string) => {
     expect(button).not.toBeNull();
     click(button!);
   }
+};
+
+const openSell = (root: HTMLElement) => {
+  click(findButton(root, "Setujui perangkat")!);
+  pressPin(root, "4321");
+
+  const input = root.querySelector<HTMLInputElement>(
+    'input[inputmode="numeric"]',
+  );
+  expect(input).not.toBeNull();
+  input!.value = "500000";
+  input!.dispatchEvent(new Event("input", { bubbles: true }));
+
+  click(findButton(root, "Buka shift")!);
 };
 
 let dispose: (() => void) | undefined;
@@ -94,6 +112,46 @@ describe("app shell", () => {
     expect(store.state.screen()).toBe("SELL");
     expect(store.state.shift()?.openingCash).toBe(500000);
     expect(store.state.cart()).toHaveLength(3);
+  });
+
+  it("adds a multi-unit product and holds and recalls the cart", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    expect(root.textContent).toContain("Transaksi Aktif");
+    expect(root.textContent).toContain("Rp 166.500");
+
+    const indomie = findButton(root, "Indomie Goreng Spesial");
+    expect(indomie).toBeDefined();
+    click(indomie!);
+
+    expect(root.textContent).toContain("Pilih satuan");
+    const unitDialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(unitDialog).not.toBeNull();
+    const dus = findButton(root, "Dus", unitDialog!);
+    expect(dus).toBeDefined();
+    click(dus!);
+
+    expect(
+      store.state
+        .cart()
+        .some(
+          (line) => line.productId === "PRD-003" && line.unitName === "Dus",
+        ),
+    ).toBe(true);
+    expect(store.state.totals().total).toBe(304500);
+
+    click(findButton(root, "Tahan")!);
+    expect(store.state.cart()).toHaveLength(0);
+    expect(store.state.heldCarts()).toHaveLength(2);
+
+    click(findButton(root, "Panggil")!);
+    const held = findButton(root, "Pesanan #2", document);
+    expect(held).toBeDefined();
+    click(held!);
+
+    expect(store.state.totals().total).toBe(304500);
+    expect(root.textContent).toContain("Rp 304.500");
   });
 
   it("shows revoked copy and retries back to pending", () => {

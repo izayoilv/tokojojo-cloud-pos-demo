@@ -8,6 +8,7 @@ import type { PosScreen } from "./data/types";
 import { EnrollmentScreen } from "./screens/EnrollmentScreen";
 import { LockScreen } from "./screens/LockScreen";
 import { OpenShiftScreen } from "./screens/OpenShiftScreen";
+import { SellScreen } from "./screens/SellScreen";
 
 const screenCopy: Record<PosScreen, { title: string; description: string }> = {
   ENROLLMENT: {
@@ -89,6 +90,9 @@ export default function App() {
           </Match>
           <Match when={pos.state.screen() === "OPEN_SHIFT"}>
             <OpenShiftScreen />
+          </Match>
+          <Match when={pos.state.screen() === "SELL"}>
+            <SellScreen />
           </Match>
         </Switch>
       </main>
