@@ -94,3 +94,28 @@ export const cashFlowReferenceTypeEnum = pgEnum("cash_flow_reference_type", [
   "PURCHASE_CANCEL",
   "MANUAL",
 ]);
+
+export const devicePlatformEnum = pgEnum("device_platform", [
+  "ANDROID",
+  "TAURI",
+]);
+
+export const deviceStatusEnum = pgEnum("device_status", [
+  "PENDING",
+  "ACTIVE",
+  "REVOKED",
+]);
+
+export const deviceKeyStatusEnum = pgEnum("device_key_status", [
+  "ACTIVE",
+  "RETIRED",
+  "REVOKED",
+]);
+
+export const shiftSourceEnum = pgEnum("shift_source", ["ONLINE", "OFFLINE"]);
+
+export const saleSourceEnum = pgEnum("sale_source", [
+  "ONLINE",
+  "OFFLINE",
+  "GRACE",
+]);

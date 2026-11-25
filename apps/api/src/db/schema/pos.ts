@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   foreignKey,
   index,
@@ -13,13 +14,17 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { productUnits } from "./catalog.ts";
+import { devices } from "./devices.ts";
 import {
   paymentMethodEnum,
   saleSettlementEnum,
+  saleSourceEnum,
   saleStatusEnum,
+  shiftSourceEnum,
   shiftStatusEnum,
 } from "./enums.ts";
 import { customers, users } from "./identity.ts";
+import { syncBatches } from "./sync.ts";
 
 export const cashierShifts = pgTable(
   "cashier_shifts",
@@ -40,6 +45,15 @@ export const cashierShifts = pgTable(
       .default(0),
     expectedCash: bigint("expected_cash", { mode: "number" }),
     actualCash: bigint("actual_cash", { mode: "number" }),
+    deviceId: uuid("device_id").references(() => devices.id, {
+      onDelete: "restrict",
+    }),
+    source: shiftSourceEnum("source").notNull().default("ONLINE"),
+    openedAtClient: timestamp("opened_at_client", { withTimezone: true }),
+    closedAtClient: timestamp("closed_at_client", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -70,6 +84,18 @@ export const cashierShifts = pgTable(
           AND ${table.closedAt} IS NOT NULL
           AND ${table.expectedCash} IS NOT NULL
           AND ${table.actualCash} IS NOT NULL)`,
+    ),
+    check(
+      "cashier_shifts_offline_fields_required",
+      sql`${table.source} <> 'OFFLINE'
+        OR (${table.deviceId} IS NOT NULL
+          AND ${table.openedAtClient} IS NOT NULL)`,
+    ),
+    check(
+      "cashier_shifts_offline_close_requires_client",
+      sql`${table.source} <> 'OFFLINE'
+        OR ${table.status} <> 'CLOSED'
+        OR ${table.closedAtClient} IS NOT NULL`,
     ),
   ],
 );
@@ -102,6 +128,23 @@ export const sales = pgTable(
       onDelete: "restrict",
     }),
     voidReason: text("void_reason"),
+    source: saleSourceEnum("source").notNull().default("ONLINE"),
+    deviceId: uuid("device_id").references(() => devices.id, {
+      onDelete: "restrict",
+    }),
+    clientOrderId: uuid("client_order_id"),
+    clientSeq: bigint("client_seq", { mode: "number" }),
+    clientCreatedAt: timestamp("client_created_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    signatureVerified: boolean("signature_verified").notNull().default(false),
+    priceVariance: bigint("price_variance", { mode: "number" })
+      .notNull()
+      .default(0),
+    syncBatchId: uuid("sync_batch_id").references(() => syncBatches.id, {
+      onDelete: "restrict",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -115,6 +158,11 @@ export const sales = pgTable(
     index("sales_customer_id_idx").on(table.customerId),
     index("sales_settlement_method_idx").on(table.settlementMethod),
     index("sales_status_idx").on(table.status),
+    uniqueIndex("sales_device_client_order_unique")
+      .on(table.deviceId, table.clientOrderId)
+      .where(sql`${table.clientOrderId} IS NOT NULL`),
+    index("sales_device_id_client_seq_idx").on(table.deviceId, table.clientSeq),
+    index("sales_sync_batch_id_idx").on(table.syncBatchId),
     check("sales_invoice_no_not_blank", sql`btrim(${table.invoiceNo}) <> ''`),
     check("sales_subtotal_non_negative", sql`${table.subtotal} >= 0`),
     check("sales_discount_non_negative", sql`${table.discount} >= 0`),
@@ -140,6 +188,22 @@ export const sales = pgTable(
           AND ${table.voidedAt} IS NOT NULL
           AND ${table.voidedBy} IS NOT NULL
           AND ${table.voidReason} IS NOT NULL)`,
+    ),
+    check(
+      "sales_offline_fields_required",
+      sql`${table.source} = 'ONLINE'
+        OR (${table.deviceId} IS NOT NULL
+          AND ${table.clientOrderId} IS NOT NULL
+          AND ${table.clientSeq} IS NOT NULL
+          AND ${table.clientCreatedAt} IS NOT NULL)`,
+    ),
+    check(
+      "sales_client_seq_non_negative",
+      sql`${table.clientSeq} IS NULL OR ${table.clientSeq} >= 0`,
+    ),
+    check(
+      "sales_client_order_requires_device",
+      sql`${table.clientOrderId} IS NULL OR ${table.deviceId} IS NOT NULL`,
     ),
   ],
 );

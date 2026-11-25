@@ -4,14 +4,21 @@
 
 | Name                                                  | Columns | Comment |
 | ----------------------------------------------------- | ------- | ------- |
+| [audit_events](#audit_events)                         | 9       |         |
+| [offline_tokens](#offline_tokens)                     | 10      |         |
+| [refresh_tokens](#refresh_tokens)                     | 8       |         |
+| [sessions](#sessions)                                 | 10      |         |
 | [categories](#categories)                             | 4       |         |
 | [product_stock_thresholds](#product_stock_thresholds) | 5       |         |
 | [product_units](#product_units)                       | 8       |         |
 | [products](#products)                                 | 9       |         |
+| [device_keys](#device_keys)                           | 11      |         |
+| [devices](#devices)                                   | 10      |         |
 | [cash_flows](#cash_flows)                             | 12      |         |
 | [customers](#customers)                               | 8       |         |
-| [users](#users)                                       | 8       |         |
-| [cashier_shifts](#cashier_shifts)                     | 10      |         |
+| [users](#users)                                       | 11      |         |
+| [cashier_shifts](#cashier_shifts)                     | 15      |         |
+| [device_events](#device_events)                       | 6       |         |
 | [purchase_items](#purchase_items)                     | 10      |         |
 | [purchase_payments](#purchase_payments)               | 7       |         |
 | [purchases](#purchases)                               | 12      |         |
@@ -19,13 +26,14 @@
 | [sale_payments](#sale_payments)                       | 11      |         |
 | [sale_return_items](#sale_return_items)               | 6       |         |
 | [sale_returns](#sale_returns)                         | 11      |         |
-| [sales](#sales)                                       | 15      |         |
+| [sales](#sales)                                       | 24      |         |
 | [stock_movements](#stock_movements)                   | 12      |         |
 | [stock_opname_items](#stock_opname_items)             | 6       |         |
-| [stock_opnames](#stock_opnames)                       | 9       |         |
+| [stock_opnames](#stock_opnames)                       | 10      |         |
 | [stock_transfer_items](#stock_transfer_items)         | 6       |         |
 | [stock_transfers](#stock_transfers)                   | 13      |         |
 | [suppliers](#suppliers)                               | 8       |         |
+| [sync_batches](#sync_batches)                         | 8       |         |
 
 ---
 
@@ -37,6 +45,29 @@
 | --------- |
 | WAREHOUSE |
 | STORE     |
+
+## device_key_status
+
+| Value   |
+| ------- |
+| ACTIVE  |
+| RETIRED |
+| REVOKED |
+
+## device_platform
+
+| Value   |
+| ------- |
+| ANDROID |
+| TAURI   |
+
+## device_status
+
+| Value   |
+| ------- |
+| PENDING |
+| ACTIVE  |
+| REVOKED |
 
 ## cash_flow_type
 
@@ -99,6 +130,13 @@
 | OPEN   |
 | CLOSED |
 
+## shift_source
+
+| Value   |
+| ------- |
+| ONLINE  |
+| OFFLINE |
+
 ## purchase_status
 
 | Value     |
@@ -123,6 +161,14 @@
 | --------- |
 | COMPLETED |
 | VOIDED    |
+
+## sale_source
+
+| Value   |
+| ------- |
+| ONLINE  |
+| OFFLINE |
+| GRACE   |
 
 ## stock_movement_type
 
@@ -164,6 +210,163 @@
 | PENDING   |
 | COMPLETED |
 | CANCELLED |
+
+---
+
+## audit_events
+
+### Columns
+
+| Name            | Type                     | Default       | Nullable | Children | Parents                | Comment |
+| --------------- | ------------------------ | ------------- | -------- | -------- | ---------------------- | ------- |
+| **id**          | uuid                     | `uuidv7()`    | NO       | -        | -                      | -       |
+| event_type      | text                     | -             | NO       | -        | -                      | -       |
+| actor_user_id   | uuid                     | -             | YES      | -        | [users.id](#users)     | -       |
+| device_id       | uuid                     | -             | YES      | -        | [devices.id](#devices) | -       |
+| entity_type     | text                     | -             | YES      | -        | -                      | -       |
+| entity_id       | uuid                     | -             | YES      | -        | -                      | -       |
+| metadata        | jsonb                    | `'{}'::jsonb` | NO       | -        | -                      | -       |
+| created_at      | timestamp with time zone | `now()`       | NO       | -        | -                      | -       |
+| retention_until | timestamp with time zone | -             | NO       | -        | -                      | -       |
+
+### Constraints
+
+| Name                   | Type        | Definition                  |
+| ---------------------- | ----------- | --------------------------- |
+| fk_actor_user_id_users | FOREIGN KEY | (actor_user_id) → users(id) |
+| fk_device_id_devices   | FOREIGN KEY | (device_id) → devices(id)   |
+
+### Indexes
+
+| Name                                      | Columns                   | Unique | Type |
+| ----------------------------------------- | ------------------------- | ------ | ---- |
+| audit_events_created_at_idx               | created_at                | NO     | -    |
+| audit_events_event_type_created_at_idx    | event_type, created_at    | NO     | -    |
+| audit_events_actor_user_id_created_at_idx | actor_user_id, created_at | NO     | -    |
+| audit_events_device_id_created_at_idx     | device_id, created_at     | NO     | -    |
+| audit_events_retention_until_idx          | retention_until           | NO     | -    |
+
+### Relations
+
+| Parent                 | Child                                           | Type        |
+| ---------------------- | ----------------------------------------------- | ----------- |
+| [users.id](#users)     | **[audit_events.actor_user_id](#audit_events)** | Many to One |
+| [devices.id](#devices) | **[audit_events.device_id](#audit_events)**     | Many to One |
+
+---
+
+## offline_tokens
+
+### Columns
+
+| Name              | Type                     | Default | Nullable | Children | Parents                | Comment |
+| ----------------- | ------------------------ | ------- | -------- | -------- | ---------------------- | ------- |
+| **jti**           | uuid                     | -       | NO       | -        | -                      | -       |
+| device_id         | uuid                     | -       | NO       | -        | [devices.id](#devices) | -       |
+| issued_to_user_id | uuid                     | -       | NO       | -        | [users.id](#users)     | -       |
+| scope             | text[]                   | -       | NO       | -        | -                      | -       |
+| issued_at         | timestamp with time zone | `now()` | NO       | -        | -                      | -       |
+| expires_at        | timestamp with time zone | -       | NO       | -        | -                      | -       |
+| grace_until       | timestamp with time zone | -       | NO       | -        | -                      | -       |
+| rotated_at        | timestamp with time zone | -       | YES      | -        | -                      | -       |
+| revoked_at        | timestamp with time zone | -       | YES      | -        | -                      | -       |
+| last_seen_at      | timestamp with time zone | -       | YES      | -        | -                      | -       |
+
+### Constraints
+
+| Name                       | Type        | Definition                      |
+| -------------------------- | ----------- | ------------------------------- |
+| fk_device_id_devices       | FOREIGN KEY | (device_id) → devices(id)       |
+| fk_issued_to_user_id_users | FOREIGN KEY | (issued_to_user_id) → users(id) |
+
+### Indexes
+
+| Name                          | Columns    | Unique | Type |
+| ----------------------------- | ---------- | ------ | ---- |
+| offline_tokens_device_id_idx  | device_id  | NO     | -    |
+| offline_tokens_expires_at_idx | expires_at | NO     | -    |
+
+### Relations
+
+| Parent                 | Child                                                   | Type        |
+| ---------------------- | ------------------------------------------------------- | ----------- |
+| [devices.id](#devices) | **[offline_tokens.device_id](#offline_tokens)**         | Many to One |
+| [users.id](#users)     | **[offline_tokens.issued_to_user_id](#offline_tokens)** | Many to One |
+
+---
+
+## refresh_tokens
+
+### Columns
+
+| Name       | Type                     | Default    | Nullable | Children | Parents                | Comment |
+| ---------- | ------------------------ | ---------- | -------- | -------- | ---------------------- | ------- |
+| **id**     | uuid                     | `uuidv7()` | NO       | -        | -                      | -       |
+| device_id  | uuid                     | -          | NO       | -        | [devices.id](#devices) | -       |
+| token_hash | text                     | -          | NO       | -        | -                      | -       |
+| family_id  | uuid                     | -          | NO       | -        | -                      | -       |
+| expires_at | timestamp with time zone | -          | NO       | -        | -                      | -       |
+| rotated_at | timestamp with time zone | -          | YES      | -        | -                      | -       |
+| revoked_at | timestamp with time zone | -          | YES      | -        | -                      | -       |
+| created_at | timestamp with time zone | `now()`    | NO       | -        | -                      | -       |
+
+### Constraints
+
+| Name                 | Type        | Definition                |
+| -------------------- | ----------- | ------------------------- |
+| fk_device_id_devices | FOREIGN KEY | (device_id) → devices(id) |
+
+### Indexes
+
+| Name                          | Columns    | Unique | Type |
+| ----------------------------- | ---------- | ------ | ---- |
+| refresh_tokens_device_id_idx  | device_id  | NO     | -    |
+| refresh_tokens_family_id_idx  | family_id  | NO     | -    |
+| refresh_tokens_expires_at_idx | expires_at | NO     | -    |
+
+### Relations
+
+| Parent                 | Child                                           | Type        |
+| ---------------------- | ----------------------------------------------- | ----------- |
+| [devices.id](#devices) | **[refresh_tokens.device_id](#refresh_tokens)** | Many to One |
+
+---
+
+## sessions
+
+### Columns
+
+| Name            | Type                     | Default    | Nullable | Children | Parents            | Comment |
+| --------------- | ------------------------ | ---------- | -------- | -------- | ------------------ | ------- |
+| **id**          | uuid                     | `uuidv7()` | NO       | -        | -                  | -       |
+| user_id         | uuid                     | -          | NO       | -        | [users.id](#users) | -       |
+| token_hash      | text                     | -          | NO       | -        | -                  | -       |
+| csrf_token_hash | text                     | -          | NO       | -        | -                  | -       |
+| expires_at      | timestamp with time zone | -          | NO       | -        | -                  | -       |
+| created_at      | timestamp with time zone | `now()`    | NO       | -        | -                  | -       |
+| last_seen_at    | timestamp with time zone | -          | YES      | -        | -                  | -       |
+| revoked_at      | timestamp with time zone | -          | YES      | -        | -                  | -       |
+| user_agent      | text                     | -          | YES      | -        | -                  | -       |
+| ip              | text                     | -          | YES      | -        | -                  | -       |
+
+### Constraints
+
+| Name             | Type        | Definition            |
+| ---------------- | ----------- | --------------------- |
+| fk_user_id_users | FOREIGN KEY | (user_id) → users(id) |
+
+### Indexes
+
+| Name                            | Columns             | Unique | Type |
+| ------------------------------- | ------------------- | ------ | ---- |
+| sessions_user_id_expires_at_idx | user_id, expires_at | NO     | -    |
+| sessions_expires_at_idx         | expires_at          | NO     | -    |
+
+### Relations
+
+| Parent             | Child                             | Type        |
+| ------------------ | --------------------------------- | ----------- |
+| [users.id](#users) | **[sessions.user_id](#sessions)** | Many to One |
 
 ---
 
@@ -295,6 +498,92 @@
 
 ---
 
+## device_keys
+
+### Columns
+
+| Name           | Type                     | Default     | Nullable | Children | Parents                | Comment |
+| -------------- | ------------------------ | ----------- | -------- | -------- | ---------------------- | ------- |
+| **id**         | uuid                     | `uuidv7()`  | NO       | -        | -                      | -       |
+| device_id      | uuid                     | -           | NO       | -        | [devices.id](#devices) | -       |
+| key_id         | text                     | -           | NO       | -        | -                      | -       |
+| public_key     | text                     | -           | NO       | -        | -                      | -       |
+| key_alg        | text                     | `'Ed25519'` | NO       | -        | -                      | -       |
+| status         | device_key_status        | -           | NO       | -        | -                      | -       |
+| created_at     | timestamp with time zone | `now()`     | NO       | -        | -                      | -       |
+| activated_at   | timestamp with time zone | -           | YES      | -        | -                      | -       |
+| retired_at     | timestamp with time zone | -           | YES      | -        | -                      | -       |
+| accepted_until | timestamp with time zone | -           | YES      | -        | -                      | -       |
+| revoked_at     | timestamp with time zone | -           | YES      | -        | -                      | -       |
+
+### Constraints
+
+| Name                 | Type        | Definition                |
+| -------------------- | ----------- | ------------------------- |
+| fk_device_id_devices | FOREIGN KEY | (device_id) → devices(id) |
+
+### Indexes
+
+| Name                              | Columns           | Unique | Type |
+| --------------------------------- | ----------------- | ------ | ---- |
+| device_keys_one_active_per_device | device_id         | YES    | -    |
+| device_keys_device_id_status_idx  | device_id, status | NO     | -    |
+
+### Relations
+
+| Parent                 | Child                                     | Type        |
+| ---------------------- | ----------------------------------------- | ----------- |
+| [devices.id](#devices) | **[device_keys.device_id](#device_keys)** | Many to One |
+
+---
+
+## devices
+
+### Columns
+
+| Name                | Type                     | Default     | Nullable | Children                                                                                                                                                                                                                                                                                                                             | Parents            | Comment |
+| ------------------- | ------------------------ | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | ------- |
+| **id**              | uuid                     | `uuidv7()`  | NO       | [audit_events.device_id](#audit_events), [offline_tokens.device_id](#offline_tokens), [refresh_tokens.device_id](#refresh_tokens), [device_keys.device_id](#device_keys), [cashier_shifts.device_id](#cashier_shifts), [device_events.device_id](#device_events), [sales.device_id](#sales), [sync_batches.device_id](#sync_batches) | -                  | -       |
+| name                | text                     | -           | NO       | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| platform            | device_platform          | -           | NO       | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| enrolled_by_user_id | uuid                     | -           | NO       | -                                                                                                                                                                                                                                                                                                                                    | [users.id](#users) | -       |
+| status              | device_status            | `'PENDING'` | NO       | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| enrolled_at         | timestamp with time zone | -           | YES      | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| last_seen_at        | timestamp with time zone | -           | YES      | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| revoked_at          | timestamp with time zone | -           | YES      | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| created_at          | timestamp with time zone | `now()`     | NO       | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+| updated_at          | timestamp with time zone | `now()`     | NO       | -                                                                                                                                                                                                                                                                                                                                    | -                  | -       |
+
+### Constraints
+
+| Name                         | Type        | Definition                        |
+| ---------------------------- | ----------- | --------------------------------- |
+| fk_enrolled_by_user_id_users | FOREIGN KEY | (enrolled_by_user_id) → users(id) |
+
+### Indexes
+
+| Name                            | Columns             | Unique | Type |
+| ------------------------------- | ------------------- | ------ | ---- |
+| devices_status_idx              | status              | NO     | -    |
+| devices_enrolled_by_user_id_idx | enrolled_by_user_id | NO     | -    |
+| devices_last_seen_at_idx        | last_seen_at        | NO     | -    |
+
+### Relations
+
+| Parent                     | Child                                       | Type        |
+| -------------------------- | ------------------------------------------- | ----------- |
+| **[devices.id](#devices)** | [audit_events.device_id](#audit_events)     | Many to One |
+| **[devices.id](#devices)** | [offline_tokens.device_id](#offline_tokens) | Many to One |
+| **[devices.id](#devices)** | [refresh_tokens.device_id](#refresh_tokens) | Many to One |
+| **[devices.id](#devices)** | [device_keys.device_id](#device_keys)       | Many to One |
+| [users.id](#users)         | **[devices.enrolled_by_user_id](#devices)** | Many to One |
+| **[devices.id](#devices)** | [cashier_shifts.device_id](#cashier_shifts) | Many to One |
+| **[devices.id](#devices)** | [device_events.device_id](#device_events)   | Many to One |
+| **[devices.id](#devices)** | [sales.device_id](#sales)                   | Many to One |
+| **[devices.id](#devices)** | [sync_batches.device_id](#sync_batches)     | Many to One |
+
+---
+
 ## cash_flows
 
 ### Columns
@@ -374,35 +663,43 @@
 
 ### Columns
 
-| Name          | Type                     | Default    | Nullable | Children                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Parents | Comment |
-| ------------- | ------------------------ | ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------- |
-| **id**        | uuid                     | `uuidv7()` | NO       | [cash_flows.created_by](#cash_flows), [cashier_shifts.user_id](#cashier_shifts), [purchase_payments.created_by](#purchase_payments), [purchases.created_by](#purchases), [sale_payments.received_by](#sale_payments), [sale_returns.created_by](#sale_returns), [sales.user_id](#sales), [sales.voided_by](#sales), [stock_movements.created_by](#stock_movements), [stock_opnames.created_by](#stock_opnames), [stock_opnames.reviewed_by](#stock_opnames), [stock_transfers.created_by](#stock_transfers), [stock_transfers.reviewed_by](#stock_transfers), [stock_transfers.cancelled_by](#stock_transfers) | -       | -       |
-| name          | text                     | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
-| username      | text                     | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
-| password_hash | text                     | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
-| role          | user_role                | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
-| is_active     | boolean                  | `true`     | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
-| created_at    | timestamp with time zone | `now()`    | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
-| updated_at    | timestamp with time zone | `now()`    | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | -       | -       |
+| Name                    | Type                     | Default    | Nullable | Children                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Parents | Comment |
+| ----------------------- | ------------------------ | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------- |
+| **id**                  | uuid                     | `uuidv7()` | NO       | [audit_events.actor_user_id](#audit_events), [offline_tokens.issued_to_user_id](#offline_tokens), [sessions.user_id](#sessions), [devices.enrolled_by_user_id](#devices), [cash_flows.created_by](#cash_flows), [cashier_shifts.user_id](#cashier_shifts), [device_events.actor_user_id](#device_events), [purchase_payments.created_by](#purchase_payments), [purchases.created_by](#purchases), [sale_payments.received_by](#sale_payments), [sale_returns.created_by](#sale_returns), [sales.user_id](#sales), [sales.voided_by](#sales), [stock_movements.created_by](#stock_movements), [stock_opnames.created_by](#stock_opnames), [stock_opnames.reviewed_by](#stock_opnames), [stock_transfers.created_by](#stock_transfers), [stock_transfers.reviewed_by](#stock_transfers), [stock_transfers.cancelled_by](#stock_transfers) | -       | -       |
+| name                    | text                     | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| username                | text                     | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| password_hash           | text                     | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| password_pepper_version | smallint                 | `1`        | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| password_changed_at     | timestamp with time zone | `now()`    | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| credential_version      | integer                  | `1`        | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| role                    | user_role                | -          | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| is_active               | boolean                  | `true`     | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| created_at              | timestamp with time zone | `now()`    | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
+| updated_at              | timestamp with time zone | `now()`    | NO       | -                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | -       | -       |
 
 ### Relations
 
-| Parent                 | Child                                              | Type        |
-| ---------------------- | -------------------------------------------------- | ----------- |
-| **[users.id](#users)** | [cash_flows.created_by](#cash_flows)               | Many to One |
-| **[users.id](#users)** | [cashier_shifts.user_id](#cashier_shifts)          | Many to One |
-| **[users.id](#users)** | [purchase_payments.created_by](#purchase_payments) | Many to One |
-| **[users.id](#users)** | [purchases.created_by](#purchases)                 | Many to One |
-| **[users.id](#users)** | [sale_payments.received_by](#sale_payments)        | Many to One |
-| **[users.id](#users)** | [sale_returns.created_by](#sale_returns)           | Many to One |
-| **[users.id](#users)** | [sales.user_id](#sales)                            | Many to One |
-| **[users.id](#users)** | [sales.voided_by](#sales)                          | Many to One |
-| **[users.id](#users)** | [stock_movements.created_by](#stock_movements)     | Many to One |
-| **[users.id](#users)** | [stock_opnames.created_by](#stock_opnames)         | Many to One |
-| **[users.id](#users)** | [stock_opnames.reviewed_by](#stock_opnames)        | Many to One |
-| **[users.id](#users)** | [stock_transfers.created_by](#stock_transfers)     | Many to One |
-| **[users.id](#users)** | [stock_transfers.reviewed_by](#stock_transfers)    | Many to One |
-| **[users.id](#users)** | [stock_transfers.cancelled_by](#stock_transfers)   | Many to One |
+| Parent                 | Child                                               | Type        |
+| ---------------------- | --------------------------------------------------- | ----------- |
+| **[users.id](#users)** | [audit_events.actor_user_id](#audit_events)         | Many to One |
+| **[users.id](#users)** | [offline_tokens.issued_to_user_id](#offline_tokens) | Many to One |
+| **[users.id](#users)** | [sessions.user_id](#sessions)                       | Many to One |
+| **[users.id](#users)** | [devices.enrolled_by_user_id](#devices)             | Many to One |
+| **[users.id](#users)** | [cash_flows.created_by](#cash_flows)                | Many to One |
+| **[users.id](#users)** | [cashier_shifts.user_id](#cashier_shifts)           | Many to One |
+| **[users.id](#users)** | [device_events.actor_user_id](#device_events)       | Many to One |
+| **[users.id](#users)** | [purchase_payments.created_by](#purchase_payments)  | Many to One |
+| **[users.id](#users)** | [purchases.created_by](#purchases)                  | Many to One |
+| **[users.id](#users)** | [sale_payments.received_by](#sale_payments)         | Many to One |
+| **[users.id](#users)** | [sale_returns.created_by](#sale_returns)            | Many to One |
+| **[users.id](#users)** | [sales.user_id](#sales)                             | Many to One |
+| **[users.id](#users)** | [sales.voided_by](#sales)                           | Many to One |
+| **[users.id](#users)** | [stock_movements.created_by](#stock_movements)      | Many to One |
+| **[users.id](#users)** | [stock_opnames.created_by](#stock_opnames)          | Many to One |
+| **[users.id](#users)** | [stock_opnames.reviewed_by](#stock_opnames)         | Many to One |
+| **[users.id](#users)** | [stock_transfers.created_by](#stock_transfers)      | Many to One |
+| **[users.id](#users)** | [stock_transfers.reviewed_by](#stock_transfers)     | Many to One |
+| **[users.id](#users)** | [stock_transfers.cancelled_by](#stock_transfers)    | Many to One |
 
 ---
 
@@ -410,24 +707,30 @@
 
 ### Columns
 
-| Name          | Type                     | Default    | Nullable | Children                                                                                                                                       | Parents            | Comment |
-| ------------- | ------------------------ | ---------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------- |
-| **id**        | uuid                     | `uuidv7()` | NO       | [cash_flows.shift_id](#cash_flows), [sale_payments.shift_id](#sale_payments), [sale_returns.shift_id](#sale_returns), [sales.shift_id](#sales) | -                  | -       |
-| user_id       | uuid                     | -          | NO       | -                                                                                                                                              | [users.id](#users) | -       |
-| status        | shift_status             | `'OPEN'`   | NO       | -                                                                                                                                              | -                  | -       |
-| opened_at     | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                  | -       |
-| closed_at     | timestamp with time zone | -          | YES      | -                                                                                                                                              | -                  | -       |
-| opening_cash  | bigint                   | `0`        | NO       | -                                                                                                                                              | -                  | -       |
-| expected_cash | bigint                   | -          | YES      | -                                                                                                                                              | -                  | -       |
-| actual_cash   | bigint                   | -          | YES      | -                                                                                                                                              | -                  | -       |
-| created_at    | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                  | -       |
-| updated_at    | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                  | -       |
+| Name             | Type                     | Default    | Nullable | Children                                                                                                                                       | Parents                | Comment |
+| ---------------- | ------------------------ | ---------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------- |
+| **id**           | uuid                     | `uuidv7()` | NO       | [cash_flows.shift_id](#cash_flows), [sale_payments.shift_id](#sale_payments), [sale_returns.shift_id](#sale_returns), [sales.shift_id](#sales) | -                      | -       |
+| user_id          | uuid                     | -          | NO       | -                                                                                                                                              | [users.id](#users)     | -       |
+| status           | shift_status             | `'OPEN'`   | NO       | -                                                                                                                                              | -                      | -       |
+| opened_at        | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                      | -       |
+| closed_at        | timestamp with time zone | -          | YES      | -                                                                                                                                              | -                      | -       |
+| opening_cash     | bigint                   | `0`        | NO       | -                                                                                                                                              | -                      | -       |
+| expected_cash    | bigint                   | -          | YES      | -                                                                                                                                              | -                      | -       |
+| actual_cash      | bigint                   | -          | YES      | -                                                                                                                                              | -                      | -       |
+| device_id        | uuid                     | -          | YES      | -                                                                                                                                              | [devices.id](#devices) | -       |
+| source           | shift_source             | `'ONLINE'` | NO       | -                                                                                                                                              | -                      | -       |
+| opened_at_client | timestamp with time zone | -          | YES      | -                                                                                                                                              | -                      | -       |
+| closed_at_client | timestamp with time zone | -          | YES      | -                                                                                                                                              | -                      | -       |
+| received_at      | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                      | -       |
+| created_at       | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                      | -       |
+| updated_at       | timestamp with time zone | `now()`    | NO       | -                                                                                                                                              | -                      | -       |
 
 ### Constraints
 
-| Name             | Type        | Definition            |
-| ---------------- | ----------- | --------------------- |
-| fk_user_id_users | FOREIGN KEY | (user_id) → users(id) |
+| Name                 | Type        | Definition                |
+| -------------------- | ----------- | ------------------------- |
+| fk_user_id_users     | FOREIGN KEY | (user_id) → users(id)     |
+| fk_device_id_devices | FOREIGN KEY | (device_id) → devices(id) |
 
 ### Indexes
 
@@ -438,13 +741,50 @@
 
 ### Relations
 
-| Parent                                   | Child                                         | Type        |
-| ---------------------------------------- | --------------------------------------------- | ----------- |
-| **[cashier_shifts.id](#cashier_shifts)** | [cash_flows.shift_id](#cash_flows)            | Many to One |
-| [users.id](#users)                       | **[cashier_shifts.user_id](#cashier_shifts)** | Many to One |
-| **[cashier_shifts.id](#cashier_shifts)** | [sale_payments.shift_id](#sale_payments)      | Many to One |
-| **[cashier_shifts.id](#cashier_shifts)** | [sale_returns.shift_id](#sale_returns)        | Many to One |
-| **[cashier_shifts.id](#cashier_shifts)** | [sales.shift_id](#sales)                      | Many to One |
+| Parent                                   | Child                                           | Type        |
+| ---------------------------------------- | ----------------------------------------------- | ----------- |
+| **[cashier_shifts.id](#cashier_shifts)** | [cash_flows.shift_id](#cash_flows)              | Many to One |
+| [users.id](#users)                       | **[cashier_shifts.user_id](#cashier_shifts)**   | Many to One |
+| [devices.id](#devices)                   | **[cashier_shifts.device_id](#cashier_shifts)** | Many to One |
+| **[cashier_shifts.id](#cashier_shifts)** | [sale_payments.shift_id](#sale_payments)        | Many to One |
+| **[cashier_shifts.id](#cashier_shifts)** | [sale_returns.shift_id](#sale_returns)          | Many to One |
+| **[cashier_shifts.id](#cashier_shifts)** | [sales.shift_id](#sales)                        | Many to One |
+
+---
+
+## device_events
+
+### Columns
+
+| Name          | Type                     | Default       | Nullable | Children | Parents                | Comment |
+| ------------- | ------------------------ | ------------- | -------- | -------- | ---------------------- | ------- |
+| **id**        | uuid                     | `uuidv7()`    | NO       | -        | -                      | -       |
+| device_id     | uuid                     | -             | NO       | -        | [devices.id](#devices) | -       |
+| type          | text                     | -             | NO       | -        | -                      | -       |
+| actor_user_id | uuid                     | -             | YES      | -        | [users.id](#users)     | -       |
+| metadata      | jsonb                    | `'{}'::jsonb` | NO       | -        | -                      | -       |
+| created_at    | timestamp with time zone | `now()`       | NO       | -        | -                      | -       |
+
+### Constraints
+
+| Name                   | Type        | Definition                  |
+| ---------------------- | ----------- | --------------------------- |
+| fk_device_id_devices   | FOREIGN KEY | (device_id) → devices(id)   |
+| fk_actor_user_id_users | FOREIGN KEY | (actor_user_id) → users(id) |
+
+### Indexes
+
+| Name                                   | Columns               | Unique | Type |
+| -------------------------------------- | --------------------- | ------ | ---- |
+| device_events_device_id_created_at_idx | device_id, created_at | NO     | -    |
+| device_events_type_created_at_idx      | type, created_at      | NO     | -    |
+
+### Relations
+
+| Parent                 | Child                                             | Type        |
+| ---------------------- | ------------------------------------------------- | ----------- |
+| [devices.id](#devices) | **[device_events.device_id](#device_events)**     | Many to One |
+| [users.id](#users)     | **[device_events.actor_user_id](#device_events)** | Many to One |
 
 ---
 
@@ -740,42 +1080,56 @@
 
 ### Columns
 
-| Name              | Type                     | Default       | Nullable | Children                                                                                                          | Parents                              | Comment |
-| ----------------- | ------------------------ | ------------- | -------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------- |
-| **id**            | uuid                     | `uuidv7()`    | NO       | [sale_items.sale_id](#sale_items), [sale_payments.sale_id](#sale_payments), [sale_returns.sale_id](#sale_returns) | -                                    | -       |
-| invoice_no        | text                     | -             | NO       | -                                                                                                                 | -                                    | -       |
-| shift_id          | uuid                     | -             | NO       | -                                                                                                                 | [cashier_shifts.id](#cashier_shifts) | -       |
-| user_id           | uuid                     | -             | NO       | -                                                                                                                 | [users.id](#users)                   | -       |
-| customer_id       | uuid                     | -             | YES      | -                                                                                                                 | [customers.id](#customers)           | -       |
-| subtotal          | bigint                   | -             | NO       | -                                                                                                                 | -                                    | -       |
-| discount          | bigint                   | `0`           | NO       | -                                                                                                                 | -                                    | -       |
-| total_amount      | bigint                   | -             | NO       | -                                                                                                                 | -                                    | -       |
-| settlement_method | sale_settlement          | -             | NO       | -                                                                                                                 | -                                    | -       |
-| status            | sale_status              | `'COMPLETED'` | NO       | -                                                                                                                 | -                                    | -       |
-| voided_at         | timestamp with time zone | -             | YES      | -                                                                                                                 | -                                    | -       |
-| voided_by         | uuid                     | -             | YES      | -                                                                                                                 | [users.id](#users)                   | -       |
-| void_reason       | text                     | -             | YES      | -                                                                                                                 | -                                    | -       |
-| created_at        | timestamp with time zone | `now()`       | NO       | -                                                                                                                 | -                                    | -       |
-| updated_at        | timestamp with time zone | `now()`       | NO       | -                                                                                                                 | -                                    | -       |
+| Name               | Type                     | Default       | Nullable | Children                                                                                                          | Parents                              | Comment |
+| ------------------ | ------------------------ | ------------- | -------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------- |
+| **id**             | uuid                     | `uuidv7()`    | NO       | [sale_items.sale_id](#sale_items), [sale_payments.sale_id](#sale_payments), [sale_returns.sale_id](#sale_returns) | -                                    | -       |
+| invoice_no         | text                     | -             | NO       | -                                                                                                                 | -                                    | -       |
+| shift_id           | uuid                     | -             | NO       | -                                                                                                                 | [cashier_shifts.id](#cashier_shifts) | -       |
+| user_id            | uuid                     | -             | NO       | -                                                                                                                 | [users.id](#users)                   | -       |
+| customer_id        | uuid                     | -             | YES      | -                                                                                                                 | [customers.id](#customers)           | -       |
+| subtotal           | bigint                   | -             | NO       | -                                                                                                                 | -                                    | -       |
+| discount           | bigint                   | `0`           | NO       | -                                                                                                                 | -                                    | -       |
+| total_amount       | bigint                   | -             | NO       | -                                                                                                                 | -                                    | -       |
+| settlement_method  | sale_settlement          | -             | NO       | -                                                                                                                 | -                                    | -       |
+| status             | sale_status              | `'COMPLETED'` | NO       | -                                                                                                                 | -                                    | -       |
+| voided_at          | timestamp with time zone | -             | YES      | -                                                                                                                 | -                                    | -       |
+| voided_by          | uuid                     | -             | YES      | -                                                                                                                 | [users.id](#users)                   | -       |
+| void_reason        | text                     | -             | YES      | -                                                                                                                 | -                                    | -       |
+| source             | sale_source              | `'ONLINE'`    | NO       | -                                                                                                                 | -                                    | -       |
+| device_id          | uuid                     | -             | YES      | -                                                                                                                 | [devices.id](#devices)               | -       |
+| client_order_id    | uuid                     | -             | YES      | -                                                                                                                 | -                                    | -       |
+| client_seq         | bigint                   | -             | YES      | -                                                                                                                 | -                                    | -       |
+| client_created_at  | timestamp with time zone | -             | YES      | -                                                                                                                 | -                                    | -       |
+| received_at        | timestamp with time zone | `now()`       | NO       | -                                                                                                                 | -                                    | -       |
+| signature_verified | boolean                  | `false`       | NO       | -                                                                                                                 | -                                    | -       |
+| price_variance     | bigint                   | `0`           | NO       | -                                                                                                                 | -                                    | -       |
+| sync_batch_id      | uuid                     | -             | YES      | -                                                                                                                 | [sync_batches.id](#sync_batches)     | -       |
+| created_at         | timestamp with time zone | `now()`       | NO       | -                                                                                                                 | -                                    | -       |
+| updated_at         | timestamp with time zone | `now()`       | NO       | -                                                                                                                 | -                                    | -       |
 
 ### Constraints
 
-| Name                       | Type        | Definition                      |
-| -------------------------- | ----------- | ------------------------------- |
-| fk_shift_id_cashier_shifts | FOREIGN KEY | (shift_id) → cashier_shifts(id) |
-| fk_user_id_users           | FOREIGN KEY | (user_id) → users(id)           |
-| fk_customer_id_customers   | FOREIGN KEY | (customer_id) → customers(id)   |
-| fk_voided_by_users         | FOREIGN KEY | (voided_by) → users(id)         |
+| Name                          | Type        | Definition                         |
+| ----------------------------- | ----------- | ---------------------------------- |
+| fk_shift_id_cashier_shifts    | FOREIGN KEY | (shift_id) → cashier_shifts(id)    |
+| fk_user_id_users              | FOREIGN KEY | (user_id) → users(id)              |
+| fk_customer_id_customers      | FOREIGN KEY | (customer_id) → customers(id)      |
+| fk_voided_by_users            | FOREIGN KEY | (voided_by) → users(id)            |
+| fk_device_id_devices          | FOREIGN KEY | (device_id) → devices(id)          |
+| fk_sync_batch_id_sync_batches | FOREIGN KEY | (sync_batch_id) → sync_batches(id) |
 
 ### Indexes
 
-| Name                        | Columns           | Unique | Type |
-| --------------------------- | ----------------- | ------ | ---- |
-| sales_created_at_idx        | created_at        | NO     | -    |
-| sales_shift_id_idx          | shift_id          | NO     | -    |
-| sales_customer_id_idx       | customer_id       | NO     | -    |
-| sales_settlement_method_idx | settlement_method | NO     | -    |
-| sales_status_idx            | status            | NO     | -    |
+| Name                             | Columns                    | Unique | Type |
+| -------------------------------- | -------------------------- | ------ | ---- |
+| sales_created_at_idx             | created_at                 | NO     | -    |
+| sales_shift_id_idx               | shift_id                   | NO     | -    |
+| sales_customer_id_idx            | customer_id                | NO     | -    |
+| sales_settlement_method_idx      | settlement_method          | NO     | -    |
+| sales_status_idx                 | status                     | NO     | -    |
+| sales_device_client_order_unique | device_id, client_order_id | YES    | -    |
+| sales_device_id_client_seq_idx   | device_id, client_seq      | NO     | -    |
+| sales_sync_batch_id_idx          | sync_batch_id              | NO     | -    |
 
 ### Relations
 
@@ -788,6 +1142,8 @@
 | [users.id](#users)                   | **[sales.user_id](#sales)**             | Many to One |
 | [customers.id](#customers)           | **[sales.customer_id](#sales)**         | Many to One |
 | [users.id](#users)                   | **[sales.voided_by](#sales)**           | Many to One |
+| [devices.id](#devices)               | **[sales.device_id](#sales)**           | Many to One |
+| [sync_batches.id](#sync_batches)     | **[sales.sync_batch_id](#sales)**       | Many to One |
 
 ---
 
@@ -875,17 +1231,18 @@
 
 ### Columns
 
-| Name        | Type                     | Default     | Nullable | Children                                            | Parents            | Comment |
-| ----------- | ------------------------ | ----------- | -------- | --------------------------------------------------- | ------------------ | ------- |
-| **id**      | uuid                     | `uuidv7()`  | NO       | [stock_opname_items.opname_id](#stock_opname_items) | -                  | -       |
-| opname_no   | text                     | -           | NO       | -                                                   | -                  | -       |
-| location    | stock_location           | -           | NO       | -                                                   | -                  | -       |
-| status      | opname_status            | `'PENDING'` | NO       | -                                                   | -                  | -       |
-| created_by  | uuid                     | -           | NO       | -                                                   | [users.id](#users) | -       |
-| reviewed_by | uuid                     | -           | YES      | -                                                   | [users.id](#users) | -       |
-| reviewed_at | timestamp with time zone | -           | YES      | -                                                   | -                  | -       |
-| created_at  | timestamp with time zone | `now()`     | NO       | -                                                   | -                  | -       |
-| updated_at  | timestamp with time zone | `now()`     | NO       | -                                                   | -                  | -       |
+| Name         | Type                     | Default     | Nullable | Children                                            | Parents            | Comment |
+| ------------ | ------------------------ | ----------- | -------- | --------------------------------------------------- | ------------------ | ------- |
+| **id**       | uuid                     | `uuidv7()`  | NO       | [stock_opname_items.opname_id](#stock_opname_items) | -                  | -       |
+| opname_no    | text                     | -           | NO       | -                                                   | -                  | -       |
+| location     | stock_location           | -           | NO       | -                                                   | -                  | -       |
+| status       | opname_status            | `'PENDING'` | NO       | -                                                   | -                  | -       |
+| created_by   | uuid                     | -           | NO       | -                                                   | [users.id](#users) | -       |
+| reviewed_by  | uuid                     | -           | YES      | -                                                   | [users.id](#users) | -       |
+| reviewed_at  | timestamp with time zone | -           | YES      | -                                                   | -                  | -       |
+| submitted_at | timestamp with time zone | -           | YES      | -                                                   | -                  | -       |
+| created_at   | timestamp with time zone | `now()`     | NO       | -                                                   | -                  | -       |
+| updated_at   | timestamp with time zone | `now()`     | NO       | -                                                   | -                  | -       |
 
 ### Constraints
 
@@ -1020,16 +1377,65 @@
 
 ---
 
+## sync_batches
+
+### Columns
+
+| Name            | Type                     | Default    | Nullable | Children                      | Parents                | Comment |
+| --------------- | ------------------------ | ---------- | -------- | ----------------------------- | ---------------------- | ------- |
+| **id**          | uuid                     | `uuidv7()` | NO       | [sales.sync_batch_id](#sales) | -                      | -       |
+| device_id       | uuid                     | -          | NO       | -                             | [devices.id](#devices) | -       |
+| client_batch_id | uuid                     | -          | NO       | -                             | -                      | -       |
+| batch_hash      | text                     | -          | NO       | -                             | -                      | -       |
+| received_at     | timestamp with time zone | `now()`    | NO       | -                             | -                      | -       |
+| accepted_count  | integer                  | `0`        | NO       | -                             | -                      | -       |
+| flagged_count   | integer                  | `0`        | NO       | -                             | -                      | -       |
+| rejected_count  | integer                  | `0`        | NO       | -                             | -                      | -       |
+
+### Constraints
+
+| Name                 | Type        | Definition                |
+| -------------------- | ----------- | ------------------------- |
+| fk_device_id_devices | FOREIGN KEY | (device_id) → devices(id) |
+
+### Indexes
+
+| Name                                    | Columns                    | Unique | Type |
+| --------------------------------------- | -------------------------- | ------ | ---- |
+| sync_batches_device_client_batch_unique | device_id, client_batch_id | YES    | -    |
+| sync_batches_device_id_received_at_idx  | device_id, received_at     | NO     | -    |
+| sync_batches_batch_hash_idx             | batch_hash                 | NO     | -    |
+
+### Relations
+
+| Parent                               | Child                                       | Type        |
+| ------------------------------------ | ------------------------------------------- | ----------- |
+| **[sync_batches.id](#sync_batches)** | [sales.sync_batch_id](#sales)               | Many to One |
+| [devices.id](#devices)               | **[sync_batches.device_id](#sync_batches)** | Many to One |
+
+---
+
 ## ER Diagram
 
 ```mermaid
 erDiagram
+    audit_events }o--o| users : "actor_user_id"
+    audit_events }o--o| devices : "device_id"
+    offline_tokens }o--|| devices : "device_id"
+    offline_tokens }o--|| users : "issued_to_user_id"
+    refresh_tokens }o--|| devices : "device_id"
+    sessions }o--|| users : "user_id"
     product_stock_thresholds }o--|| products : "product_id"
     product_units }o--|| products : "product_id"
     products }o--|| categories : "category_id"
+    device_keys }o--|| devices : "device_id"
+    devices }o--|| users : "enrolled_by_user_id"
     cash_flows }o--o| cashier_shifts : "shift_id"
     cash_flows }o--|| users : "created_by"
     cashier_shifts }o--|| users : "user_id"
+    cashier_shifts }o--o| devices : "device_id"
+    device_events }o--|| devices : "device_id"
+    device_events }o--o| users : "actor_user_id"
     purchase_items }o--|| purchases : "purchase_id"
     purchase_items }o--|| product_units : "product_id, product_unit_id"
     purchase_payments }o--|| purchases : "purchase_id"
@@ -1050,6 +1456,8 @@ erDiagram
     sales }o--|| users : "user_id"
     sales }o--o| customers : "customer_id"
     sales }o--o| users : "voided_by"
+    sales }o--o| devices : "device_id"
+    sales }o--o| sync_batches : "sync_batch_id"
     stock_movements }o--|| products : "product_id"
     stock_movements }o--|| users : "created_by"
     stock_opname_items }o--|| stock_opnames : "opname_id"
@@ -1061,7 +1469,53 @@ erDiagram
     stock_transfers }o--|| users : "created_by"
     stock_transfers }o--o| users : "reviewed_by"
     stock_transfers }o--o| users : "cancelled_by"
+    sync_batches }o--|| devices : "device_id"
 
+    audit_events {
+        uuid id PK
+        text event_type
+        uuid actor_user_id FK
+        uuid device_id FK
+        text entity_type
+        uuid entity_id
+        jsonb metadata
+        timestamptz created_at
+        timestamptz retention_until
+    }
+    offline_tokens {
+        uuid jti PK
+        uuid device_id FK
+        uuid issued_to_user_id FK
+        text[] scope
+        timestamptz issued_at
+        timestamptz expires_at
+        timestamptz grace_until
+        timestamptz rotated_at
+        timestamptz revoked_at
+        timestamptz last_seen_at
+    }
+    refresh_tokens {
+        uuid id PK
+        uuid device_id FK
+        text token_hash UK
+        uuid family_id
+        timestamptz expires_at
+        timestamptz rotated_at
+        timestamptz revoked_at
+        timestamptz created_at
+    }
+    sessions {
+        uuid id PK
+        uuid user_id FK
+        text token_hash UK
+        text csrf_token_hash
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz last_seen_at
+        timestamptz revoked_at
+        text user_agent
+        text ip
+    }
     categories {
         uuid id PK
         text name UK
@@ -1096,6 +1550,31 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+    device_keys {
+        uuid id PK
+        uuid device_id FK
+        text key_id UK
+        text public_key
+        text key_alg
+        device_key_status status
+        timestamptz created_at
+        timestamptz activated_at
+        timestamptz retired_at
+        timestamptz accepted_until
+        timestamptz revoked_at
+    }
+    devices {
+        uuid id PK
+        text name
+        device_platform platform
+        uuid enrolled_by_user_id FK
+        device_status status
+        timestamptz enrolled_at
+        timestamptz last_seen_at
+        timestamptz revoked_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
     cash_flows {
         uuid id PK
         cash_flow_type type
@@ -1125,6 +1604,9 @@ erDiagram
         text name
         text username UK
         text password_hash
+        smallint password_pepper_version
+        timestamptz password_changed_at
+        int credential_version
         user_role role
         boolean is_active
         timestamptz created_at
@@ -1139,8 +1621,21 @@ erDiagram
         bigint opening_cash
         bigint expected_cash
         bigint actual_cash
+        uuid device_id FK
+        shift_source source
+        timestamptz opened_at_client
+        timestamptz closed_at_client
+        timestamptz received_at
         timestamptz created_at
         timestamptz updated_at
+    }
+    device_events {
+        uuid id PK
+        uuid device_id FK
+        text type
+        uuid actor_user_id FK
+        jsonb metadata
+        timestamptz created_at
     }
     purchase_items {
         uuid id PK
@@ -1239,6 +1734,15 @@ erDiagram
         timestamptz voided_at
         uuid voided_by FK
         text void_reason
+        sale_source source
+        uuid device_id FK
+        uuid client_order_id
+        bigint client_seq
+        timestamptz client_created_at
+        timestamptz received_at
+        boolean signature_verified
+        bigint price_variance
+        uuid sync_batch_id FK
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1272,6 +1776,7 @@ erDiagram
         uuid created_by FK
         uuid reviewed_by FK
         timestamptz reviewed_at
+        timestamptz submitted_at
         timestamptz created_at
         timestamptz updated_at
     }
@@ -1307,5 +1812,15 @@ erDiagram
         boolean is_active
         timestamptz created_at
         timestamptz updated_at
+    }
+    sync_batches {
+        uuid id PK
+        uuid device_id FK
+        uuid client_batch_id
+        text batch_hash
+        timestamptz received_at
+        int accepted_count
+        int flagged_count
+        int rejected_count
     }
 ```

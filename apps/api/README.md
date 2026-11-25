@@ -4,16 +4,19 @@ Express GraphQL API for TokoJojo.
 
 ## Status
 
-The core PostgreSQL schema, migrations, seed, and schema tests are implemented.
-The GraphQL server, auth, sessions, and offline sync are **not implemented yet**.
+The core PostgreSQL schema, Phase 2 auth/device/offline schema, migrations, seed,
+and schema tests are implemented. The GraphQL server, auth middleware, and offline
+sync flows are **not implemented yet**.
 
-| Area                             | State                            |
-| -------------------------------- | -------------------------------- |
-| Core schema + migrations         | Implemented                      |
-| Views + append-only ledger guard | Implemented                      |
-| Development seed                 | Implemented                      |
-| GraphQL / Pothos server          | Next step                        |
-| Auth, sessions, device/offline   | Phase 2 — separate design and PR |
+| Area                                 | State                                            |
+| ------------------------------------ | ------------------------------------------------ |
+| Core schema + migrations             | Implemented                                      |
+| Phase 2 auth/device/offline schema   | Implemented (`0005`)                             |
+| GraphQL contract                     | Implemented in `packages/graphql/schema.graphql` |
+| Views + append-only ledger guard     | Implemented                                      |
+| Development seed                     | Implemented                                      |
+| GraphQL / Pothos server              | Next step                                        |
+| Auth, sessions, device/offline flows | Pending — service/API work                       |
 
 ## Stack
 
@@ -45,14 +48,15 @@ Defaults come from `.env.example`: database `tokojojo`, user `tokojojo`,
 password `tokojojo_dev`, exposed only on `127.0.0.1:5432`. Every command reads
 `DATABASE_URL`; export it if you do not use the repo-root `.env`.
 
-| Command                            | Purpose                                 |
-| ---------------------------------- | --------------------------------------- |
-| `pnpm db:generate`                 | Generate a Drizzle migration            |
-| `pnpm db:check`                    | Check migration consistency             |
-| `pnpm db:migrate`                  | Apply pending migrations                |
-| `pnpm db:seed`                     | Seed the development store (idempotent) |
-| `pnpm db:studio`                   | Open Drizzle Studio                     |
-| `pnpm --filter @tokojojo/api test` | Run schema tests against `DATABASE_URL` |
+| Command                                 | Purpose                                 |
+| --------------------------------------- | --------------------------------------- |
+| `pnpm db:generate`                      | Generate a Drizzle migration            |
+| `pnpm db:check`                         | Check migration consistency             |
+| `pnpm db:migrate`                       | Apply pending migrations                |
+| `pnpm db:seed`                          | Seed the development store (idempotent) |
+| `pnpm db:studio`                        | Open Drizzle Studio                     |
+| `pnpm --filter @tokojojo/api test`      | Run schema tests against `DATABASE_URL` |
+| `pnpm --filter @tokojojo/graphql check` | Validate the shared GraphQL contract    |
 
 The API package exposes the same scripts through
 `pnpm --filter @tokojojo/api <command>`.
@@ -147,23 +151,26 @@ per-row invariants, not cross-table workflow rules.
 
 ## Phase 2
 
-The core schema deliberately stops at the core. These are **not forgotten** and
-must not be added to this PR:
+The Phase 2 schema is implemented in `0005_phase2_auth_offline.sql` and the
+`apps/api/src/db/schema/` files. It adds sessions, devices/device keys,
+refresh/offline tokens, sync batches/events, audit events, user credential
+fields, offline shift/sale fields, and `stock_opnames.submitted_at`.
 
-- Authentication hardening, password pepper versioning/rotation
-- Web sessions, refresh tokens, session rotation/reuse detection
-- Device enrollment/status/revocation, device key history, and offline tokens
-- ACL/permission tables beyond the core role enum
-- Logging/audit tables and retention fields
-- Offline sync events, batches, client IDs, retry/conflict state
-- Offline shift fields and sale idempotency fields
-- User credential version fields for local-credential invalidation
+Still pending:
+
+- GraphQL resolvers and the Pothos schema matching `packages/graphql/schema.graphql`
+- Login/refresh/enrollment/approval/offline-token issuance flows
+- Session rotation/reuse detection, CSRF/cookie middleware, pepper rotation
+- Offline sync engine, device signature verification, conflict/retry handling
+- Audit event writers and retention jobs
+- Store/receipt settings persistence
+- ACL UI beyond the role enum
 
 ## Rules
 
 - Single store: do not add `tenant_id` or multi-store columns.
 - Never update or delete `stock_movements`; insert a new movement.
 - Money is `bigint`; quantities are `numeric(12,3)`.
-- Keep the API contract in sync with `packages/graphql/` once the server exists.
+- Keep `packages/graphql/schema.graphql` and the API schema in sync.
 - Do not commit `.env`, secrets, peppers, or local database files.
 - Add integration tests against PostgreSQL for every schema change.

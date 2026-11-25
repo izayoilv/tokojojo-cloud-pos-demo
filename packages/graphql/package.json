@@ -1,0 +1,13 @@
+{
+  "name": "@tokojojo/graphql",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check-schema.mjs"
+  },
+  "devDependencies": {
+    "graphql": "16.14.2"
+  }
+}
