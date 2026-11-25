@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "@tokojojo/ui/tokens.css";
+
+@source "../../../packages/ui/src";
+
+@theme inline {
+  --font-sans:
+    "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-canvas: var(--tj-canvas);
+  --color-surface: var(--tj-surface);
+  --color-subtle: var(--tj-subtle);
+  --color-hover: var(--tj-hover);
+  --color-selected: var(--tj-selected);
+  --color-ink: var(--tj-ink);
+  --color-ink-secondary: var(--tj-ink-secondary);
+  --color-ink-muted: var(--tj-ink-muted);
+  --color-ink-disabled: var(--tj-ink-disabled);
+  --color-ink-inverse: var(--tj-ink-inverse);
+  --color-line: var(--tj-line);
+  --color-line-strong: var(--tj-line-strong);
+  --color-line-control: var(--tj-line-control);
+  --color-primary: var(--tj-primary);
+  --color-primary-hover: var(--tj-primary-hover);
+  --color-primary-active: var(--tj-primary-active);
+  --color-primary-soft: var(--tj-primary-soft);
+  --color-on-primary: var(--tj-on-primary);
+  --color-accent: var(--tj-accent);
+  --color-accent-soft: var(--tj-accent-soft);
+  --color-success: var(--tj-success);
+  --color-success-soft: var(--tj-success-soft);
+  --color-warning: var(--tj-warning);
+  --color-warning-soft: var(--tj-warning-soft);
+  --color-danger: var(--tj-danger);
+  --color-danger-soft: var(--tj-danger-soft);
+  --color-info: var(--tj-info);
+  --color-info-soft: var(--tj-info-soft);
+  --color-focus: var(--tj-focus);
+  --color-violet: var(--tj-violet);
+  --color-violet-soft: var(--tj-violet-soft);
+  --shadow-dropdown: var(--tj-shadow-dropdown);
+  --shadow-modal: var(--tj-shadow-modal);
+  --shadow-toast: var(--tj-shadow-toast);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 1024px;
+  min-height: 100vh;
+  background: var(--tj-canvas);
+  color: var(--tj-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--tj-primary-soft);
+  color: var(--tj-primary);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--tj-line-strong);
+  border-radius: 8px;
+}
