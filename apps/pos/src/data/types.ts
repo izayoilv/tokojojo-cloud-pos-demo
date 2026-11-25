@@ -86,6 +86,7 @@ export type PosSale = {
   status: SaleStatus;
   customer?: string;
   flaggedForReview?: boolean;
+  refundedAmount?: number;
 };
 
 export type Shift = {

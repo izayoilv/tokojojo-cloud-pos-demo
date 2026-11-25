@@ -140,6 +140,21 @@ describe("session and shift gates", () => {
     expect(store.state.screen()).toBe("LOCK");
     expect(store.state.session()).toBeNull();
   });
+
+  it("returns pending and revoked devices to enrollment after hard lock", () => {
+    const store = createPosStore();
+    expect(store.state.device().status).toBe("PENDING");
+
+    store.actions.setConnection("LOCKED");
+    store.actions.setConnection("ONLINE");
+    expect(store.state.screen()).toBe("ENROLLMENT");
+
+    store.actions.setDeviceStatus("REVOKED");
+    store.actions.setConnection("LOCKED");
+    expect(store.state.screen()).toBe("HARD_LOCK");
+    store.actions.setConnection("ONLINE");
+    expect(store.state.screen()).toBe("ENROLLMENT");
+  });
 });
 
 describe("payment and offline behavior", () => {
@@ -292,6 +307,43 @@ describe("sales history actions", () => {
     expect(closed.expectedCash).toBe(500000);
     expect(closed.actualCash).toBe(490000);
     expect(closed.difference).toBe(-10000);
+  });
+
+  it("charges cross-shift cash refunds to the active shift", () => {
+    const store = unlockedStore();
+    store.actions.setSessionRole("OWNER");
+
+    store.actions.returnSale("SALE-001", 31000);
+    expect(store.state.shift()?.refunds).toBe(31000);
+    expect(
+      store.state.sales().find((sale) => sale.id === "SALE-001")
+        ?.refundedAmount,
+    ).toBe(31000);
+
+    store.actions.returnSale("SALE-002", 52000);
+    expect(store.state.shift()?.refunds).toBe(31000);
+    expect(
+      store.state.sales().find((sale) => sale.id === "SALE-002")?.status,
+    ).toBe("PARTIAL_RETURN");
+
+    store.actions.closeShift(469000);
+    const closed = store.state.shift()!;
+    expect(closed.expectedCash).toBe(469000);
+    expect(closed.difference).toBe(0);
+  });
+
+  it("requires an open shift for returns", () => {
+    const store = createPosStore();
+    store.actions.approveDevice();
+    store.actions.unlockPin("4321");
+    store.actions.setSessionRole("OWNER");
+
+    store.actions.returnSale("SALE-001", 31000);
+
+    expect(store.state.error()).toContain("Buka shift");
+    expect(
+      store.state.sales().find((sale) => sale.id === "SALE-001")?.status,
+    ).toBe("COMPLETED");
   });
 
   it("records partial return refunds in shift cash", () => {

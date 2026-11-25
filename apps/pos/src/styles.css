@@ -68,6 +68,12 @@ textarea {
   font-family: inherit;
 }
 
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 ::selection {
   background: var(--tj-primary-soft);
   color: var(--tj-primary);

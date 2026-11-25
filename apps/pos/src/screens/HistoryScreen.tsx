@@ -103,8 +103,14 @@ export function HistoryScreen() {
     if (!canManage()) {
       return "Hanya ADMIN/OWNER yang dapat memproses retur/void.";
     }
+    if (pos.state.shift()?.status !== "OPEN") {
+      return "Buka shift aktif untuk memproses retur/void.";
+    }
     return null;
   };
+
+  const selectedHasCash = () =>
+    selected()?.payments.some((payment) => payment.method === "TUNAI") ?? false;
 
   const methodSummary = (sale: PosSale) =>
     sale.payments
@@ -261,7 +267,7 @@ export function HistoryScreen() {
                 title="Belum ada transaksi."
                 description="Ubah filter atau selesaikan transaksi baru untuk melihat riwayat."
                 action={
-                  <Button size="sm" onClick={resetFilters}>
+                  <Button size="lg" onClick={resetFilters}>
                     Reset filter
                   </Button>
                 }
@@ -450,6 +456,13 @@ export function HistoryScreen() {
                   </span>
                 </div>
 
+                <Show when={sale().refundedAmount}>
+                  {(amount) => (
+                    <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-danger">
+                      Refund tercatat {formatRupiah(amount())}.
+                    </p>
+                  )}
+                </Show>
                 <Show when={sale().status === "PARTIAL_RETURN"}>
                   <p class="mt-2 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-warning">
                     Retur sebagian dicatat. Rincian item retur tersedia pada
@@ -641,12 +654,25 @@ export function HistoryScreen() {
                     )
                   }
                   class="pl-9 font-mono"
+                  style={{ height: "44px" }}
                 />
               </div>
               <p class="mt-1 text-[0.625rem] font-semibold text-ink-muted">
-                Maksimal {formatRupiah(sale().total)}. Refund tunai mengurangi
-                uang seharusnya saat tutup shift.
+                Maksimal {formatRupiah(sale().total)}.{" "}
+                {selectedHasCash()
+                  ? "Refund tunai mengurangi uang seharusnya saat tutup shift."
+                  : "Refund non-tunai diproses lewat metode asal dan tidak mengurangi kas fisik."}
               </p>
+              <Show
+                when={
+                  selectedHasCash() && sale().shiftId !== pos.state.shift()?.id
+                }
+              >
+                <p class="mt-1 text-[0.625rem] font-bold text-warning">
+                  Transaksi dari shift lain; refund tunai dibebankan ke shift
+                  aktif.
+                </p>
+              </Show>
             </div>
           )}
         </Show>

@@ -186,7 +186,7 @@ export function SellScreen() {
                 description="Coba kata kunci lain, pindai barcode, atau pilih kategori Semua."
                 action={
                   <Button
-                    size="sm"
+                    size="lg"
                     onClick={() => {
                       setQuery("");
                       setCategory("Semua");

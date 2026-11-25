@@ -148,6 +148,7 @@ export function LockScreen() {
                 value={password()}
                 onInput={(event) => setPassword(event.currentTarget.value)}
                 autofocus
+                style={{ height: "44px" }}
               />
               <Button variant="primary" size="lg" type="submit" full>
                 Masuk dengan kata sandi

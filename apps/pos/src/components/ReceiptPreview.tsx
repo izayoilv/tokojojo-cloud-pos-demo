@@ -109,6 +109,14 @@ export function ReceiptPreview(props: {
             <span class="tabular-nums">{formatRupiah(props.sale.change)}</span>
           </div>
         </Show>
+        <Show when={props.sale.refundedAmount}>
+          {(amount) => (
+            <div class="flex justify-between gap-2 text-danger">
+              <span>Refund</span>
+              <span class="tabular-nums">{formatRupiah(amount())}</span>
+            </div>
+          )}
+        </Show>
       </div>
 
       <div class="mt-2 border-t border-dashed border-line pt-2 text-center text-[0.65rem] text-ink-muted">

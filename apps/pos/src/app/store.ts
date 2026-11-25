@@ -622,7 +622,9 @@ export function createPosStore() {
       }
 
       if (current === "LOCKED") {
-        if (!session()) {
+        if (device().status !== "ACTIVE") {
+          setScreen("ENROLLMENT");
+        } else if (!session()) {
           setScreen("LOCK");
         } else {
           setScreen(shift()?.status === "OPEN" ? "SELL" : "OPEN_SHIFT");
@@ -668,6 +670,11 @@ export function createPosStore() {
       return null;
     }
 
+    if (shift()?.status !== "OPEN") {
+      setError("Buka shift aktif untuk memproses retur/void.");
+      return null;
+    }
+
     const sale = sales().find((item) => item.id === saleId);
     if (!sale || sale.status !== "COMPLETED") {
       setError("Transaksi ini tidak dapat diubah.");
@@ -687,10 +694,7 @@ export function createPosStore() {
       return;
     }
 
-    if (
-      shift()?.id === target.shiftId &&
-      target.payments.some((payment) => payment.method === "TUNAI")
-    ) {
+    if (target.payments.some((payment) => payment.method === "TUNAI")) {
       setShift((current) =>
         current ? { ...current, refunds: current.refunds + refund } : current,
       );
@@ -698,7 +702,9 @@ export function createPosStore() {
 
     setSales((current) =>
       current.map((sale) =>
-        sale.id === saleId ? { ...sale, status: "PARTIAL_RETURN" } : sale,
+        sale.id === saleId
+          ? { ...sale, status: "PARTIAL_RETURN", refundedAmount: refund }
+          : sale,
       ),
     );
     setError(null);
@@ -708,10 +714,7 @@ export function createPosStore() {
     const target = saleActionTarget(saleId);
     if (!target) return;
 
-    if (
-      shift()?.id === target.shiftId &&
-      target.payments.some((payment) => payment.method === "TUNAI")
-    ) {
+    if (target.payments.some((payment) => payment.method === "TUNAI")) {
       setShift((current) =>
         current
           ? { ...current, refunds: current.refunds + target.total }
@@ -721,7 +724,9 @@ export function createPosStore() {
 
     setSales((current) =>
       current.map((sale) =>
-        sale.id === saleId ? { ...sale, status: "VOIDED" } : sale,
+        sale.id === saleId
+          ? { ...sale, status: "VOIDED", refundedAmount: target.total }
+          : sale,
       ),
     );
     setError(null);
