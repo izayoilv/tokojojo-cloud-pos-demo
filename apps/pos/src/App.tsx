@@ -3,16 +3,19 @@ import { Match, Switch } from "solid-js";
 
 import { usePos } from "./app/PosProvider";
 import { AppTopBar } from "./components/AppTopBar";
+import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ShortcutFooter } from "./components/ShortcutFooter";
 import type { PosScreen } from "./data/types";
 import { CloseShiftScreen } from "./screens/CloseShiftScreen";
 import { EnrollmentScreen } from "./screens/EnrollmentScreen";
+import { HardLockScreen } from "./screens/HardLockScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { LockScreen } from "./screens/LockScreen";
 import { OpenShiftScreen } from "./screens/OpenShiftScreen";
 import { PaymentScreen } from "./screens/PaymentScreen";
 import { ReceiptScreen } from "./screens/ReceiptScreen";
 import { SellScreen } from "./screens/SellScreen";
+import { SyncScreen } from "./screens/SyncScreen";
 
 const screenCopy: Record<PosScreen, { title: string; description: string }> = {
   ENROLLMENT: {
@@ -83,6 +86,7 @@ export default function App() {
   return (
     <div class="flex h-dvh flex-col overflow-hidden bg-canvas text-ink">
       <AppTopBar />
+      <ConnectionBanner />
 
       <main class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <Switch fallback={<ScreenPlaceholder screen={pos.state.screen()} />}>
@@ -109,6 +113,12 @@ export default function App() {
           </Match>
           <Match when={pos.state.screen() === "CLOSE_SHIFT"}>
             <CloseShiftScreen />
+          </Match>
+          <Match when={pos.state.screen() === "SYNC"}>
+            <SyncScreen />
+          </Match>
+          <Match when={pos.state.screen() === "HARD_LOCK"}>
+            <HardLockScreen />
           </Match>
         </Switch>
       </main>

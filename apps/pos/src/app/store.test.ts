@@ -263,6 +263,50 @@ describe("connection states", () => {
     expect(store.state.sales()).toHaveLength(previousSales);
   });
 
+  it("syncs queued offline sales when online", () => {
+    const store = unlockedStore();
+    const acceptedBefore = store.state.queue().accepted;
+
+    store.actions.setConnection("OFFLINE");
+    store.actions.selectPaymentMethod("TUNAI");
+    store.actions.setCashReceived(200000);
+    store.actions.completeSale();
+    expect(store.state.queue().pending).toBe(1);
+
+    store.actions.syncNow();
+    expect(store.state.error()).toContain("online");
+
+    store.actions.setConnection("ONLINE");
+    store.actions.syncNow();
+
+    expect(store.state.queue().pending).toBe(0);
+    expect(store.state.queue().accepted).toBe(acceptedBefore + 1);
+    expect(store.state.queue().lastSync).toContain("WIB");
+  });
+
+  it("keeps history available under hard lock without allowing sales", () => {
+    const store = unlockedStore();
+    const salesBefore = store.state.sales().length;
+
+    store.actions.setConnection("LOCKED");
+    expect(store.state.screen()).toBe("HARD_LOCK");
+
+    store.actions.go("HISTORY");
+    expect(store.state.screen()).toBe("HISTORY");
+
+    store.actions.completeSale();
+    expect(store.state.sales()).toHaveLength(salesBefore);
+
+    store.actions.lock();
+    expect(store.state.screen()).toBe("HARD_LOCK");
+
+    store.actions.unlockPin("4321");
+    expect(store.state.screen()).toBe("HARD_LOCK");
+
+    store.actions.setConnection("ONLINE");
+    expect(store.state.screen()).toBe("SELL");
+  });
+
   it("returns to sell after online recovery", () => {
     const store = unlockedStore();
     store.actions.setConnection("LOCKED");

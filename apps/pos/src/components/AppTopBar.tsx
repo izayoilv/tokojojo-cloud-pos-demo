@@ -74,7 +74,12 @@ export function AppTopBar() {
                 {shiftLabel()}
               </div>
             </div>
-            <Show when={pos.state.shift()?.status === "OPEN"}>
+            <Show
+              when={
+                pos.state.shift()?.status === "OPEN" &&
+                pos.state.connection() !== "LOCKED"
+              }
+            >
               <button
                 type="button"
                 data-action="open-close-shift"

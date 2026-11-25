@@ -106,7 +106,13 @@ export function createPosStore() {
     setPinError(null);
     setPinAttempts(0);
     setError(null);
-    setScreen(shift()?.status === "OPEN" ? "SELL" : "OPEN_SHIFT");
+    setScreen(
+      connection() === "LOCKED"
+        ? "HARD_LOCK"
+        : shift()?.status === "OPEN"
+          ? "SELL"
+          : "OPEN_SHIFT",
+    );
   };
 
   const approveDevice = () => {
@@ -186,7 +192,13 @@ export function createPosStore() {
   const lock = () => {
     setSession(null);
     setError(null);
-    setScreen(device().status === "ACTIVE" ? "LOCK" : "ENROLLMENT");
+    setScreen(
+      device().status !== "ACTIVE"
+        ? "ENROLLMENT"
+        : connection() === "LOCKED"
+          ? "HARD_LOCK"
+          : "LOCK",
+    );
   };
 
   const openShift = (openingCash: number) => {

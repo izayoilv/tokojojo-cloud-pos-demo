@@ -295,8 +295,13 @@ export const initialSync: SyncSnapshot = {
   accepted: 118,
   duplicate: 2,
   flagged: 1,
-  rejected: 0,
-  quarantine: [],
+  rejected: 1,
+  quarantine: [
+    {
+      id: "INV/2026/11/00118",
+      reason: "Pembayaran non-tunai tercatat saat offline.",
+    },
+  ],
 };
 
 export const settings: PosSettings = {

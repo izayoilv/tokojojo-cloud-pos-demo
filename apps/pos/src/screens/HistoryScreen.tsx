@@ -136,13 +136,24 @@ export function HistoryScreen() {
             <span class="text-[10px] font-semibold text-ink-muted">
               {filtered().length} dari {pos.state.sales().length}
             </span>
-            <button
-              type="button"
-              onClick={resetFilters}
-              class="ml-auto h-7 cursor-pointer rounded-[4px] px-2 text-[10px] font-bold text-ink-secondary hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-            >
-              Reset filter
-            </button>
+            <div class="ml-auto flex items-center gap-1">
+              <Show when={pos.state.connection() === "LOCKED"}>
+                <button
+                  type="button"
+                  onClick={() => pos.actions.go("HARD_LOCK")}
+                  class="h-7 cursor-pointer rounded-[4px] px-2 text-[10px] font-bold text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  Kembali ke layar terkunci
+                </button>
+              </Show>
+              <button
+                type="button"
+                onClick={resetFilters}
+                class="h-7 cursor-pointer rounded-[4px] px-2 text-[10px] font-bold text-ink-secondary hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                Reset filter
+              </button>
+            </div>
           </div>
 
           <div class="mt-1.5 flex items-center gap-1.5">

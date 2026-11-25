@@ -339,6 +339,57 @@ describe("app shell", () => {
     expect(store.state.screen()).toBe("LOCK");
   });
 
+  it("shows the offline banner and sync diagnostics", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    store.actions.setConnection("OFFLINE");
+    expect(root.textContent).toContain("Offline · 0 transaksi dalam antrean");
+
+    click(findButton(root, "Sinkronisasi")!);
+    expect(store.state.screen()).toBe("SYNC");
+    expect(root.textContent).toContain("Antrean transaksi offline");
+
+    const offlineSync = findButton(root, "Sinkron sekarang");
+    expect(offlineSync).toBeDefined();
+    expect((offlineSync as HTMLButtonElement).disabled).toBe(true);
+
+    const goOnline = root.querySelector<HTMLButtonElement>(
+      '[data-connection="ONLINE"]',
+    );
+    expect(goOnline).not.toBeNull();
+    click(goOnline!);
+
+    const onlineSync = findButton(root, "Sinkron sekarang");
+    expect((onlineSync as HTMLButtonElement).disabled).toBe(false);
+    click(onlineSync!);
+
+    expect(root.textContent).toContain(
+      "Tidak ada antrean. Waktu sinkron diperbarui.",
+    );
+  });
+
+  it("shows hard lock, keeps history accessible, and recovers online", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    store.actions.setConnection("LOCKED");
+    expect(store.state.screen()).toBe("HARD_LOCK");
+    expect(root.textContent).toContain("POS terkunci");
+    expect(root.textContent).toContain("Penjualan baru diblokir");
+
+    click(findButton(root, "Lihat riwayat")!);
+    expect(store.state.screen()).toBe("HISTORY");
+    expect(findButton(root, "Kembali ke layar terkunci")).toBeDefined();
+
+    click(findButton(root, "Kembali ke layar terkunci")!);
+    expect(store.state.screen()).toBe("HARD_LOCK");
+
+    click(findButton(root, "Coba online")!);
+    expect(store.state.connection()).toBe("ONLINE");
+    expect(store.state.screen()).toBe("SELL");
+  });
+
   it("shows revoked copy and retries back to pending", () => {
     const { root, store } = mount();
 
