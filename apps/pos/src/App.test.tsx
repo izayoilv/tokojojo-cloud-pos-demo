@@ -268,6 +268,13 @@ describe("app shell", () => {
     expect(root.textContent).toContain(
       "Retur/void membutuhkan koneksi online.",
     );
+
+    const closeDetail = root.querySelector<HTMLButtonElement>(
+      '[aria-label="Tutup detail"]',
+    );
+    expect(closeDetail).not.toBeNull();
+    click(closeDetail!);
+    expect(root.textContent).toContain("Pilih transaksi");
   });
 
   it("voids a sale with demo owner permission", () => {
@@ -303,6 +310,9 @@ describe("app shell", () => {
     expect(root.textContent).toContain(
       "Transaksi void. Audit void tersimpan pada log.",
     );
+
+    click(findButton(root, "Cetak")!);
+    expect(document.body.textContent).toContain("VOID · STRUK TIDAK SAH");
   });
 
   it("closes a shift with a cash difference", () => {
@@ -470,10 +480,17 @@ describe("app shell", () => {
     );
     expect(document.activeElement).toBe(search);
 
-    window.dispatchEvent(
+    search!.dispatchEvent(
       new KeyboardEvent("keydown", { key: "F2", bubbles: true }),
     );
     expect(store.state.screen()).toBe("PAYMENT");
+
+    const cash = root.querySelector<HTMLInputElement>("#cash-received");
+    expect(cash).not.toBeNull();
+    cash!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F2", bubbles: true }),
+    );
+    expect(store.state.screen()).toBe("RECEIPT");
 
     window.dispatchEvent(
       new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
@@ -494,6 +511,22 @@ describe("app shell", () => {
       new KeyboardEvent("keydown", { key: "F12", bubbles: true }),
     );
     expect(store.state.screen()).toBe("LOCK");
+  });
+
+  it("does not restore selling after hard lock without a session", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    store.actions.setConnection("LOCKED");
+    store.actions.lock();
+    expect(store.state.screen()).toBe("HARD_LOCK");
+    expect(store.state.session()).toBeNull();
+
+    click(findButton(root, "Coba online")!);
+
+    expect(store.state.connection()).toBe("ONLINE");
+    expect(store.state.screen()).toBe("LOCK");
+    expect(root.textContent).toContain("Masukkan PIN");
   });
 
   it("shows revoked copy and retries back to pending", () => {

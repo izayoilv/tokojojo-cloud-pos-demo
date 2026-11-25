@@ -99,6 +99,49 @@ describe("shift and cart", () => {
   });
 });
 
+describe("session and shift gates", () => {
+  it("requires a session and an open shift before selling", () => {
+    const store = createPosStore();
+    const salesBefore = store.state.sales().length;
+    store.actions.approveDevice();
+
+    store.actions.go("SELL");
+    expect(store.state.screen()).toBe("LOCK");
+    expect(store.state.error()).toContain("Sesi");
+
+    store.actions.unlockPin("4321");
+    expect(store.state.screen()).toBe("OPEN_SHIFT");
+
+    store.actions.addProduct("PRD-003", "PU-005");
+    store.actions.selectPaymentMethod("TUNAI");
+    store.actions.setCashReceived(200000);
+    store.actions.completeSale();
+
+    expect(store.state.error()).toContain("shift");
+    expect(store.state.sales()).toHaveLength(salesBefore);
+    expect(store.state.screen()).toBe("OPEN_SHIFT");
+
+    store.actions.openShift(500000);
+    store.actions.selectPaymentMethod("TUNAI");
+    store.actions.setCashReceived(200000);
+    store.actions.completeSale();
+
+    expect(store.state.receipt()).not.toBeNull();
+    expect(store.state.receipt()?.shiftId).toBe("SHIFT-02");
+  });
+
+  it("routes hard-lock recovery to lock when the session is gone", () => {
+    const store = unlockedStore();
+    store.actions.setConnection("LOCKED");
+    store.actions.lock();
+    expect(store.state.screen()).toBe("HARD_LOCK");
+
+    store.actions.setConnection("ONLINE");
+    expect(store.state.screen()).toBe("LOCK");
+    expect(store.state.session()).toBeNull();
+  });
+});
+
 describe("payment and offline behavior", () => {
   it("blocks non-cash payments while offline and queues the cash sale", () => {
     const store = unlockedStore();
@@ -134,6 +177,39 @@ describe("payment and offline behavior", () => {
     store.actions.completeSale();
 
     expect(store.state.receipt()?.payments[0]?.reference).toBe("EDC-7781");
+  });
+
+  it("requires a reference for non-cash and records the debt customer", () => {
+    const store = unlockedStore();
+    store.actions.selectPaymentMethod("QRIS");
+    store.actions.completeSale();
+
+    expect(store.state.error()).toContain("Referensi");
+    expect(store.state.receipt()).toBeNull();
+
+    store.actions.setPaymentReference("QRIS-9911");
+    store.actions.completeSale();
+    expect(store.state.receipt()?.payments[0]?.reference).toBe("QRIS-9911");
+
+    const debt = unlockedStore();
+    debt.actions.selectPaymentMethod("HUTANG");
+    debt.actions.setPaymentReference("Warung Bu Sari");
+    debt.actions.completeSale();
+
+    expect(debt.state.receipt()?.customer).toBe("Warung Bu Sari");
+  });
+
+  it("flags grace sales in the sync queue", () => {
+    const store = unlockedStore();
+    const flaggedBefore = store.state.queue().flagged;
+    store.actions.setConnection("GRACE");
+    store.actions.selectPaymentMethod("TUNAI");
+    store.actions.setCashReceived(200000);
+    store.actions.completeSale();
+
+    expect(store.state.queue().pending).toBe(1);
+    expect(store.state.queue().flagged).toBe(flaggedBefore + 1);
+    expect(store.state.receipt()?.flaggedForReview).toBe(true);
   });
 
   it("keeps receipt prices stable when catalogue prices change", () => {
@@ -216,6 +292,34 @@ describe("sales history actions", () => {
     expect(closed.expectedCash).toBe(500000);
     expect(closed.actualCash).toBe(490000);
     expect(closed.difference).toBe(-10000);
+  });
+
+  it("records partial return refunds in shift cash", () => {
+    const store = unlockedStore();
+    store.actions.selectPaymentMethod("TUNAI");
+    store.actions.setCashReceived(200000);
+    store.actions.completeSale();
+
+    const sale = store.state.receipt()!;
+    store.actions.setSessionRole("OWNER");
+
+    store.actions.returnSale(sale.id, 200000);
+    expect(store.state.error()).toContain("tidak valid");
+    expect(
+      store.state.sales().find((item) => item.id === sale.id)?.status,
+    ).toBe("COMPLETED");
+
+    store.actions.returnSale(sale.id, 50000);
+    expect(store.state.shift()?.refunds).toBe(50000);
+    expect(
+      store.state.sales().find((item) => item.id === sale.id)?.status,
+    ).toBe("PARTIAL_RETURN");
+
+    store.actions.closeShift(616500);
+
+    const closed = store.state.shift()!;
+    expect(closed.expectedCash).toBe(616500);
+    expect(closed.difference).toBe(0);
   });
 
   it("requires admin or owner and updates completed sales online", () => {

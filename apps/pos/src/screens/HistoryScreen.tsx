@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  Input,
   Modal,
   SearchInput,
   Select,
@@ -64,6 +65,8 @@ export function HistoryScreen() {
   const [confirmAction, setConfirmAction] = createSignal<
     "RETURN" | "VOID" | null
   >(null);
+  const [refundText, setRefundText] = createSignal("");
+  const [confirmError, setConfirmError] = createSignal<string | null>(null);
   const [notice, setNotice] = createSignal<string | null>(null);
 
   const filtered = createMemo(() =>
@@ -76,9 +79,11 @@ export function HistoryScreen() {
 
   createEffect(() => {
     const list = filtered();
-    if (!list.some((sale) => sale.id === selectedId())) {
-      setSelectedId(list[0]?.id ?? null);
-    }
+    setSelectedId((current) =>
+      list.some((sale) => sale.id === current)
+        ? current
+        : (list[0]?.id ?? null),
+    );
   });
 
   const canManage = () => {
@@ -112,12 +117,25 @@ export function HistoryScreen() {
     if (!sale || !action) return;
 
     if (action === "RETURN") {
-      pos.actions.returnSale(sale.id);
-      setNotice("Retur transaksi dicatat untuk ditinjau.");
+      const amount = Number(refundText().replace(/\D/g, ""));
+      if (!amount || amount <= 0 || amount > sale.total) {
+        setConfirmError(
+          `Jumlah refund harus antara Rp 1 dan ${formatRupiah(sale.total)}.`,
+        );
+        return;
+      }
+      pos.actions.returnSale(sale.id, amount);
+      setNotice(`Retur ${formatRupiah(amount)} dicatat untuk ditinjau.`);
     } else {
       pos.actions.voidSale(sale.id);
       setNotice("Void transaksi dicatat.");
     }
+
+    if (pos.state.error()) {
+      setConfirmError(pos.state.error());
+      return;
+    }
+
     setConfirmAction(null);
   };
 
@@ -133,7 +151,7 @@ export function HistoryScreen() {
         <div class="shrink-0 border-b border-line bg-surface px-3 py-2">
           <div class="flex items-center gap-2">
             <h1 class="text-sm font-extrabold text-ink">Riwayat Transaksi</h1>
-            <span class="text-[10px] font-semibold text-ink-muted">
+            <span class="text-[0.625rem] font-semibold text-ink-muted">
               {filtered().length} dari {pos.state.sales().length}
             </span>
             <div class="ml-auto flex items-center gap-1">
@@ -141,7 +159,7 @@ export function HistoryScreen() {
                 <button
                   type="button"
                   onClick={() => pos.actions.go("HARD_LOCK")}
-                  class="h-7 cursor-pointer rounded-[4px] px-2 text-[10px] font-bold text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  class="h-11 cursor-pointer rounded-[4px] px-2 text-[0.625rem] font-bold text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   Kembali ke layar terkunci
                 </button>
@@ -149,7 +167,7 @@ export function HistoryScreen() {
               <button
                 type="button"
                 onClick={resetFilters}
-                class="h-7 cursor-pointer rounded-[4px] px-2 text-[10px] font-bold text-ink-secondary hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="h-11 cursor-pointer rounded-[4px] px-2 text-[0.625rem] font-bold text-ink-secondary hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 Reset filter
               </button>
@@ -158,7 +176,8 @@ export function HistoryScreen() {
 
           <div class="mt-1.5 flex items-center gap-1.5">
             <SearchInput
-              class="min-w-0 flex-1"
+              class="min-w-0 flex-1 [&_input]:h-11"
+              aria-label="Cari transaksi"
               placeholder="Cari invoice, kasir, pelanggan…"
               value={query()}
               onInput={(event) => setQuery(event.currentTarget.value)}
@@ -166,6 +185,7 @@ export function HistoryScreen() {
             <div class="w-[152px] shrink-0">
               <Select
                 aria-label="Filter metode pembayaran"
+                style={{ height: "44px" }}
                 value={method()}
                 onChange={(event) =>
                   setMethod(event.currentTarget.value as SaleMethodFilter)
@@ -185,6 +205,7 @@ export function HistoryScreen() {
             <div class="w-[142px] shrink-0">
               <Select
                 aria-label="Filter status transaksi"
+                style={{ height: "44px" }}
                 value={status()}
                 onChange={(event) =>
                   setStatus(event.currentTarget.value as SaleStatusFilter)
@@ -200,7 +221,7 @@ export function HistoryScreen() {
           </div>
 
           <Show when={pos.state.connection() !== "ONLINE"}>
-            <div class="mt-2 flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-1.5 text-[11px] text-warning">
+            <div class="mt-2 flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-1.5 text-[0.6875rem] text-warning">
               <CloudOff size={14} class="mt-0.5 shrink-0" />
               <p>
                 <span class="font-bold">Riwayat lokal</span> ·{" "}
@@ -213,7 +234,7 @@ export function HistoryScreen() {
           <Show when={pos.state.error()}>
             <p
               role="alert"
-              class="mt-2 rounded-[6px] bg-danger-soft px-3 py-1.5 text-[11px] font-bold text-danger"
+              class="mt-2 rounded-[6px] bg-danger-soft px-3 py-1.5 text-[0.6875rem] font-bold text-danger"
             >
               {pos.state.error()}
             </p>
@@ -221,7 +242,7 @@ export function HistoryScreen() {
         </div>
 
         <div
-          class={`${headerGrid} shrink-0 border-b border-line bg-subtle px-3 py-1.5 text-[9px] font-extrabold tracking-[0.08em] text-ink-muted uppercase`}
+          class={`${headerGrid} shrink-0 border-b border-line bg-subtle px-3 py-1.5 text-[0.5625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase`}
         >
           <span>Invoice</span>
           <span>Waktu</span>
@@ -260,21 +281,21 @@ export function HistoryScreen() {
                       : "bg-surface"
                   }`}
                 >
-                  <span class="truncate font-mono text-[11px] font-semibold text-ink">
+                  <span class="truncate font-mono text-[0.6875rem] font-semibold text-ink">
                     {sale.invoice}
                   </span>
                   <span class="min-w-0">
-                    <span class="block truncate text-[11px] font-semibold text-ink-secondary">
+                    <span class="block truncate text-[0.6875rem] font-semibold text-ink-secondary">
                       {formatDate(sale.time)}
                     </span>
-                    <span class="block text-[10px] text-ink-muted">
+                    <span class="block text-[0.625rem] text-ink-muted">
                       {formatTime(sale.time)} WIB
                     </span>
                   </span>
-                  <span class="truncate text-[11px] font-semibold text-ink-secondary">
+                  <span class="truncate text-[0.6875rem] font-semibold text-ink-secondary">
                     {sale.cashier}
                   </span>
-                  <span class="truncate text-[11px] text-ink-secondary">
+                  <span class="truncate text-[0.6875rem] text-ink-secondary">
                     {methodSummary(sale)}
                   </span>
                   <span class="text-right font-mono text-xs font-bold text-ink tabular-nums">
@@ -310,7 +331,7 @@ export function HistoryScreen() {
                     <div class="truncate font-mono text-xs font-bold text-ink">
                       {sale().invoice}
                     </div>
-                    <div class="text-[10px] font-semibold text-ink-muted">
+                    <div class="text-[0.625rem] font-semibold text-ink-muted">
                       {formatDateTime(sale().time)}
                     </div>
                   </div>
@@ -324,13 +345,13 @@ export function HistoryScreen() {
                     type="button"
                     aria-label="Tutup detail"
                     onClick={() => setSelectedId(null)}
-                    class="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-[4px] text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                    class="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-[4px] text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   >
                     <X size={14} />
                   </button>
                 </div>
 
-                <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[0.625rem]">
                   <div>
                     <dt class="font-bold text-ink-muted uppercase">Kasir</dt>
                     <dd class="truncate font-semibold text-ink">
@@ -361,7 +382,7 @@ export function HistoryScreen() {
               </div>
 
               <div class="min-h-0 flex-1 overflow-y-auto p-3">
-                <div class="text-[9px] font-extrabold tracking-[0.1em] text-ink-muted uppercase">
+                <div class="text-[0.5625rem] font-extrabold tracking-[0.1em] text-ink-muted uppercase">
                   Item
                 </div>
                 <div class="mt-1">
@@ -372,7 +393,7 @@ export function HistoryScreen() {
                           <div class="truncate text-xs font-bold text-ink">
                             {item.name}
                           </div>
-                          <div class="text-[10px] text-ink-muted">
+                          <div class="text-[0.625rem] text-ink-muted">
                             {item.unitName} × {item.quantity} ·{" "}
                             {formatRupiah(item.unitPrice)}
                           </div>
@@ -387,14 +408,14 @@ export function HistoryScreen() {
                   </For>
                 </div>
 
-                <div class="mt-3 text-[9px] font-extrabold tracking-[0.1em] text-ink-muted uppercase">
+                <div class="mt-3 text-[0.5625rem] font-extrabold tracking-[0.1em] text-ink-muted uppercase">
                   Pembayaran
                 </div>
                 <div class="mt-1">
                   <For each={sale().payments}>
                     {(payment) => (
                       <div>
-                        <div class="flex justify-between gap-2 text-[11px]">
+                        <div class="flex justify-between gap-2 text-[0.6875rem]">
                           <span class="font-semibold text-ink-secondary">
                             {paymentMethodLabels[payment.method]}
                           </span>
@@ -403,7 +424,7 @@ export function HistoryScreen() {
                           </span>
                         </div>
                         <Show when={payment.reference}>
-                          <div class="truncate text-[10px] text-ink-muted">
+                          <div class="truncate text-[0.625rem] text-ink-muted">
                             Ref: {payment.reference}
                           </div>
                         </Show>
@@ -411,7 +432,7 @@ export function HistoryScreen() {
                     )}
                   </For>
                   <Show when={sale().change > 0}>
-                    <div class="mt-1 flex justify-between gap-2 border-t border-line pt-1 text-[11px]">
+                    <div class="mt-1 flex justify-between gap-2 border-t border-line pt-1 text-[0.6875rem]">
                       <span class="font-semibold text-ink-secondary">
                         Kembalian
                       </span>
@@ -430,14 +451,19 @@ export function HistoryScreen() {
                 </div>
 
                 <Show when={sale().status === "PARTIAL_RETURN"}>
-                  <p class="mt-2 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[10px] font-semibold text-warning">
+                  <p class="mt-2 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-warning">
                     Retur sebagian dicatat. Rincian item retur tersedia pada
                     integrasi server.
                   </p>
                 </Show>
                 <Show when={sale().status === "VOIDED"}>
-                  <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-[10px] font-semibold text-danger">
+                  <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-danger">
                     Transaksi void. Audit void tersimpan pada log.
+                  </p>
+                </Show>
+                <Show when={sale().flaggedForReview}>
+                  <p class="mt-2 rounded-[6px] bg-info-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-info">
+                    Masa tenggang: transaksi ditandai untuk ditinjau.
                   </p>
                 </Show>
               </div>
@@ -445,26 +471,33 @@ export function HistoryScreen() {
               <div class="shrink-0 border-t border-line bg-subtle p-3">
                 <div class="grid grid-cols-3 gap-1.5">
                   <Button
-                    size="md"
+                    size="lg"
                     title="Cetak ulang struk"
                     onClick={() => setReprintOpen(true)}
                   >
                     <Printer size={14} /> Cetak
                   </Button>
                   <Button
-                    size="md"
+                    size="lg"
                     data-action="return"
                     disabled={actionReason() !== null}
-                    onClick={() => setConfirmAction("RETURN")}
+                    onClick={() => {
+                      setRefundText(String(selected()?.total ?? ""));
+                      setConfirmError(null);
+                      setConfirmAction("RETURN");
+                    }}
                   >
                     <RotateCcw size={14} /> Retur
                   </Button>
                   <Button
                     variant="soft-danger"
-                    size="md"
+                    size="lg"
                     data-action="void"
                     disabled={actionReason() !== null}
-                    onClick={() => setConfirmAction("VOID")}
+                    onClick={() => {
+                      setConfirmError(null);
+                      setConfirmAction("VOID");
+                    }}
                   >
                     <Ban size={14} /> Void
                   </Button>
@@ -472,7 +505,7 @@ export function HistoryScreen() {
 
                 <Show when={actionReason()}>
                   {(reason) => (
-                    <div class="mt-2 flex items-start gap-1.5 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[10px] text-warning">
+                    <div class="mt-2 flex items-start gap-1.5 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[0.625rem] text-warning">
                       <ShieldAlert size={13} class="mt-0.5 shrink-0" />
                       <div class="flex-1">
                         <p class="font-semibold">{reason()}</p>
@@ -491,7 +524,7 @@ export function HistoryScreen() {
                                 "Izin demo OWNER aktif. Retur/void sekarang tersedia.",
                               );
                             }}
-                            class="mt-1 cursor-pointer text-[10px] font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                            class="mt-1 inline-flex h-11 cursor-pointer items-center text-[0.625rem] font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                           >
                             Aktifkan izin demo OWNER
                           </button>
@@ -504,7 +537,7 @@ export function HistoryScreen() {
                 <Show when={notice()}>
                   <p
                     role="status"
-                    class="mt-2 text-center text-[10px] font-bold text-success"
+                    class="mt-2 text-center text-[0.625rem] font-bold text-success"
                   >
                     {notice()}
                   </p>
@@ -535,6 +568,7 @@ export function HistoryScreen() {
         <div class="mt-3 flex justify-center gap-2">
           <Button
             variant="primary"
+            size="lg"
             onClick={() => {
               setReprintOpen(false);
               setNotice("Struk dikirim ke printer demo.");
@@ -548,7 +582,10 @@ export function HistoryScreen() {
       <Modal
         open={confirmAction() !== null}
         onOpenChange={(open) => {
-          if (!open) setConfirmAction(null);
+          if (!open) {
+            setConfirmAction(null);
+            setConfirmError(null);
+          }
         }}
         title={
           confirmAction() === "RETURN" ? "Retur transaksi?" : "Void transaksi?"
@@ -557,12 +594,12 @@ export function HistoryScreen() {
         size="sm"
         footer={
           <>
-            <Button size="sm" onClick={() => setConfirmAction(null)}>
+            <Button size="lg" onClick={() => setConfirmAction(null)}>
               Batal
             </Button>
             <Button
               variant={confirmAction() === "VOID" ? "soft-danger" : "primary"}
-              size="sm"
+              size="lg"
               onClick={runConfirmedAction}
             >
               {confirmAction() === "RETURN" ? "Retur" : "Void"}
@@ -572,9 +609,51 @@ export function HistoryScreen() {
       >
         <p class="text-sm leading-relaxed text-ink-secondary">
           {confirmAction() === "RETURN"
-            ? "Tandai transaksi sebagai retur sebagian? Rincian item retur akan dicatat server pada integrasi."
+            ? "Tandai transaksi sebagai retur dan catat refund tunai yang dikembalikan."
             : "Void transaksi ini? Tindakan ini tercatat dan tidak dapat dibatalkan."}
         </p>
+
+        <Show when={confirmAction() === "RETURN" && selected()}>
+          {(sale) => (
+            <div class="mt-3">
+              <label
+                for="refund-amount"
+                class="text-[0.6875rem] font-bold text-ink-secondary"
+              >
+                Jumlah refund
+              </label>
+              <div class="relative mt-1">
+                <span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-xs font-bold text-ink-muted">
+                  Rp
+                </span>
+                <Input
+                  id="refund-amount"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  value={
+                    refundText()
+                      ? Number(refundText()).toLocaleString("id-ID")
+                      : ""
+                  }
+                  onInput={(event) =>
+                    setRefundText(
+                      event.currentTarget.value.replace(/\D/g, "").slice(0, 12),
+                    )
+                  }
+                  class="pl-9 font-mono"
+                />
+              </div>
+              <p class="mt-1 text-[0.625rem] font-semibold text-ink-muted">
+                Maksimal {formatRupiah(sale().total)}. Refund tunai mengurangi
+                uang seharusnya saat tutup shift.
+              </p>
+            </div>
+          )}
+        </Show>
+
+        <Show when={confirmError()}>
+          <p class="mt-2 text-xs font-bold text-danger">{confirmError()}</p>
+        </Show>
       </Modal>
     </div>
   );

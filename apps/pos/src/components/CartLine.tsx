@@ -18,7 +18,7 @@ export function CartLineItem(props: {
           <div class="truncate text-sm font-bold text-ink">
             {props.line.name}
           </div>
-          <div class="truncate text-[10px] font-semibold text-ink-muted">
+          <div class="truncate text-[0.625rem] font-semibold text-ink-muted">
             {props.line.unitName} · {props.line.quantity} ×{" "}
             {formatRupiah(props.line.unitPrice)}
           </div>
@@ -34,7 +34,7 @@ export function CartLineItem(props: {
             type="button"
             aria-label={`Kurangi ${props.line.name}`}
             onClick={() => props.onQuantity(props.line.quantity - 1)}
-            class="flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-line bg-surface text-base font-bold text-ink transition-colors hover:bg-hover active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="flex size-12 cursor-pointer items-center justify-center rounded-[5px] border border-line bg-surface text-base font-bold text-ink transition-colors hover:bg-hover active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             −
           </button>
@@ -45,7 +45,7 @@ export function CartLineItem(props: {
             type="button"
             aria-label={`Tambah ${props.line.name}`}
             onClick={() => props.onQuantity(props.line.quantity + 1)}
-            class="flex size-9 cursor-pointer items-center justify-center rounded-[5px] border border-line bg-surface text-base font-bold text-ink transition-colors hover:bg-hover active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="flex size-12 cursor-pointer items-center justify-center rounded-[5px] border border-line bg-surface text-base font-bold text-ink transition-colors hover:bg-hover active:bg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             +
           </button>
@@ -55,7 +55,7 @@ export function CartLineItem(props: {
           type="button"
           aria-label={`Hapus ${props.line.name}`}
           onClick={() => props.onRemove()}
-          class="flex h-7 cursor-pointer items-center gap-1 rounded-[4px] px-1.5 text-[10px] font-bold text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          class="flex h-11 cursor-pointer items-center gap-1 rounded-[4px] px-2 text-[0.625rem] font-bold text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           <Trash2 size={12} /> Hapus
         </button>

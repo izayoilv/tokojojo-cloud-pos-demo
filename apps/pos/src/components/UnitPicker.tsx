@@ -34,7 +34,7 @@ export function UnitPicker(props: {
                 <span class="block text-sm font-bold text-ink">
                   {unit.name}
                 </span>
-                <span class="block truncate text-[10px] font-semibold text-ink-muted">
+                <span class="block truncate text-[0.625rem] font-semibold text-ink-muted">
                   Isi {unit.conversionQty} · {unit.barcode}
                 </span>
               </span>

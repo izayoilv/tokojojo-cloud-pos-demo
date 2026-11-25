@@ -15,20 +15,11 @@ export function useShortcuts(handlers: ShortcutHandlers) {
 
       if (document.querySelector('[role="dialog"]')) return;
 
-      const target = event.target;
-      const typing =
-        target instanceof HTMLElement &&
-        Boolean(
-          target.closest("input, textarea, select, [contenteditable='true']"),
-        );
-
-      if (typing && key !== "Escape") return;
-
       event.preventDefault();
       handler(event);
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+    window.addEventListener("keydown", onKeyDown, true);
+    onCleanup(() => window.removeEventListener("keydown", onKeyDown, true));
   });
 }

@@ -37,7 +37,7 @@ export function HardLockScreen() {
           </div>
         </dl>
 
-        <div class="mt-3 rounded-[6px] bg-danger-soft px-3 py-2 text-left text-[11px] font-semibold text-danger">
+        <div class="mt-3 rounded-[6px] bg-danger-soft px-3 py-2 text-left text-[0.6875rem] font-semibold text-danger">
           Transaksi lama tetap tersimpan dan akan dikirim setelah koneksi pulih.
         </div>
 
@@ -59,13 +59,13 @@ export function HardLockScreen() {
           </Button>
           <a
             href="mailto:admin@tokojojo.local"
-            class="inline-flex h-10 items-center justify-center gap-2 rounded-[6px] text-xs font-bold text-ink-secondary transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="inline-flex h-11 items-center justify-center gap-2 rounded-[6px] text-xs font-bold text-ink-secondary transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             Hubungi admin
           </a>
         </div>
 
-        <p class="mt-3 text-[10px] font-semibold text-ink-muted">
+        <p class="mt-3 text-[0.625rem] font-semibold text-ink-muted">
           Riwayat dan cetak ulang tetap tersedia. Retur/void menunggu online.
         </p>
       </div>

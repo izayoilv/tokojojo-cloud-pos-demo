@@ -53,7 +53,6 @@ const formatSyncTime = () =>
 
 export function createPosStore() {
   const [screen, setScreen] = createSignal<PosScreen>("ENROLLMENT");
-  const [previousScreen, setPreviousScreen] = createSignal<PosScreen>("SELL");
   const [device, setDevice] = createSignal<PosDevice>({
     name: "POS-01 · Batavia",
     platform: "TAURI",
@@ -411,6 +410,25 @@ export function createPosStore() {
       return;
     }
 
+    if (next === "SELL" || next === "PAYMENT") {
+      if (!session()) {
+        setError("Sesi berakhir. Masuk kembali.");
+        setScreen("LOCK");
+        return;
+      }
+      if (shift()?.status !== "OPEN") {
+        setError("Buka shift terlebih dahulu.");
+        setScreen("OPEN_SHIFT");
+        return;
+      }
+    }
+
+    if (next === "OPEN_SHIFT" && !session()) {
+      setError("Sesi berakhir. Masuk kembali.");
+      setScreen("LOCK");
+      return;
+    }
+
     if (next === "PAYMENT") {
       if (cart().length === 0) {
         setError("Keranjang kosong. Tambahkan produk terlebih dahulu.");
@@ -460,6 +478,18 @@ export function createPosStore() {
       return;
     }
 
+    if (!session()) {
+      setError("Sesi berakhir. Masuk kembali.");
+      setScreen("LOCK");
+      return;
+    }
+
+    if (shift()?.status !== "OPEN") {
+      setError("Buka shift terlebih dahulu.");
+      setScreen("OPEN_SHIFT");
+      return;
+    }
+
     const lines = cart();
     if (lines.length === 0) {
       setError("Keranjang kosong. Tambahkan produk terlebih dahulu.");
@@ -475,6 +505,12 @@ export function createPosStore() {
     const method = paymentMethod();
     if (!method || !allowedMethods().includes(method)) {
       setError("Pilih metode pembayaran yang tersedia.");
+      return;
+    }
+
+    const reference = paymentReference().trim();
+    if (method !== "TUNAI" && !reference) {
+      setError("Referensi pembayaran wajib diisi.");
       return;
     }
 
@@ -503,15 +539,17 @@ export function createPosStore() {
       subtotal: totals.subtotal,
       discount: totals.discount,
       total: totals.total,
+      customer: method === "HUTANG" ? reference : undefined,
       payments: [
         {
           method,
           amount: received,
-          reference: paymentReference().trim() || undefined,
+          reference: reference || undefined,
         },
       ],
       change,
       status: "COMPLETED",
+      flaggedForReview: connection() === "GRACE" ? true : undefined,
     };
 
     setSales((current) => [sale, ...current]);
@@ -524,10 +562,18 @@ export function createPosStore() {
       );
     }
 
-    if (connection() === "OFFLINE" || connection() === "GRACE") {
+    if (connection() === "OFFLINE") {
       setQueue((current) => ({
         ...current,
         pending: current.pending + 1,
+      }));
+    }
+
+    if (connection() === "GRACE") {
+      setQueue((current) => ({
+        ...current,
+        pending: current.pending + 1,
+        flagged: current.flagged + 1,
       }));
     }
 
@@ -546,7 +592,17 @@ export function createPosStore() {
     setCashReceivedSignal(0);
     setPaymentReferenceSignal("");
     setError(null);
-    setScreen(shift()?.status === "OPEN" ? "SELL" : "LOCK");
+
+    if (connection() === "LOCKED") {
+      setScreen("HARD_LOCK");
+      return;
+    }
+    if (!session()) {
+      setScreen("LOCK");
+      return;
+    }
+
+    setScreen(shift()?.status === "OPEN" ? "SELL" : "OPEN_SHIFT");
   };
 
   const setConnection = (next: PosConnection) => {
@@ -561,23 +617,16 @@ export function createPosStore() {
       setError(null);
 
       if (next === "LOCKED") {
-        if (screen() !== "HARD_LOCK") {
-          setPreviousScreen(screen());
-        }
         setScreen("HARD_LOCK");
         return;
       }
 
       if (current === "LOCKED") {
-        const fallback =
-          shift()?.status === "OPEN"
-            ? "SELL"
-            : session()
-              ? "OPEN_SHIFT"
-              : "LOCK";
-        setScreen(
-          previousScreen() === "HARD_LOCK" ? fallback : previousScreen(),
-        );
+        if (!session()) {
+          setScreen("LOCK");
+        } else {
+          setScreen(shift()?.status === "OPEN" ? "SELL" : "OPEN_SHIFT");
+        }
       }
     });
   };
@@ -628,8 +677,24 @@ export function createPosStore() {
     return sale;
   };
 
-  const returnSale = (saleId: string) => {
-    if (!saleActionTarget(saleId)) return;
+  const returnSale = (saleId: string, refundAmount?: number) => {
+    const target = saleActionTarget(saleId);
+    if (!target) return;
+
+    const refund = refundAmount ?? target.total;
+    if (!Number.isFinite(refund) || refund <= 0 || refund > target.total) {
+      setError("Jumlah retur tidak valid.");
+      return;
+    }
+
+    if (
+      shift()?.id === target.shiftId &&
+      target.payments.some((payment) => payment.method === "TUNAI")
+    ) {
+      setShift((current) =>
+        current ? { ...current, refunds: current.refunds + refund } : current,
+      );
+    }
 
     setSales((current) =>
       current.map((sale) =>

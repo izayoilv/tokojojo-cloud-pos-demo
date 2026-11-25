@@ -21,31 +21,31 @@ export function ProductTile(props: {
       class="group flex min-h-[104px] flex-col rounded-[8px] border border-line bg-surface p-2.5 text-left transition-colors hover:border-primary hover:bg-primary-soft/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:border-line disabled:hover:bg-surface"
     >
       <div class="flex items-center gap-1">
-        <span class="truncate text-[9px] font-extrabold tracking-[0.08em] text-ink-muted uppercase">
+        <span class="truncate text-[0.5625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase">
           {props.product.category}
         </span>
         <Show when={outOfStock()}>
-          <span class="ml-auto rounded-full bg-danger-soft px-1.5 py-0.5 text-[9px] font-bold text-danger">
+          <span class="ml-auto rounded-full bg-danger-soft px-1.5 py-0.5 text-[0.5625rem] font-bold text-danger">
             Habis
           </span>
         </Show>
         <Show when={!outOfStock() && multiUnit()}>
-          <span class="ml-auto rounded-full bg-primary-soft px-1.5 py-0.5 text-[9px] font-bold text-primary">
+          <span class="ml-auto rounded-full bg-primary-soft px-1.5 py-0.5 text-[0.5625rem] font-bold text-primary">
             Pilih satuan
           </span>
         </Show>
       </div>
 
-      <div class="mt-1 line-clamp-2 text-[13px] leading-snug font-bold text-ink">
+      <div class="mt-1 line-clamp-2 text-[0.8125rem] leading-snug font-bold text-ink">
         {props.product.name}
       </div>
 
       <div class="mt-auto flex items-end justify-between gap-2 pt-1.5">
         <div class="min-w-0">
-          <div class="truncate font-mono text-[13px] font-bold text-ink tabular-nums">
+          <div class="truncate font-mono text-[0.8125rem] font-bold text-ink tabular-nums">
             {formatRupiah(defaultUnit().sellingPrice)}
           </div>
-          <div class="truncate text-[10px] font-semibold text-ink-muted">
+          <div class="truncate text-[0.625rem] font-semibold text-ink-muted">
             /{defaultUnit().name} · stok {props.product.stock}
           </div>
         </div>

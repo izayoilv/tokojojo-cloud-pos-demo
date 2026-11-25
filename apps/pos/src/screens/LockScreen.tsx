@@ -63,7 +63,7 @@ export function LockScreen() {
     <div class="flex h-full items-start justify-center overflow-y-auto bg-canvas p-4">
       <div class="my-auto w-full max-w-[400px] rounded-[12px] border border-line bg-surface p-4 shadow-modal">
         <div class="flex items-center gap-2.5 border-b border-line pb-3">
-          <span class="relative flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-primary text-[10px] font-extrabold text-on-primary">
+          <span class="relative flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-primary text-[0.625rem] font-extrabold text-on-primary">
             TJ
             <span class="absolute -top-1 -right-1 size-2 rounded-[2px] bg-accent" />
           </span>
@@ -71,7 +71,7 @@ export function LockScreen() {
             <div class="text-xs font-extrabold tracking-[0.06em] text-ink">
               TOKO JOJO
             </div>
-            <div class="text-[10px] font-semibold text-ink-muted">
+            <div class="text-[0.625rem] font-semibold text-ink-muted">
               POS Terminal · Kasir
             </div>
           </div>
@@ -85,9 +85,13 @@ export function LockScreen() {
             <div class="truncate text-sm font-bold text-ink">
               {demoUser.name}
             </div>
-            <div class="text-[10px] font-semibold tracking-[0.04em] text-ink-muted uppercase">
-              {demoUser.role} ·{" "}
-              {shiftActive() ? "Shift aktif" : "Belum ada shift"}
+            <div class="text-[0.625rem] font-semibold tracking-[0.04em] text-ink-muted uppercase">
+              {demoUser.role === "CASHIER"
+                ? "Kasir"
+                : demoUser.role === "ADMIN"
+                  ? "Admin"
+                  : "Owner"}{" "}
+              · {shiftActive() ? "Shift aktif" : "Belum ada shift"}
             </div>
           </div>
           <Lock size={15} class="ml-auto shrink-0 text-ink-muted" />
@@ -167,7 +171,7 @@ export function LockScreen() {
               setPin("");
               setPassword("");
             }}
-            class="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[4px] px-2 text-xs font-bold text-primary hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-[4px] px-2 text-xs font-bold text-primary hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <KeyRound size={13} />
             {passwordMode() ? "Kembali ke PIN" : "Masuk dengan kata sandi"}
@@ -179,24 +183,26 @@ export function LockScreen() {
               setPin("");
               setUserNote("Demo hanya menyediakan satu kasir.");
             }}
-            class="h-8 cursor-pointer rounded-[4px] px-2 text-xs font-semibold text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="h-11 cursor-pointer rounded-[4px] px-2 text-xs font-semibold text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             Ganti pengguna
           </button>
 
           <Show when={userNote()}>
-            <p class="text-[10px] font-semibold text-ink-muted">{userNote()}</p>
+            <p class="text-[0.625rem] font-semibold text-ink-muted">
+              {userNote()}
+            </p>
           </Show>
         </div>
 
         <div class="mt-2 flex items-start gap-1.5 border-t border-line pt-2.5">
           <ShieldCheck size={13} class="mt-0.5 shrink-0 text-ink-muted" />
-          <p class="text-[10px] leading-relaxed text-ink-muted">
+          <p class="text-[0.625rem] leading-relaxed text-ink-muted">
             PIN lokal hanya membuka sesi perangkat, bukan kredensial server.
           </p>
         </div>
 
-        <p class="mt-1.5 text-center text-[10px] font-semibold text-ink-muted">
+        <p class="mt-1.5 text-center text-[0.625rem] font-semibold text-ink-muted">
           Demo: PIN awal 4321 · Kata sandi tokojojo
         </p>
       </div>

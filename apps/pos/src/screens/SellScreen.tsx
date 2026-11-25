@@ -114,19 +114,19 @@ export function SellScreen() {
                   }
                 }}
                 autofocus
-                class="h-10 w-full rounded-[6px] border border-line-control bg-surface pr-16 pl-9 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
+                class="h-11 w-full rounded-[6px] border border-line-control bg-surface pr-24 pl-9 text-sm text-ink outline-none transition placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
               <Show when={query()}>
                 <button
                   type="button"
                   aria-label="Bersihkan pencarian"
                   onClick={() => setQuery("")}
-                  class="absolute top-1/2 right-9 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-subtle text-ink-muted hover:text-ink"
+                  class="absolute top-1/2 right-9 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-subtle text-ink-muted hover:text-ink"
                 >
                   <X size={12} />
                 </button>
               </Show>
-              <kbd class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-[3px] border border-line bg-subtle px-1 py-0.5 font-mono text-[9px] font-bold text-ink-muted">
+              <kbd class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded-[3px] border border-line bg-subtle px-1 py-0.5 font-mono text-[0.5625rem] font-bold text-ink-muted">
                 F3
               </kbd>
             </div>
@@ -138,7 +138,7 @@ export function SellScreen() {
                 searchRef?.select();
               }}
               title="Fokus ke kolom pindai (demo)"
-              class="flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-[6px] border border-line-control bg-surface px-3 text-xs font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              class="flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-[6px] border border-line-control bg-surface px-3 text-xs font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <ScanBarcode size={16} /> Pindai
             </button>
@@ -151,7 +151,7 @@ export function SellScreen() {
                   type="button"
                   aria-pressed={category() === item}
                   onClick={() => setCategory(item)}
-                  class={`h-7 cursor-pointer rounded-full border px-2.5 text-[10px] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                  class={`h-11 cursor-pointer rounded-full border px-3 text-[0.625rem] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                     category() === item
                       ? "border-primary bg-primary text-on-primary"
                       : "border-line bg-surface text-ink-secondary hover:bg-hover hover:text-ink"
@@ -161,7 +161,7 @@ export function SellScreen() {
                 </button>
               )}
             </For>
-            <span class="ml-auto text-[10px] font-semibold text-ink-muted">
+            <span class="ml-auto text-[0.625rem] font-semibold text-ink-muted">
               {filtered().length} produk
             </span>
           </div>
@@ -170,7 +170,7 @@ export function SellScreen() {
         <Show when={pos.state.error()}>
           <div
             role="alert"
-            class="shrink-0 border-b border-danger/20 bg-danger-soft px-3 py-1.5 text-[11px] font-bold text-danger"
+            class="shrink-0 border-b border-danger/20 bg-danger-soft px-3 py-1.5 text-[0.6875rem] font-bold text-danger"
           >
             {pos.state.error()}
           </div>
@@ -215,7 +215,7 @@ export function SellScreen() {
       <aside class="flex w-[400px] shrink-0 flex-col border-l border-line bg-surface">
         <div class="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
           <h2 class="text-sm font-extrabold text-ink">Transaksi Aktif</h2>
-          <span class="rounded-full bg-subtle px-1.5 py-0.5 text-[10px] font-bold text-ink-secondary">
+          <span class="rounded-full bg-subtle px-1.5 py-0.5 text-[0.625rem] font-bold text-ink-secondary">
             {pos.state.totals().itemCount} item
           </span>
           <button
@@ -224,7 +224,7 @@ export function SellScreen() {
             title="Kosongkan keranjang"
             disabled={emptyCart()}
             onClick={() => pos.actions.clearCart()}
-            class="ml-auto flex size-8 cursor-pointer items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-muted"
+            class="ml-auto flex size-11 cursor-pointer items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-danger-soft hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-muted"
           >
             <Trash2 size={15} />
           </button>
@@ -257,13 +257,13 @@ export function SellScreen() {
         </div>
 
         <div class="shrink-0 border-t border-line bg-subtle px-3 py-2.5">
-          <div class="flex justify-between gap-2 text-[11px] font-semibold text-ink-secondary">
+          <div class="flex justify-between gap-2 text-[0.6875rem] font-semibold text-ink-secondary">
             <span>Subtotal ({pos.state.totals().itemCount} item)</span>
             <span class="font-mono tabular-nums">
               {formatRupiah(pos.state.totals().subtotal)}
             </span>
           </div>
-          <div class="mt-0.5 flex justify-between gap-2 text-[11px] font-semibold text-ink-secondary">
+          <div class="mt-0.5 flex justify-between gap-2 text-[0.6875rem] font-semibold text-ink-secondary">
             <span>Diskon</span>
             <span class="font-mono tabular-nums">
               {pos.state.totals().discount > 0
@@ -287,7 +287,7 @@ export function SellScreen() {
             onClick={() => pos.actions.go("PAYMENT")}
           >
             <CreditCard size={17} /> Bayar
-            <kbd class="ml-1 rounded-[3px] bg-on-primary/15 px-1 py-0.5 font-mono text-[9px]">
+            <kbd class="ml-1 rounded-[3px] bg-on-primary/15 px-1 py-0.5 font-mono text-[0.5625rem]">
               F2
             </kbd>
           </Button>
@@ -296,21 +296,21 @@ export function SellScreen() {
             <button
               type="button"
               onClick={() => pos.actions.holdCart()}
-              class="flex h-9 cursor-pointer items-center justify-center gap-1 rounded-[5px] border border-line-control bg-surface text-[11px] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              class="flex h-11 cursor-pointer items-center justify-center gap-1 rounded-[5px] border border-line-control bg-surface text-[0.6875rem] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Pause size={13} /> Tahan
             </button>
             <button
               type="button"
               onClick={() => setRecallOpen(true)}
-              class="flex h-9 cursor-pointer items-center justify-center gap-1 rounded-[5px] border border-line-control bg-surface text-[11px] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              class="flex h-11 cursor-pointer items-center justify-center gap-1 rounded-[5px] border border-line-control bg-surface text-[0.6875rem] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <ListRestart size={13} /> Panggil ({heldCount()})
             </button>
             <button
               type="button"
               onClick={() => pos.actions.go("HISTORY")}
-              class="flex h-9 cursor-pointer items-center justify-center gap-1 rounded-[5px] border border-line-control bg-surface text-[11px] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              class="flex h-11 cursor-pointer items-center justify-center gap-1 rounded-[5px] border border-line-control bg-surface text-[0.6875rem] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <History size={13} /> Riwayat
             </button>
@@ -368,7 +368,7 @@ export function SellScreen() {
                     <span class="block truncate text-sm font-bold text-ink">
                       {held.label}
                     </span>
-                    <span class="block text-[10px] font-semibold text-ink-muted">
+                    <span class="block text-[0.625rem] font-semibold text-ink-muted">
                       {cartTotals(held.lines).itemCount} baris ·{" "}
                       {formatTime(held.createdAt)}
                     </span>

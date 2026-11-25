@@ -57,7 +57,7 @@ body {
   background: var(--tj-canvas);
   color: var(--tj-ink);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 0.875rem;
   -webkit-font-smoothing: antialiased;
 }
 

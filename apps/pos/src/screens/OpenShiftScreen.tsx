@@ -33,7 +33,7 @@ export function OpenShiftScreen() {
               {pos.state.session()?.name ?? "Kasir"} · {pos.state.device().name}
             </p>
           </div>
-          <div class="ml-auto text-right text-[10px] font-semibold text-ink-muted">
+          <div class="ml-auto text-right text-[0.625rem] font-semibold text-ink-muted">
             {formatDateTime(new Date())}
           </div>
         </div>
@@ -79,7 +79,7 @@ export function OpenShiftScreen() {
                 <button
                   type="button"
                   onClick={() => setOpeningCash(amount)}
-                  class="h-9 cursor-pointer rounded-[5px] border border-line-control bg-surface px-3 text-xs font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  class="h-11 min-w-11 cursor-pointer rounded-[5px] border border-line-control bg-surface px-3 text-xs font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {amount >= 1000000
                     ? `${amount / 1000000} jt`
@@ -147,7 +147,7 @@ export function OpenShiftScreen() {
             </Button>
           </div>
 
-          <p class="mt-2 text-[10px] font-semibold text-ink-muted">
+          <p class="mt-2 text-[0.625rem] font-semibold text-ink-muted">
             Tekan Enter untuk membuka shift. Modal awal dapat dikoreksi sebelum
             transaksi pertama.
           </p>

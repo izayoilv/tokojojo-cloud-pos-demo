@@ -31,6 +31,14 @@ export function ReceiptPreview(props: {
         </span>
       </div>
 
+      <Show when={props.sale.status !== "COMPLETED"}>
+        <div class="my-1.5 border-2 border-danger py-1 text-center text-[0.7rem] font-extrabold tracking-[0.08em] text-danger uppercase">
+          {props.sale.status === "VOIDED"
+            ? "VOID · STRUK TIDAK SAH"
+            : "RETUR SEBAGIAN"}
+        </div>
+      </Show>
+
       <div class="flex flex-col gap-0.5 border-b border-dashed border-line py-2 text-[0.65rem] text-ink-muted">
         <span>{props.sale.invoice}</span>
         <span>
@@ -62,8 +70,13 @@ export function ReceiptPreview(props: {
         </For>
       </div>
 
+      <div class="flex justify-between gap-2 border-t border-dashed border-line pt-1.5">
+        <span>Subtotal</span>
+        <span class="tabular-nums">{formatRupiah(props.sale.subtotal)}</span>
+      </div>
+
       <Show when={props.sale.discount > 0}>
-        <div class="flex justify-between gap-2 border-t border-dashed border-line pt-1.5">
+        <div class="flex justify-between gap-2">
           <span>Diskon</span>
           <span class="tabular-nums">-{formatRupiah(props.sale.discount)}</span>
         </div>
