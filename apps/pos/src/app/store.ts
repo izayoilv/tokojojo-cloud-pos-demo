@@ -1,0 +1,642 @@
+import { createMemo, createSignal } from "solid-js";
+
+import {
+  demoCart,
+  initialHeldCarts,
+  initialSales,
+  initialSync,
+  products,
+  settings as defaultSettings,
+} from "../data/mock";
+import type {
+  CartLine,
+  DeviceStatus,
+  HeldCart,
+  PaymentMethod,
+  PosConnection,
+  PosDevice,
+  PosSale,
+  PosScreen,
+  PosSettings,
+  Shift,
+  SyncSnapshot,
+  UserSession,
+} from "../data/types";
+import {
+  cartTotals,
+  changeDue,
+  expectedCash,
+  paymentMethodsFor,
+} from "../lib/posCalc";
+
+export const DEMO_PIN = "4321";
+export const DEMO_PASSWORD = "tokojojo";
+
+const cloneLines = (lines: CartLine[]): CartLine[] =>
+  lines.map((line) => ({ ...line }));
+
+const cloneSale = (sale: PosSale): PosSale => ({
+  ...sale,
+  items: cloneLines(sale.items),
+  payments: sale.payments.map((payment) => ({ ...payment })),
+});
+
+const nowIso = () => new Date().toISOString();
+
+const formatSyncTime = () =>
+  `${new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date())} WIB`;
+
+export function createPosStore() {
+  const [screen, setScreen] = createSignal<PosScreen>("ENROLLMENT");
+  const [previousScreen, setPreviousScreen] = createSignal<PosScreen>("SELL");
+  const [device, setDevice] = createSignal<PosDevice>({
+    name: "POS-01 · Batavia",
+    platform: "TAURI",
+    status: "PENDING",
+    requestedAt: "2026-11-24T09:12:00+07:00",
+    lastCheck: "2026-11-24T14:30:00+07:00",
+  });
+  const [connection, setConnectionSignal] =
+    createSignal<PosConnection>("ONLINE");
+  const [session, setSession] = createSignal<UserSession | null>(null);
+  const [pinError, setPinError] = createSignal<string | null>(null);
+  const [pinAttempts, setPinAttempts] = createSignal(0);
+  const [shift, setShift] = createSignal<Shift | null>(null);
+  const [cart, setCart] = createSignal<CartLine[]>([]);
+  const [heldCarts, setHeldCarts] = createSignal<HeldCart[]>(
+    initialHeldCarts.map((held) => ({
+      ...held,
+      lines: cloneLines(held.lines),
+    })),
+  );
+  const [sales, setSales] = createSignal<PosSale[]>(
+    initialSales.map(cloneSale),
+  );
+  const [paymentMethod, setPaymentMethod] = createSignal<PaymentMethod | null>(
+    null,
+  );
+  const [cashReceived, setCashReceivedSignal] = createSignal(0);
+  const [receipt, setReceipt] = createSignal<PosSale | null>(null);
+  const [queue, setQueue] = createSignal<SyncSnapshot>({
+    ...initialSync,
+    quarantine: [...initialSync.quarantine],
+  });
+  const [posSettings, setPosSettings] = createSignal<PosSettings>({
+    ...defaultSettings,
+  });
+  const [error, setError] = createSignal<string | null>(null);
+
+  let lineSequence = 1;
+  let heldSequence = initialHeldCarts.length + 1;
+  let saleSequence = initialSales.length + 1;
+  let invoiceSequence = 124;
+  let shiftSequence = 2;
+
+  const allowedMethods = () => paymentMethodsFor(connection());
+  const currentTotals = () => cartTotals(cart());
+
+  const beginSession = () => {
+    setSession({
+      username: "dewi.lestari",
+      name: "Dewi Lestari",
+      role: "CASHIER",
+    });
+    setPinError(null);
+    setPinAttempts(0);
+    setError(null);
+    setScreen(shift()?.status === "OPEN" ? "SELL" : "OPEN_SHIFT");
+  };
+
+  const approveDevice = () => {
+    setDevice((current) => ({
+      ...current,
+      status: "ACTIVE",
+      enrolledBy: "Admin Toko",
+      lastCheck: nowIso(),
+    }));
+    setPinError(null);
+    setPinAttempts(0);
+    setError(null);
+    setScreen("LOCK");
+  };
+
+  const setDeviceStatus = (status: DeviceStatus) => {
+    setDevice((current) => ({
+      ...current,
+      status,
+      lastCheck: nowIso(),
+    }));
+
+    if (status !== "ACTIVE") {
+      setSession(null);
+      setError(null);
+      setScreen("ENROLLMENT");
+      return;
+    }
+
+    setPinError(null);
+    setPinAttempts(0);
+    setError(null);
+    setScreen("LOCK");
+  };
+
+  const unlockPin = (pin: string) => {
+    if (device().status !== "ACTIVE") {
+      setPinError("Perangkat belum aktif.");
+      return;
+    }
+
+    if (pinAttempts() >= 5) {
+      setPinError("Terlalu banyak percobaan. Coba lagi dalam 5 menit.");
+      return;
+    }
+
+    if (pin === posSettings().localPin) {
+      beginSession();
+      return;
+    }
+
+    const attempts = pinAttempts() + 1;
+    setPinAttempts(attempts);
+    setPinError(
+      attempts >= 5
+        ? "Terlalu banyak percobaan. Coba lagi dalam 5 menit."
+        : "PIN salah",
+    );
+  };
+
+  const unlockWithPassword = (password: string) => {
+    if (device().status !== "ACTIVE") {
+      setPinError("Perangkat belum aktif.");
+      return;
+    }
+
+    if (password === DEMO_PASSWORD) {
+      beginSession();
+      return;
+    }
+
+    setPinError("Kata sandi salah");
+  };
+
+  const lock = () => {
+    setSession(null);
+    setError(null);
+    setScreen(device().status === "ACTIVE" ? "LOCK" : "ENROLLMENT");
+  };
+
+  const openShift = (openingCash: number) => {
+    const user = session();
+    if (!user) {
+      setError("Sesi berakhir. Masuk kembali.");
+      setScreen("LOCK");
+      return;
+    }
+
+    if (connection() === "LOCKED") {
+      setError("Terkunci: buka shift membutuhkan koneksi.");
+      return;
+    }
+
+    if (!Number.isFinite(openingCash) || openingCash < 0) {
+      setError("Modal awal tidak valid.");
+      return;
+    }
+
+    if (shift()?.status === "OPEN") {
+      setError("Shift masih terbuka.");
+      return;
+    }
+
+    setShift({
+      id: `SHIFT-${String(shiftSequence++).padStart(2, "0")}`,
+      userId: user.username,
+      userName: user.name,
+      openedAt: nowIso(),
+      openingCash: Math.round(openingCash),
+      source: connection() === "OFFLINE" ? "OFFLINE" : "ONLINE",
+      status: "OPEN",
+      cashSales: 0,
+      refunds: 0,
+    });
+    setCart(demoCart());
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setReceipt(null);
+    setError(null);
+    setScreen("SELL");
+  };
+
+  const closeShift = (actualCash: number) => {
+    const current = shift();
+    if (!current) {
+      setError("Tidak ada shift aktif.");
+      return;
+    }
+
+    if (connection() === "LOCKED") {
+      setError("Terkunci: tutup shift menunggu koneksi.");
+      return;
+    }
+
+    const expected = expectedCash(
+      current.openingCash,
+      current.cashSales,
+      current.refunds,
+    );
+    const actual = Number.isFinite(actualCash) ? Math.round(actualCash) : 0;
+
+    setShift({
+      ...current,
+      status: "CLOSED",
+      closedAt: nowIso(),
+      expectedCash: expected,
+      actualCash: actual,
+      difference: actual - expected,
+    });
+    setCart([]);
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setReceipt(null);
+    setSession(null);
+    setError(null);
+    setScreen("LOCK");
+  };
+
+  const addProduct = (productId: string, unitId?: string) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product) {
+      setError("Produk tidak ditemukan.");
+      return;
+    }
+
+    if (product.stock <= 0) {
+      setError("Stok habis.");
+      return;
+    }
+
+    const unit = unitId
+      ? product.units.find((item) => item.id === unitId)
+      : product.units[0];
+    if (!unit) {
+      setError("Satuan tidak ditemukan.");
+      return;
+    }
+
+    const existing = cart().find(
+      (line) => line.productId === product.id && line.unitId === unit.id,
+    );
+
+    if (existing) {
+      setCart((lines) =>
+        lines.map((line) =>
+          line.id === existing.id
+            ? { ...line, quantity: line.quantity + 1 }
+            : line,
+        ),
+      );
+    } else {
+      setCart((lines) => [
+        ...lines,
+        {
+          id: `LINE-${lineSequence++}`,
+          productId: product.id,
+          name: product.name,
+          unitId: unit.id,
+          unitName: unit.name,
+          quantity: 1,
+          unitPrice: unit.sellingPrice,
+          discount: 0,
+        },
+      ]);
+    }
+
+    setError(null);
+  };
+
+  const setQuantity = (lineId: string, quantity: number) => {
+    const nextQuantity = Math.floor(quantity);
+    if (nextQuantity <= 0) {
+      setCart((lines) => lines.filter((line) => line.id !== lineId));
+      return;
+    }
+
+    setCart((lines) =>
+      lines.map((line) =>
+        line.id === lineId ? { ...line, quantity: nextQuantity } : line,
+      ),
+    );
+  };
+
+  const removeLine = (lineId: string) => {
+    setCart((lines) => lines.filter((line) => line.id !== lineId));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setError(null);
+  };
+
+  const holdCart = () => {
+    const lines = cart();
+    if (lines.length === 0) {
+      setError("Keranjang kosong.");
+      return;
+    }
+
+    const sequence = heldSequence++;
+    const held: HeldCart = {
+      id: `HOLD-${String(sequence).padStart(3, "0")}`,
+      label: `Pesanan #${sequence}`,
+      lines: cloneLines(lines),
+      createdAt: nowIso(),
+    };
+
+    setHeldCarts((current) => [...current, held]);
+    setCart([]);
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setError(null);
+  };
+
+  const recallCart = (id: string) => {
+    const held = heldCarts().find((item) => item.id === id);
+    if (!held) {
+      setError("Pesanan tahanan tidak ditemukan.");
+      return;
+    }
+
+    if (cart().length > 0) {
+      setError("Kosongkan keranjang sebelum memanggil pesanan.");
+      return;
+    }
+
+    setCart(cloneLines(held.lines));
+    setHeldCarts((current) => current.filter((item) => item.id !== id));
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setError(null);
+    setScreen("SELL");
+  };
+
+  const go = (next: PosScreen) => {
+    if (
+      connection() === "LOCKED" &&
+      (next === "SELL" || next === "PAYMENT" || next === "OPEN_SHIFT")
+    ) {
+      setError("Terkunci: selesaikan koneksi terlebih dahulu.");
+      return;
+    }
+
+    if (next === "PAYMENT") {
+      if (cart().length === 0) {
+        setError("Keranjang kosong. Tambahkan produk terlebih dahulu.");
+        return;
+      }
+
+      if (allowedMethods().length === 0) {
+        setError("Terkunci: pembayaran tidak tersedia.");
+        return;
+      }
+    }
+
+    setError(null);
+    setScreen(next);
+  };
+
+  const selectPaymentMethod = (method: PaymentMethod) => {
+    if (!allowedMethods().includes(method)) {
+      setError(
+        connection() === "LOCKED"
+          ? "Terkunci: pembayaran tidak tersedia."
+          : "Offline: hanya tunai yang tersedia.",
+      );
+      return;
+    }
+
+    setPaymentMethod(method);
+    if (method === "TUNAI") {
+      setCashReceivedSignal(currentTotals().total);
+    }
+    setError(null);
+  };
+
+  const setCashReceived = (amount: number) => {
+    if (!Number.isFinite(amount)) return;
+    setCashReceivedSignal(Math.max(0, Math.round(amount)));
+  };
+
+  const completeSale = () => {
+    if (connection() === "LOCKED") {
+      setError("Terkunci: transaksi baru diblokir.");
+      return;
+    }
+
+    const lines = cart();
+    if (lines.length === 0) {
+      setError("Keranjang kosong. Tambahkan produk terlebih dahulu.");
+      return;
+    }
+
+    const totals = currentTotals();
+    if (totals.total <= 0) {
+      setError("Total transaksi harus lebih dari nol.");
+      return;
+    }
+
+    const method = paymentMethod();
+    if (!method || !allowedMethods().includes(method)) {
+      setError("Pilih metode pembayaran yang tersedia.");
+      return;
+    }
+
+    let received = totals.total;
+    let change = 0;
+
+    if (method === "TUNAI") {
+      received = cashReceived();
+      if (received < totals.total) {
+        setError("Uang diterima kurang dari total.");
+        return;
+      }
+      change = changeDue(totals.total, received);
+    }
+
+    const saleTime = new Date();
+    const sale: PosSale = {
+      id: `SALE-${String(saleSequence++).padStart(3, "0")}`,
+      invoice: `INV/${saleTime.getFullYear()}/${String(
+        saleTime.getMonth() + 1,
+      ).padStart(2, "0")}/${String(invoiceSequence++).padStart(5, "0")}`,
+      time: nowIso(),
+      cashier: session()?.name ?? "Kasir",
+      shiftId: shift()?.id ?? "-",
+      items: cloneLines(lines),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      total: totals.total,
+      payments: [{ method, amount: received }],
+      change,
+      status: "COMPLETED",
+    };
+
+    setSales((current) => [sale, ...current]);
+
+    if (method === "TUNAI") {
+      setShift((current) =>
+        current
+          ? { ...current, cashSales: current.cashSales + totals.total }
+          : current,
+      );
+    }
+
+    if (connection() === "OFFLINE" || connection() === "GRACE") {
+      setQueue((current) => ({
+        ...current,
+        pending: current.pending + 1,
+      }));
+    }
+
+    setReceipt(sale);
+    setCart([]);
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setError(null);
+    setScreen("RECEIPT");
+  };
+
+  const newTransaction = () => {
+    setReceipt(null);
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setError(null);
+    setScreen(shift()?.status === "OPEN" ? "SELL" : "LOCK");
+  };
+
+  const setConnection = (next: PosConnection) => {
+    const current = connection();
+    if (current === next) return;
+
+    setConnectionSignal(next);
+    setPaymentMethod(null);
+    setCashReceivedSignal(0);
+    setError(null);
+
+    if (next === "LOCKED") {
+      if (screen() !== "HARD_LOCK") {
+        setPreviousScreen(screen());
+      }
+      setScreen("HARD_LOCK");
+      return;
+    }
+
+    if (current === "LOCKED") {
+      const fallback =
+        shift()?.status === "OPEN" ? "SELL" : session() ? "OPEN_SHIFT" : "LOCK";
+      setScreen(previousScreen() === "HARD_LOCK" ? fallback : previousScreen());
+    }
+  };
+
+  const syncNow = () => {
+    if (connection() !== "ONLINE") {
+      setError("Sinkronisasi membutuhkan koneksi online.");
+      return;
+    }
+
+    setQueue((current) => ({
+      ...current,
+      accepted: current.accepted + current.pending,
+      pending: 0,
+      lastSync: formatSyncTime(),
+    }));
+    setError(null);
+  };
+
+  const saveSettings = (next: Partial<PosSettings>) => {
+    setPosSettings((current) => ({ ...current, ...next }));
+    setError(null);
+  };
+
+  const voidSale = (saleId: string) => {
+    if (connection() !== "ONLINE") {
+      setError("Retur/void membutuhkan koneksi online.");
+      return;
+    }
+
+    setSales((current) =>
+      current.map((sale) =>
+        sale.id === saleId ? { ...sale, status: "VOIDED" } : sale,
+      ),
+    );
+    setError(null);
+  };
+
+  const clearError = () => setError(null);
+
+  const totals = createMemo(currentTotals);
+  const paymentMethods = createMemo(allowedMethods);
+  const deviceStatus = createMemo(() => device().status);
+  const categories = createMemo(() => [
+    "Semua",
+    ...Array.from(new Set(products.map((product) => product.category))),
+  ]);
+
+  return {
+    state: {
+      screen,
+      device,
+      deviceStatus,
+      connection,
+      session,
+      pinError,
+      pinAttempts,
+      shift,
+      cart,
+      heldCarts,
+      sales,
+      paymentMethod,
+      cashReceived,
+      receipt,
+      queue,
+      settings: posSettings,
+      error,
+      products,
+      totals,
+      paymentMethods,
+      categories,
+    },
+    actions: {
+      approveDevice,
+      setDeviceStatus,
+      unlockPin,
+      unlockWithPassword,
+      lock,
+      openShift,
+      closeShift,
+      addProduct,
+      setQuantity,
+      removeLine,
+      clearCart,
+      holdCart,
+      recallCart,
+      go,
+      selectPaymentMethod,
+      setCashReceived,
+      completeSale,
+      newTransaction,
+      setConnection,
+      syncNow,
+      saveSettings,
+      voidSale,
+      clearError,
+    },
+  };
+}
+
+export type PosStore = ReturnType<typeof createPosStore>;

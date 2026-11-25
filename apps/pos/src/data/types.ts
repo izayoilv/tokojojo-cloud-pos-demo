@@ -15,6 +15,15 @@ export type PosScreen =
 
 export type DeviceStatus = "PENDING" | "ACTIVE" | "REVOKED";
 
+export type PosDevice = {
+  name: string;
+  platform: "TAURI";
+  status: DeviceStatus;
+  enrolledBy?: string;
+  requestedAt: string;
+  lastCheck: string;
+};
+
 export type PaymentMethod =
   "TUNAI" | "QRIS" | "DEBIT" | "TRANSFER" | "CAMPURAN" | "HUTANG";
 
