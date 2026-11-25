@@ -205,6 +205,30 @@ describe("app shell", () => {
     expect((findButton(root, "QRIS") as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("shows a receipt snapshot and starts a new transaction", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    click(findButton(root, "Bayar")!);
+    click(findButton(root, "Rp 200.000")!);
+    click(findButton(root, "Selesaikan & Cetak Struk")!);
+
+    expect(store.state.screen()).toBe("RECEIPT");
+    expect(root.textContent).toContain("Pembayaran berhasil");
+    expect(root.textContent).toContain("INV/");
+    expect(root.textContent).toContain("Dewi Lestari");
+    expect(root.textContent).toContain("Bungkus");
+    expect(root.textContent).toContain("Rp 166.500");
+    expect(root.textContent).toContain("Tunai");
+    expect(root.textContent).toContain("Rp 33.500");
+
+    click(findButton(root, "Transaksi Baru")!);
+
+    expect(store.state.screen()).toBe("SELL");
+    expect(store.state.receipt()).toBeNull();
+    expect(store.state.cart()).toHaveLength(0);
+  });
+
   it("shows revoked copy and retries back to pending", () => {
     const { root, store } = mount();
 

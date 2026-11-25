@@ -95,7 +95,7 @@ export function createPosStore() {
   let lineSequence = 1;
   let heldSequence = initialHeldCarts.length + 1;
   let saleSequence = initialSales.length + 1;
-  let invoiceSequence = 124;
+  let invoiceSequence = 125;
   let shiftSequence = 2;
 
   const allowedMethods = () => paymentMethodsFor(connection());

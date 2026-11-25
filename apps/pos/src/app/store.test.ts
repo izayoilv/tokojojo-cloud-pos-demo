@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { products } from "../data/mock";
 import { createPosStore } from "./store";
 
 const unlockedStore = () => {
@@ -133,6 +134,34 @@ describe("payment and offline behavior", () => {
     store.actions.completeSale();
 
     expect(store.state.receipt()?.payments[0]?.reference).toBe("EDC-7781");
+  });
+
+  it("keeps receipt prices stable when catalogue prices change", () => {
+    const store = unlockedStore();
+    const product = products.find((item) => item.id === "PRD-001")!;
+    const unit = product.units[0]!;
+    const originalPrice = unit.sellingPrice;
+
+    try {
+      store.actions.selectPaymentMethod("TUNAI");
+      store.actions.setCashReceived(200000);
+      store.actions.completeSale();
+
+      const receipt = store.state.receipt()!;
+      const line = receipt.items.find((item) => item.productId === product.id)!;
+      const receiptPrice = line.unitPrice;
+
+      unit.sellingPrice = 999999;
+
+      expect(
+        store.state
+          .receipt()!
+          .items.find((item) => item.productId === product.id)!.unitPrice,
+      ).toBe(receiptPrice);
+      expect(store.state.receipt()!.total).toBe(receipt.total);
+    } finally {
+      unit.sellingPrice = originalPrice;
+    }
   });
 
   it("closes the shift with a zero difference when cash matches", () => {

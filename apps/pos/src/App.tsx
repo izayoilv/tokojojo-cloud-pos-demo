@@ -9,6 +9,7 @@ import { EnrollmentScreen } from "./screens/EnrollmentScreen";
 import { LockScreen } from "./screens/LockScreen";
 import { OpenShiftScreen } from "./screens/OpenShiftScreen";
 import { PaymentScreen } from "./screens/PaymentScreen";
+import { ReceiptScreen } from "./screens/ReceiptScreen";
 import { SellScreen } from "./screens/SellScreen";
 
 const screenCopy: Record<PosScreen, { title: string; description: string }> = {
@@ -97,6 +98,9 @@ export default function App() {
           </Match>
           <Match when={pos.state.screen() === "PAYMENT"}>
             <PaymentScreen />
+          </Match>
+          <Match when={pos.state.screen() === "RECEIPT"}>
+            <ReceiptScreen />
           </Match>
         </Switch>
       </main>
