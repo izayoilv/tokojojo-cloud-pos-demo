@@ -126,6 +126,15 @@ describe("payment and offline behavior", () => {
     expect(store.state.screen()).toBe("SELL");
   });
 
+  it("keeps a non-cash payment reference on the sale", () => {
+    const store = unlockedStore();
+    store.actions.selectPaymentMethod("DEBIT");
+    store.actions.setPaymentReference("EDC-7781");
+    store.actions.completeSale();
+
+    expect(store.state.receipt()?.payments[0]?.reference).toBe("EDC-7781");
+  });
+
   it("closes the shift with a zero difference when cash matches", () => {
     const store = unlockedStore();
     store.actions.setConnection("OFFLINE");

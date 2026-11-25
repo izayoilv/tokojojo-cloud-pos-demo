@@ -154,6 +154,57 @@ describe("app shell", () => {
     expect(root.textContent).toContain("Rp 304.500");
   });
 
+  it("pays cash with change and completes the sale", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    click(findButton(root, "Bayar")!);
+
+    expect(store.state.screen()).toBe("PAYMENT");
+    expect(root.textContent).toContain("Total tagihan");
+    expect(root.textContent).toContain("Rp 166.500");
+
+    const quickAmount = findButton(root, "Rp 200.000");
+    expect(quickAmount).toBeDefined();
+    click(quickAmount!);
+
+    expect(root.textContent).toContain("Rp 33.500");
+
+    click(findButton(root, "Selesaikan & Cetak Struk")!);
+
+    expect(store.state.screen()).toBe("RECEIPT");
+    expect(store.state.receipt()?.change).toBe(33500);
+  });
+
+  it("disables non-cash methods while offline", () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    store.actions.setConnection("OFFLINE");
+    click(findButton(root, "Bayar")!);
+
+    expect(store.state.screen()).toBe("PAYMENT");
+    expect(root.textContent).toContain(
+      "Offline: hanya pembayaran tunai yang tersedia.",
+    );
+
+    const qris = findButton(root, "QRIS");
+    expect(qris).toBeDefined();
+    expect((qris as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("keeps cash ready when the connection drops on the payment screen", () => {
+    const { root, store } = mount();
+    openSell(root);
+    click(findButton(root, "Bayar")!);
+
+    store.actions.setConnection("OFFLINE");
+
+    expect(store.state.paymentMethod()).toBe("TUNAI");
+    expect(store.state.cashReceived()).toBe(166500);
+    expect((findButton(root, "QRIS") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("shows revoked copy and retries back to pending", () => {
     const { root, store } = mount();
 

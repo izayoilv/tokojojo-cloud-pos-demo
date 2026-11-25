@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from "solid-js";
+import { batch, createMemo, createSignal } from "solid-js";
 
 import {
   demoCart,
@@ -81,6 +81,7 @@ export function createPosStore() {
     null,
   );
   const [cashReceived, setCashReceivedSignal] = createSignal(0);
+  const [paymentReference, setPaymentReferenceSignal] = createSignal("");
   const [receipt, setReceipt] = createSignal<PosSale | null>(null);
   const [queue, setQueue] = createSignal<SyncSnapshot>({
     ...initialSync,
@@ -225,6 +226,7 @@ export function createPosStore() {
     setCart(demoCart());
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setReceipt(null);
     setError(null);
     setScreen("SELL");
@@ -260,6 +262,7 @@ export function createPosStore() {
     setCart([]);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setReceipt(null);
     setSession(null);
     setError(null);
@@ -339,6 +342,7 @@ export function createPosStore() {
     setCart([]);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setError(null);
   };
 
@@ -361,6 +365,7 @@ export function createPosStore() {
     setCart([]);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setError(null);
   };
 
@@ -380,6 +385,7 @@ export function createPosStore() {
     setHeldCarts((current) => current.filter((item) => item.id !== id));
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setError(null);
     setScreen("SELL");
   };
@@ -420,6 +426,7 @@ export function createPosStore() {
     }
 
     setPaymentMethod(method);
+    setPaymentReferenceSignal("");
     if (method === "TUNAI") {
       setCashReceivedSignal(currentTotals().total);
     }
@@ -429,6 +436,10 @@ export function createPosStore() {
   const setCashReceived = (amount: number) => {
     if (!Number.isFinite(amount)) return;
     setCashReceivedSignal(Math.max(0, Math.round(amount)));
+  };
+
+  const setPaymentReference = (value: string) => {
+    setPaymentReferenceSignal(value);
   };
 
   const completeSale = () => {
@@ -480,7 +491,13 @@ export function createPosStore() {
       subtotal: totals.subtotal,
       discount: totals.discount,
       total: totals.total,
-      payments: [{ method, amount: received }],
+      payments: [
+        {
+          method,
+          amount: received,
+          reference: paymentReference().trim() || undefined,
+        },
+      ],
       change,
       status: "COMPLETED",
     };
@@ -506,6 +523,7 @@ export function createPosStore() {
     setCart([]);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setError(null);
     setScreen("RECEIPT");
   };
@@ -514,6 +532,7 @@ export function createPosStore() {
     setReceipt(null);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setPaymentReferenceSignal("");
     setError(null);
     setScreen(shift()?.status === "OPEN" ? "SELL" : "LOCK");
   };
@@ -522,24 +541,33 @@ export function createPosStore() {
     const current = connection();
     if (current === next) return;
 
-    setConnectionSignal(next);
-    setPaymentMethod(null);
-    setCashReceivedSignal(0);
-    setError(null);
+    batch(() => {
+      setConnectionSignal(next);
+      setPaymentMethod(null);
+      setCashReceivedSignal(0);
+      setPaymentReferenceSignal("");
+      setError(null);
 
-    if (next === "LOCKED") {
-      if (screen() !== "HARD_LOCK") {
-        setPreviousScreen(screen());
+      if (next === "LOCKED") {
+        if (screen() !== "HARD_LOCK") {
+          setPreviousScreen(screen());
+        }
+        setScreen("HARD_LOCK");
+        return;
       }
-      setScreen("HARD_LOCK");
-      return;
-    }
 
-    if (current === "LOCKED") {
-      const fallback =
-        shift()?.status === "OPEN" ? "SELL" : session() ? "OPEN_SHIFT" : "LOCK";
-      setScreen(previousScreen() === "HARD_LOCK" ? fallback : previousScreen());
-    }
+      if (current === "LOCKED") {
+        const fallback =
+          shift()?.status === "OPEN"
+            ? "SELL"
+            : session()
+              ? "OPEN_SHIFT"
+              : "LOCK";
+        setScreen(
+          previousScreen() === "HARD_LOCK" ? fallback : previousScreen(),
+        );
+      }
+    });
   };
 
   const syncNow = () => {
@@ -601,6 +629,7 @@ export function createPosStore() {
       sales,
       paymentMethod,
       cashReceived,
+      paymentReference,
       receipt,
       queue,
       settings: posSettings,
@@ -627,6 +656,7 @@ export function createPosStore() {
       go,
       selectPaymentMethod,
       setCashReceived,
+      setPaymentReference,
       completeSale,
       newTransaction,
       setConnection,
