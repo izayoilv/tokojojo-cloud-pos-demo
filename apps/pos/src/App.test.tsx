@@ -229,6 +229,76 @@ describe("app shell", () => {
     expect(store.state.cart()).toHaveLength(0);
   });
 
+  it("shows sales history, reprint, and blocks returns offline", () => {
+    const { root, store } = mount();
+    openSell(root);
+    click(findButton(root, "Riwayat")!);
+
+    expect(store.state.screen()).toBe("HISTORY");
+    expect(root.textContent).toContain("Riwayat Transaksi");
+    expect(root.textContent).toContain("Retur sebagian");
+    expect(
+      root.querySelectorAll<HTMLElement>("[data-sale-id]")[0]?.dataset.saleId,
+    ).toBe("SALE-001");
+
+    const completed = root.querySelector<HTMLButtonElement>(
+      '[data-sale-id="SALE-001"]',
+    );
+    expect(completed).not.toBeNull();
+    click(completed!);
+
+    expect(root.textContent).toContain(
+      "Hanya ADMIN/OWNER yang dapat memproses retur/void.",
+    );
+
+    click(findButton(root, "Cetak")!);
+    expect(document.body.textContent).toContain("Cetak ulang struk");
+    expect(document.body.textContent).toContain("TOKO JOJO");
+
+    click(findButton(root, "Cetak struk", document)!);
+    expect(root.textContent).toContain("Struk dikirim ke printer demo.");
+
+    store.actions.setConnection("OFFLINE");
+    expect(root.textContent).toContain(
+      "Retur/void membutuhkan koneksi online.",
+    );
+  });
+
+  it("voids a sale with demo owner permission", () => {
+    const { root, store } = mount();
+    openSell(root);
+    click(findButton(root, "Riwayat")!);
+
+    const completed = root.querySelector<HTMLButtonElement>(
+      '[data-sale-id="SALE-001"]',
+    );
+    expect(completed).not.toBeNull();
+    click(completed!);
+
+    click(findButton(root, "Aktifkan izin demo OWNER")!);
+    expect(store.state.session()?.role).toBe("OWNER");
+
+    const voidButton = root.querySelector<HTMLButtonElement>(
+      '[data-action="void"]',
+    );
+    expect(voidButton).not.toBeNull();
+    expect(voidButton!.disabled).toBe(false);
+    click(voidButton!);
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+
+    const confirm = findButton(root, "Void", dialog!);
+    expect(confirm).toBeDefined();
+    click(confirm!);
+
+    expect(
+      store.state.sales().find((sale) => sale.id === "SALE-001")?.status,
+    ).toBe("VOIDED");
+    expect(root.textContent).toContain(
+      "Transaksi void. Audit void tersimpan pada log.",
+    );
+  });
+
   it("shows revoked copy and retries back to pending", () => {
     const { root, store } = mount();
 

@@ -21,6 +21,13 @@ export function AppTopBar() {
     return `Shift ${shift.id.replace("SHIFT-", "")} · ${formatTime(shift.openedAt)}`;
   };
 
+  const roleLabel = () => {
+    const role = pos.state.session()?.role;
+    if (role === "OWNER") return "Owner";
+    if (role === "ADMIN") return "Admin";
+    return "Kasir";
+  };
+
   return (
     <header class="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
       <div class="flex min-w-0 items-center gap-2.5">
@@ -53,7 +60,7 @@ export function AppTopBar() {
           <div class="flex min-w-0 items-center gap-4">
             <div class="min-w-0">
               <div class="text-[10px] font-bold tracking-[0.08em] text-ink-muted uppercase">
-                Kasir
+                {roleLabel()}
               </div>
               <div class="truncate text-xs font-bold text-ink">
                 {session().name}

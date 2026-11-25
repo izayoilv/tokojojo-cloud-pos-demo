@@ -178,6 +178,59 @@ describe("payment and offline behavior", () => {
   });
 });
 
+describe("sales history actions", () => {
+  it("blocks returns and voids while offline", () => {
+    const store = unlockedStore();
+    const target = store.state
+      .sales()
+      .find((sale) => sale.status === "COMPLETED")!;
+    store.actions.setConnection("OFFLINE");
+
+    store.actions.voidSale(target.id);
+    expect(store.state.error()).toContain("koneksi online");
+    expect(
+      store.state.sales().find((sale) => sale.id === target.id)?.status,
+    ).toBe("COMPLETED");
+
+    store.actions.returnSale(target.id);
+    expect(
+      store.state.sales().find((sale) => sale.id === target.id)?.status,
+    ).toBe("COMPLETED");
+  });
+
+  it("requires admin or owner and updates completed sales online", () => {
+    const store = unlockedStore();
+    const completed = store.state
+      .sales()
+      .filter((sale) => sale.status === "COMPLETED");
+    const first = completed[0]!;
+    const second = completed[1]!;
+
+    store.actions.voidSale(first.id);
+    expect(store.state.error()).toContain("ADMIN/OWNER");
+    expect(
+      store.state.sales().find((sale) => sale.id === first.id)?.status,
+    ).toBe("COMPLETED");
+
+    store.actions.setSessionRole("OWNER");
+    store.actions.voidSale(first.id);
+    expect(
+      store.state.sales().find((sale) => sale.id === first.id)?.status,
+    ).toBe("VOIDED");
+
+    store.actions.returnSale(second.id);
+    expect(
+      store.state.sales().find((sale) => sale.id === second.id)?.status,
+    ).toBe("PARTIAL_RETURN");
+
+    store.actions.voidSale("SALE-003");
+    expect(store.state.error()).toContain("tidak dapat diubah");
+    expect(
+      store.state.sales().find((sale) => sale.id === "SALE-003")?.status,
+    ).toBe("PARTIAL_RETURN");
+  });
+});
+
 describe("connection states", () => {
   it("enters hard lock without losing the queued sale", () => {
     const store = unlockedStore();

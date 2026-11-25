@@ -590,11 +590,45 @@ export function createPosStore() {
     setError(null);
   };
 
-  const voidSale = (saleId: string) => {
+  const setSessionRole = (role: UserSession["role"]) => {
+    setSession((current) => (current ? { ...current, role } : current));
+    setError(null);
+  };
+
+  const saleActionTarget = (saleId: string) => {
     if (connection() !== "ONLINE") {
       setError("Retur/void membutuhkan koneksi online.");
-      return;
+      return null;
     }
+
+    const role = session()?.role;
+    if (role !== "ADMIN" && role !== "OWNER") {
+      setError("Hanya ADMIN/OWNER yang dapat memproses retur/void.");
+      return null;
+    }
+
+    const sale = sales().find((item) => item.id === saleId);
+    if (!sale || sale.status !== "COMPLETED") {
+      setError("Transaksi ini tidak dapat diubah.");
+      return null;
+    }
+
+    return sale;
+  };
+
+  const returnSale = (saleId: string) => {
+    if (!saleActionTarget(saleId)) return;
+
+    setSales((current) =>
+      current.map((sale) =>
+        sale.id === saleId ? { ...sale, status: "PARTIAL_RETURN" } : sale,
+      ),
+    );
+    setError(null);
+  };
+
+  const voidSale = (saleId: string) => {
+    if (!saleActionTarget(saleId)) return;
 
     setSales((current) =>
       current.map((sale) =>
@@ -662,6 +696,8 @@ export function createPosStore() {
       setConnection,
       syncNow,
       saveSettings,
+      setSessionRole,
+      returnSale,
       voidSale,
       clearError,
     },

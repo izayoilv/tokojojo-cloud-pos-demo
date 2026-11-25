@@ -6,6 +6,7 @@ import { AppTopBar } from "./components/AppTopBar";
 import { ShortcutFooter } from "./components/ShortcutFooter";
 import type { PosScreen } from "./data/types";
 import { EnrollmentScreen } from "./screens/EnrollmentScreen";
+import { HistoryScreen } from "./screens/HistoryScreen";
 import { LockScreen } from "./screens/LockScreen";
 import { OpenShiftScreen } from "./screens/OpenShiftScreen";
 import { PaymentScreen } from "./screens/PaymentScreen";
@@ -101,6 +102,9 @@ export default function App() {
           </Match>
           <Match when={pos.state.screen() === "RECEIPT"}>
             <ReceiptScreen />
+          </Match>
+          <Match when={pos.state.screen() === "HISTORY"}>
+            <HistoryScreen />
           </Match>
         </Switch>
       </main>
