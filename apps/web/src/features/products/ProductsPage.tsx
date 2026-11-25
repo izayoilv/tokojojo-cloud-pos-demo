@@ -1,6 +1,24 @@
 import { useLocation } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Download, PackagePlus, Pencil, Search, Upload } from "lucide-solid";
+import {
+  Badge,
+  Button,
+  Checkbox,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Pagination,
+  Panel,
+  SearchInput,
+  Select,
+  Table,
+  TableSkeleton,
+  TableWrap,
+  Td,
+  Th,
+  useToast,
+} from "@tokojojo/ui";
+import { Download, PackagePlus, Pencil } from "lucide-solid";
 import {
   createEffect,
   createMemo,
@@ -11,55 +29,42 @@ import {
 } from "solid-js";
 
 import { useAuth } from "../../app/auth";
-import { useToast } from "../../app/toast";
-import { Button } from "../../components/ui/Button";
-import { Card, CardHeader } from "../../components/ui/Card";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { ErrorState } from "../../components/ui/ErrorState";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { Pill } from "../../components/ui/Pill";
-import { TableSkeleton } from "../../components/ui/Skeleton";
 import { repository } from "../../data/repository";
 import type { Product } from "../../data/types";
-import { stockStatus, totalStock } from "../../lib/calc";
+import { baseUnit, productUnits, stockStatus } from "../../lib/calc";
 import { formatRupiah } from "../../lib/format";
 import { downloadCsv, productsToCsv } from "./productCsv";
 import { ProductFormModal } from "./ProductFormModal";
 
-function productInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((word) => word[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+const statusLabel = {
+  AMAN: "Aman",
+  MENIPIS: "Menipis",
+  HABIS: "Habis",
+} as const;
 
 export function ProductsPage() {
   const auth = useAuth();
   const toast = useToast();
   const location = useLocation();
   const queryClient = useQueryClient();
-
-  const initialQuery =
+  const queryParam = () =>
     typeof location.query.q === "string" ? location.query.q : "";
 
-  const [query, setQuery] = createSignal(initialQuery);
+  const [search, setSearch] = createSignal(queryParam());
   const [category, setCategory] = createSignal("Semua");
-  const [brand, setBrand] = createSignal("Semua");
+  const [status, setStatus] = createSignal("SEMUA");
+  const [locationFilter, setLocationFilter] = createSignal("SEMUA");
+  const [page, setPage] = createSignal(1);
+  const [selected, setSelected] = createSignal<string[]>([]);
   const [editing, setEditing] = createSignal<{
     product: Product | null;
   } | null>(null);
 
   createEffect(
-    on(
-      () => location.query.q,
-      (value) => {
-        if (typeof value === "string") {
-          setQuery(value);
-        }
-      },
-    ),
+    on(queryParam, (value) => {
+      setSearch(value);
+      setPage(1);
+    }),
   );
 
   const productsQuery = createQuery(() => ({
@@ -72,119 +77,178 @@ export function ProductsPage() {
     "Semua",
     ...new Set(products().map((product) => product.category)),
   ]);
-  const brands = createMemo(() => [
-    "Semua",
-    ...new Set(products().map((product) => product.brand)),
-  ]);
+  const canEdit = () =>
+    auth.user()?.role === "OWNER" || auth.user()?.role === "ADMIN";
 
   const filtered = createMemo(() => {
-    const needle = query().trim().toLowerCase();
+    const needle = search().trim().toLowerCase();
     return products().filter((product) => {
-      const matchesQuery =
+      const matchesSearch =
         !needle ||
         product.name.toLowerCase().includes(needle) ||
         product.sku.toLowerCase().includes(needle) ||
-        product.barcode.toLowerCase().includes(needle);
+        product.barcode.includes(needle) ||
+        productUnits(product).some((unit) => unit.barcode.includes(needle));
       const matchesCategory =
         category() === "Semua" || product.category === category();
-      const matchesBrand = brand() === "Semua" || product.brand === brand();
-      return matchesQuery && matchesCategory && matchesBrand;
+      const matchesStatus =
+        status() === "SEMUA" || stockStatus(product) === status();
+      const matchesLocation =
+        locationFilter() === "SEMUA" ||
+        (locationFilter() === "GUDANG" && product.warehouseStock > 0) ||
+        (locationFilter() === "TOKO" && product.storeStock > 0);
+      return (
+        matchesSearch && matchesCategory && matchesStatus && matchesLocation
+      );
     });
   });
 
-  const canEdit = () =>
-    auth.user()?.role === "OWNER" || auth.user()?.role === "ADMIN";
+  const pageSize = 8;
+  const paged = createMemo(() =>
+    filtered().slice((page() - 1) * pageSize, page() * pageSize),
+  );
+  const allSelected = () =>
+    paged().length > 0 && paged().every((p) => selected().includes(p.id));
+
+  const toggleAll = (checked: boolean) => {
+    setSelected((current) =>
+      checked
+        ? [...new Set([...current, ...paged().map((p) => p.id)])]
+        : current.filter((id) => !paged().some((p) => p.id === id)),
+    );
+  };
+
+  const reset = () => {
+    setSearch("");
+    setCategory("Semua");
+    setStatus("SEMUA");
+    setLocationFilter("SEMUA");
+    setPage(1);
+  };
 
   const exportCsv = () => {
     downloadCsv(
       `produk-tokojojo-${new Date().toISOString().slice(0, 10)}.csv`,
       productsToCsv(filtered()),
     );
-    toast.notify(`Ekspor CSV: ${filtered().length} produk diunduh`);
+    toast.notify(`Ekspor CSV: ${filtered().length} produk diunduh.`);
   };
 
-  const onSaved = () => {
-    void queryClient.invalidateQueries({ queryKey: ["products"] });
+  const archiveSelected = async () => {
+    if (selected().length === 0) return;
+    await Promise.all(
+      selected().map((id) => repository.setProductActive(id, false)),
+    );
+    setSelected([]);
+    await queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast.notify("Produk terpilih diarsipkan.", "warning");
   };
 
   return (
     <>
       <PageHeader
-        eyebrow="Katalog barang — multi-barcode, HPP, harga jual"
+        eyebrow="Katalog barang — multi-satuan, HPP, harga jual"
         title={`Master Produk (${products().length} SKU)`}
+        subtitle="Satuan dasar ditampilkan; produk multi-satuan menampilkan jumlah satuan."
         actions={
-          <Show
-            when={canEdit()}
-            fallback={
-              <Pill tone="gray">Mode lihat — peran {auth.user()?.role}</Pill>
-            }
-          >
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setEditing({ product: null })}
-            >
-              <PackagePlus size={14} /> Tambah Produk
+          <>
+            <Button size="sm" onClick={exportCsv}>
+              <Download size={14} /> Ekspor CSV
             </Button>
-          </Show>
+            <Show when={canEdit()}>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setEditing({ product: null })}
+              >
+                <PackagePlus size={14} /> Tambah Produk
+              </Button>
+            </Show>
+          </>
         }
       />
 
-      <Card>
-        <CardHeader
-          title={`Menampilkan ${filtered().length} dari ${products().length} produk`}
-          subtitle="Cari berdasarkan nama, SKU, atau barcode. Filter kategori dan merek."
-          actions={
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="relative">
-                <Search
-                  size={14}
-                  class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-faint"
-                />
-                <input
-                  class="h-9 w-[220px] max-w-full rounded-lg border-[1.5px] border-line bg-white pr-2.5 pl-8 text-[13px] outline-none transition focus:border-royal"
-                  placeholder="Cari nama / SKU / barcode..."
-                  value={query()}
-                  onInput={(event) => setQuery(event.currentTarget.value)}
-                />
-              </div>
-              <select
-                aria-label="Filter kategori"
-                class="h-9 rounded-lg border-[1.5px] border-line bg-white px-2.5 text-[13px] outline-none focus:border-royal"
+      <Panel>
+        <div class="border-b border-line p-4">
+          <div class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[1.5fr_1fr_1fr_1fr_auto]">
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-semibold text-ink-secondary">Cari</span>
+              <SearchInput
+                placeholder="Nama, SKU, barcode"
+                value={search()}
+                onInput={(event) => {
+                  setSearch(event.currentTarget.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-semibold text-ink-secondary">
+                Kategori
+              </span>
+              <Select
                 value={category()}
-                onChange={(event) => setCategory(event.currentTarget.value)}
+                onChange={(event) => {
+                  setCategory(event.currentTarget.value);
+                  setPage(1);
+                }}
               >
                 <For each={categories()}>
-                  {(item) => <option value={item}>{item}</option>}
+                  {(item) => <option>{item}</option>}
                 </For>
-              </select>
-              <select
-                aria-label="Filter merek"
-                class="h-9 rounded-lg border-[1.5px] border-line bg-white px-2.5 text-[13px] outline-none focus:border-royal"
-                value={brand()}
-                onChange={(event) => setBrand(event.currentTarget.value)}
+              </Select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-semibold text-ink-secondary">
+                Status
+              </span>
+              <Select
+                value={status()}
+                onChange={(event) => {
+                  setStatus(event.currentTarget.value);
+                  setPage(1);
+                }}
               >
-                <For each={brands()}>
-                  {(item) => <option value={item}>{item}</option>}
-                </For>
-              </select>
-              <Button size="sm" onClick={exportCsv}>
-                <Download size={13} /> CSV
-              </Button>
+                <option value="SEMUA">Semua</option>
+                <option value="AMAN">Aman</option>
+                <option value="MENIPIS">Menipis</option>
+                <option value="HABIS">Habis</option>
+              </Select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <span class="text-xs font-semibold text-ink-secondary">
+                Lokasi
+              </span>
+              <Select
+                value={locationFilter()}
+                onChange={(event) => {
+                  setLocationFilter(event.currentTarget.value);
+                  setPage(1);
+                }}
+              >
+                <option value="SEMUA">Semua</option>
+                <option value="GUDANG">Gudang belakang</option>
+                <option value="TOKO">Area toko</option>
+              </Select>
+            </div>
+            <Button size="sm" variant="ghost" onClick={reset}>
+              Reset
+            </Button>
+          </div>
+          <Show when={selected().length > 0 && canEdit()}>
+            <div class="mt-3 flex items-center gap-2 rounded-[6px] bg-primary-soft px-3 py-2 text-sm text-primary">
+              <b>{selected().length} produk dipilih</b>
               <Button
                 size="sm"
-                onClick={() =>
-                  toast.notify(
-                    "Fitur impor massal tersedia setelah API tersambung.",
-                    "warn",
-                  )
-                }
+                variant="soft-danger"
+                class="ml-auto"
+                onClick={() => void archiveSelected()}
               >
-                <Upload size={13} /> Impor
+                Arsipkan
               </Button>
             </div>
-          }
-        />
+          </Show>
+        </div>
 
         <Show
           when={!productsQuery.isError}
@@ -199,143 +263,136 @@ export function ProductsPage() {
             when={!productsQuery.isPending}
             fallback={<TableSkeleton rows={8} cols={6} />}
           >
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-[940px] border-collapse text-[12.5px]">
-                <thead>
-                  <tr>
-                    <For
-                      each={[
-                        { label: "Produk", align: "left" },
-                        { label: "SKU / Barcode", align: "left" },
-                        { label: "Kategori", align: "left" },
-                        { label: "HPP", align: "right" },
-                        { label: "Harga Jual", align: "right" },
-                        { label: "Stok Total", align: "center" },
-                        { label: "Status", align: "center" },
-                        { label: "", align: "center" },
-                      ]}
-                    >
-                      {(column) => (
-                        <th
-                          class={`border-b border-line bg-slate-50 px-3 py-2.5 text-[10.5px] font-extrabold tracking-[.05em] whitespace-nowrap text-muted uppercase ${
-                            column.align === "right"
-                              ? "text-right"
-                              : column.align === "center"
-                                ? "text-center"
-                                : "text-left"
-                          }`}
-                        >
-                          {column.label}
-                        </th>
+            <Show
+              when={paged().length > 0}
+              fallback={
+                <EmptyState
+                  title="Tidak ada produk cocok"
+                  description="Ubah kata kunci atau filter produk."
+                  action={
+                    <Button size="sm" onClick={reset}>
+                      Reset filter
+                    </Button>
+                  }
+                />
+              }
+            >
+              <TableWrap>
+                <Table class="min-w-[1120px]">
+                  <thead>
+                    <tr>
+                      <Th class="w-10">
+                        <Checkbox
+                          label="Pilih semua"
+                          showLabel={false}
+                          checked={allSelected()}
+                          onChange={toggleAll}
+                        />
+                      </Th>
+                      <Th>SKU</Th>
+                      <Th>Produk</Th>
+                      <Th>Kategori</Th>
+                      <Th>Satuan</Th>
+                      <Th align="right">HPP</Th>
+                      <Th align="right">Harga</Th>
+                      <Th align="right">Gudang</Th>
+                      <Th align="right">Toko</Th>
+                      <Th>Status</Th>
+                      <Th align="center">Aksi</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={paged()}>
+                      {(product) => (
+                        <tr class="hover:bg-hover">
+                          <Td>
+                            <Checkbox
+                              label={`Pilih ${product.name}`}
+                              showLabel={false}
+                              checked={selected().includes(product.id)}
+                              onChange={(checked) =>
+                                setSelected((current) =>
+                                  checked
+                                    ? [...current, product.id]
+                                    : current.filter((id) => id !== product.id),
+                                )
+                              }
+                            />
+                          </Td>
+                          <Td class="font-mono text-[11px] whitespace-nowrap">
+                            {product.sku}
+                          </Td>
+                          <Td>
+                            <b class="block max-w-[260px] truncate text-ink">
+                              {product.name}
+                            </b>
+                            <span class="font-mono text-[11px] text-ink-muted">
+                              {product.barcode}
+                            </span>
+                          </Td>
+                          <Td>{product.category}</Td>
+                          <Td>
+                            {baseUnit(product).name}
+                            <Show when={productUnits(product).length > 1}>
+                              <Badge tone="neutral" class="ml-1">
+                                {productUnits(product).length} satuan
+                              </Badge>
+                            </Show>
+                          </Td>
+                          <Td align="right">{formatRupiah(product.cost)}</Td>
+                          <Td align="right">
+                            <b>{formatRupiah(product.price)}</b>
+                          </Td>
+                          <Td align="right">{product.warehouseStock}</Td>
+                          <Td align="right">{product.storeStock}</Td>
+                          <Td>
+                            <Badge
+                              tone={
+                                stockStatus(product) === "HABIS"
+                                  ? "danger"
+                                  : stockStatus(product) === "MENIPIS"
+                                    ? "warning"
+                                    : "success"
+                              }
+                            >
+                              {statusLabel[stockStatus(product)]}
+                            </Badge>
+                          </Td>
+                          <Td align="center">
+                            <Button
+                              size="sm"
+                              onClick={() => setEditing({ product })}
+                            >
+                              <Pencil size={13} />
+                              {canEdit() ? "Edit" : "Lihat"}
+                            </Button>
+                          </Td>
+                        </tr>
                       )}
                     </For>
-                  </tr>
-                </thead>
-                <tbody>
-                  <Show
-                    when={filtered().length > 0}
-                    fallback={
-                      <tr>
-                        <td colspan="8">
-                          <EmptyState
-                            title="Tidak ada produk cocok"
-                            description="Ubah kata kunci atau filter kategori/merek."
-                          />
-                        </td>
-                      </tr>
-                    }
-                  >
-                    <For each={filtered()}>
-                      {(product) => {
-                        const status = () => stockStatus(product);
-                        return (
-                          <tr class="hover:bg-slate-50">
-                            <td class="border-b border-slate-100 px-3 py-2.5">
-                              <div class="flex items-center gap-2.5">
-                                <span
-                                  class="flex size-[34px] shrink-0 items-center justify-center rounded-lg text-[11px] font-bold"
-                                  style={{
-                                    background: `${product.color}18`,
-                                    color: product.color,
-                                  }}
-                                >
-                                  {productInitials(product.name)}
-                                </span>
-                                <div class="min-w-0">
-                                  <b class="block max-w-[300px] truncate text-ink">
-                                    {product.name}
-                                  </b>
-                                  <div class="text-[11px] text-faint">
-                                    {product.brand} &bull; per {product.unit}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5">
-                              <div class="font-mono text-[11px]">
-                                {product.sku}
-                              </div>
-                              <div class="font-mono text-[10px] text-faint">
-                                {product.barcode}
-                              </div>
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5">
-                              {product.category}
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5 text-right tabular-nums">
-                              {formatRupiah(product.cost)}
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5 text-right font-bold tabular-nums">
-                              {formatRupiah(product.price)}
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5 text-center">
-                              <b>{totalStock(product)}</b>{" "}
-                              <span class="text-[10.5px] text-faint">
-                                {product.unit}
-                              </span>
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5 text-center">
-                              <Pill
-                                tone={
-                                  status() === "HABIS"
-                                    ? "red"
-                                    : status() === "MENIPIS"
-                                      ? "amber"
-                                      : "green"
-                                }
-                              >
-                                {status()}
-                              </Pill>
-                            </td>
-                            <td class="border-b border-slate-100 px-3 py-2.5 text-center">
-                              <Button
-                                size="sm"
-                                onClick={() => setEditing({ product })}
-                              >
-                                <Pencil size={12} />
-                                {canEdit() ? "Edit" : "Lihat"}
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      }}
-                    </For>
-                  </Show>
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </Table>
+              </TableWrap>
+              <Pagination
+                page={page()}
+                pageSize={pageSize}
+                total={filtered().length}
+                onPage={setPage}
+              />
+            </Show>
           </Show>
         </Show>
-      </Card>
+      </Panel>
 
       <Show when={editing()}>
         {(entry) => (
           <ProductFormModal
             product={entry().product}
-            categories={categories().filter((item) => item !== "Semua")}
             canEdit={canEdit()}
             onClose={() => setEditing(null)}
-            onSaved={onSaved}
+            onSaved={() => {
+              void queryClient.invalidateQueries({ queryKey: ["products"] });
+            }}
           />
         )}
       </Show>

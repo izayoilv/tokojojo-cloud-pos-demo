@@ -13,6 +13,7 @@
     "test": "vitest --run"
   },
   "dependencies": {
+    "@tokojojo/ui": "workspace:*",
     "@kobalte/core": "0.13.14",
     "@solidjs/router": "1.0.3",
     "@tanstack/solid-query": "5.108.0",

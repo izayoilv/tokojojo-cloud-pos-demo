@@ -2,6 +2,7 @@ packages:
   - apps/api
   - apps/web
   - apps/pos
+  - packages/ui
 
 allowBuilds:
   esbuild: true

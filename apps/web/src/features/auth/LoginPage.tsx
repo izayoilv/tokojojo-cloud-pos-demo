@@ -1,11 +1,10 @@
-import { useNavigate } from "@solidjs/router";
-import { KeyRound, LogIn, UserRound } from "lucide-solid";
+import { A, useNavigate } from "@solidjs/router";
+import { Button, Field, Input, Panel, useToast } from "@tokojojo/ui";
+import { Eye, EyeOff, LogIn, ShieldCheck } from "lucide-solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { useAuth } from "../../app/auth";
 import { roleMeta } from "../../app/rbac";
-import { useToast } from "../../app/toast";
-import { Field, inputClass } from "../../components/ui/Field";
 import { demoPassword, users } from "../../data/mock";
 
 export function LoginPage() {
@@ -15,6 +14,8 @@ export function LoginPage() {
 
   const [username, setUsername] = createSignal("owner");
   const [password, setPassword] = createSignal(demoPassword);
+  const [showPassword, setShowPassword] = createSignal(false);
+  const [showDemo, setShowDemo] = createSignal(false);
   const [error, setError] = createSignal("");
   const [loading, setLoading] = createSignal(false);
 
@@ -37,7 +38,7 @@ export function LoginPage() {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Tidak dapat masuk saat ini.",
+          : "Tidak bisa menghubungi server. Coba lagi.",
       );
     } finally {
       setLoading(false);
@@ -51,116 +52,135 @@ export function LoginPage() {
   };
 
   return (
-    <div class="flex min-h-dvh items-center justify-center bg-[linear-gradient(150deg,#0F2447,#16315E_55%,#1D4ED8_140%)] px-4 py-8">
-      <div class="w-full max-w-[400px] rounded-2xl bg-white px-6 py-8 shadow-[0_24px_60px_rgba(0,0,0,.35)] sm:px-9">
+    <div class="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
+      <div class="w-full max-w-[420px]">
         <div class="mb-6 text-center">
-          <div class="mx-auto mb-3 flex size-[60px] items-center justify-center rounded-[15px] bg-navy text-[22px] font-extrabold text-white">
+          <span class="relative mx-auto flex size-14 items-center justify-center rounded-[12px] bg-primary text-lg font-extrabold text-on-primary">
             TJ
-          </div>
-          <h1 class="text-[19px] font-extrabold tracking-[.03em] text-ink">
-            TOKO JOJO MANAGEMENT SYSTEM
+            <span class="absolute -top-1.5 -right-1.5 size-3.5 rounded-[3px] bg-accent" />
+          </span>
+          <h1 class="mt-4 text-2xl font-extrabold tracking-tight text-ink">
+            <span class="font-semibold">Toko</span>
+            <span class="font-extrabold">Jojo</span>
           </h1>
-          <p class="mt-1 text-xs text-muted">
-            Sistem Administrasi Bisnis &amp; Inventaris &bull; Web Admin
+          <p class="mt-1 text-sm text-ink-muted">
+            Sistem Administrasi Bisnis &amp; Inventaris
           </p>
         </div>
 
-        <form onSubmit={submit} novalidate>
-          <Field label="Username Karyawan">
-            <div class="relative">
-              <UserRound
-                size={15}
-                class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint"
-              />
-              <input
-                class={`${inputClass} pl-9`}
+        <Panel class="p-6 sm:p-7">
+          <h2 class="text-xl font-bold text-ink">Masuk ke TokoJoJo</h2>
+          <p class="mt-1 text-sm text-ink-muted">Gunakan akun karyawan toko.</p>
+
+          <form class="mt-5 space-y-4" onSubmit={submit} novalidate>
+            <Field label="Username" htmlFor="login-username" required>
+              <Input
+                id="login-username"
                 value={username()}
                 autocomplete="username"
-                placeholder="owner"
+                placeholder="cth: owner"
                 onInput={(event) => setUsername(event.currentTarget.value)}
               />
-            </div>
-          </Field>
+            </Field>
 
-          <Field label="Kata Sandi">
-            <div class="relative">
-              <KeyRound
-                size={15}
-                class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint"
-              />
-              <input
-                type="password"
-                class={`${inputClass} pl-9`}
-                value={password()}
-                autocomplete="current-password"
-                placeholder="••••••••"
-                onInput={(event) => setPassword(event.currentTarget.value)}
-              />
-            </div>
-          </Field>
-
-          <Show when={error()}>
-            <div
-              role="alert"
-              class="mb-3.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-danger"
-            >
-              {error()}
-            </div>
-          </Show>
-
-          <button
-            type="submit"
-            disabled={loading()}
-            class="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[9px] bg-royal text-[13px] font-bold text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Show
-              when={!loading()}
-              fallback={
-                <span class="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              }
-            >
-              <LogIn size={16} /> Masuk ke Sistem
-            </Show>
-          </button>
-        </form>
-
-        <div class="mt-4 rounded-[11px] border border-line bg-canvas p-3">
-          <div class="mb-2 text-[11px] font-bold text-muted">
-            PILIH PERAN DEMO (RBAC):
-          </div>
-          <div class="grid grid-cols-1 gap-[7px] sm:grid-cols-2">
-            <For each={users}>
-              {(user) => (
+            <Field label="Password" htmlFor="login-password" required>
+              <div class="relative">
+                <Input
+                  id="login-password"
+                  type={showPassword() ? "text" : "password"}
+                  value={password()}
+                  autocomplete="current-password"
+                  class="pr-10"
+                  onInput={(event) => setPassword(event.currentTarget.value)}
+                />
                 <button
                   type="button"
-                  onClick={() => pickUser(user)}
-                  class="cursor-pointer rounded-lg border border-line bg-white px-2.5 py-[7px] text-left text-xs font-semibold transition-colors hover:border-royal hover:bg-blue-50"
+                  aria-label={
+                    showPassword()
+                      ? "Sembunyikan password"
+                      : "Tampilkan password"
+                  }
+                  class="absolute top-1/2 right-2 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-[4px] text-ink-muted hover:bg-subtle hover:text-ink"
+                  onClick={() => setShowPassword((value) => !value)}
                 >
-                  <span class="flex items-center justify-between gap-1">
-                    {user.username}
-                    <span
-                      class="rounded-full px-1.5 py-px text-[9px] font-extrabold"
-                      style={{
-                        background: `${roleMeta[user.role].color}18`,
-                        color: roleMeta[user.role].color,
-                      }}
-                    >
-                      {user.role}
-                    </span>
-                  </span>
-                  <span class="mt-0.5 block text-[10px] font-medium text-faint">
-                    {user.name}
-                  </span>
+                  {showPassword() ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
-              )}
-            </For>
-          </div>
-          <p class="mt-2.5 text-[10.5px] text-faint">
-            Kata sandi demo: <span class="font-semibold">{demoPassword}</span>{" "}
-            &middot; sesi hanya tersimpan di memori dan hilang saat halaman
-            dimuat ulang.
-          </p>
-        </div>
+              </div>
+            </Field>
+
+            <Show when={error()}>
+              <div
+                role="alert"
+                class="rounded-[6px] border border-danger/20 bg-danger-soft px-3 py-2 text-sm font-semibold text-danger"
+              >
+                {error()}
+              </div>
+            </Show>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              full
+              loading={loading()}
+            >
+              <LogIn size={16} /> Masuk
+            </Button>
+          </form>
+
+          <button
+            type="button"
+            class="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 text-xs font-semibold text-ink-muted hover:text-ink"
+            onClick={() => setShowDemo((value) => !value)}
+          >
+            <ShieldCheck size={14} />
+            {showDemo() ? "Sembunyikan akun demo" : "Akun demo"}
+          </button>
+
+          <Show when={showDemo()}>
+            <div class="mt-3 rounded-[6px] border border-line bg-subtle p-3">
+              <p class="mb-2 text-[11px] font-bold tracking-wide text-ink-muted uppercase">
+                Pilih peran demo
+              </p>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <For each={users}>
+                  {(user) => (
+                    <button
+                      type="button"
+                      onClick={() => pickUser(user)}
+                      class="cursor-pointer rounded-[6px] border border-line bg-surface px-2.5 py-2 text-left transition-colors hover:border-primary hover:bg-primary-soft"
+                    >
+                      <span class="flex items-center justify-between gap-2 text-xs font-bold text-ink">
+                        {user.username}
+                        <span
+                          class="rounded-full px-1.5 py-px text-[10px] font-extrabold"
+                          style={{
+                            background: `${roleMeta[user.role].color}18`,
+                            color: roleMeta[user.role].color,
+                          }}
+                        >
+                          {user.role}
+                        </span>
+                      </span>
+                      <span class="mt-0.5 block text-[11px] text-ink-muted">
+                        {user.name}
+                      </span>
+                    </button>
+                  )}
+                </For>
+              </div>
+              <p class="mt-2 text-[11px] text-ink-muted">
+                Password demo: <b>{demoPassword}</b>
+              </p>
+            </div>
+          </Show>
+        </Panel>
+
+        <p class="mt-5 text-center text-xs text-ink-muted">
+          <A href="/" class="font-semibold text-primary hover:underline">
+            Kembali ke aplikasi
+          </A>
+        </p>
       </div>
     </div>
   );

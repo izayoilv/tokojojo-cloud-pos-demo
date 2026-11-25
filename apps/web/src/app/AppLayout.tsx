@@ -1,15 +1,17 @@
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { A, useLocation, useNavigate } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
+import { usePreferences } from "@tokojojo/ui";
+import { useToast } from "@tokojojo/ui";
 import {
   Bell,
+  Check,
   ChevronDown,
   LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-  Store,
   X,
 } from "lucide-solid";
 import type { JSX } from "solid-js";
@@ -32,12 +34,19 @@ import {
   roleMeta,
   visibleSections,
 } from "./rbac";
-import { useToast } from "./toast";
+
+type NotificationTone = "danger" | "warning" | "info";
 
 type NotificationItem = {
-  tone: string;
+  tone: NotificationTone;
   title: string;
   detail: string;
+};
+
+const toneDot: Record<NotificationTone, string> = {
+  danger: "bg-danger",
+  warning: "bg-warning",
+  info: "bg-info",
 };
 
 export function AppLayout(props: { children?: JSX.Element }) {
@@ -45,6 +54,7 @@ export function AppLayout(props: { children?: JSX.Element }) {
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const preferences = usePreferences();
 
   const [mobileOpen, setMobileOpen] = createSignal(false);
   const [collapsed, setCollapsed] = createSignal(false);
@@ -67,6 +77,10 @@ export function AppLayout(props: { children?: JSX.Element }) {
     queryKey: ["payables"],
     queryFn: () => repository.listPayables(),
   }));
+  const opnamesQuery = createQuery(() => ({
+    queryKey: ["opnames"],
+    queryFn: () => repository.listOpnames(),
+  }));
 
   const notifications = createMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
@@ -76,38 +90,50 @@ export function AppLayout(props: { children?: JSX.Element }) {
       const status = stockStatus(product);
       if (status === "HABIS") {
         items.push({
-          tone: "#DC2626",
+          tone: "danger",
           title: `Stok habis: ${product.name}`,
-          detail: "Segera buat PO ke supplier.",
+          detail: "Segera buat pembelian ke supplier.",
         });
       } else if (status === "MENIPIS") {
         items.push({
-          tone: "#F59E0B",
+          tone: "warning",
           title: `Stok menipis: ${product.name}`,
-          detail: `${product.storeStock} di toko / ${product.warehouseStock} di gudang.`,
+          detail: `${product.storeStock} di toko · ${product.warehouseStock} di gudang.`,
         });
       }
     }
 
-    for (const transfer of role && canAccess(role, "WAREHOUSE")
+    for (const transfer of role && canAccess(role, "GUDANG")
       ? (transfersQuery.data ?? []).filter((item) => item.status === "PENDING")
       : []) {
       items.push({
-        tone: "#2563EB",
+        tone: "info",
         title: `Mutasi pending: ${transfer.number}`,
-        detail: `${transfer.itemCount} jenis barang — ${transfer.createdBy}.`,
+        detail: `${transfer.itemCount} jenis barang · ${transfer.createdBy}.`,
       });
     }
 
-    for (const payable of role && canAccess(role, "PURCHASING")
+    for (const opname of role && canAccess(role, "GUDANG")
+      ? (opnamesQuery.data ?? []).filter(
+          (item) => item.status === "PENDING_REVIEW",
+        )
+      : []) {
+      items.push({
+        tone: "warning",
+        title: `Opname menunggu review: ${opname.number}`,
+        detail: `${opname.items.length} produk · ${opname.createdBy}.`,
+      });
+    }
+
+    for (const payable of role && canAccess(role, "PEMBELIAN")
       ? (payablesQuery.data ?? [])
       : []) {
       const remaining = payable.total - payable.paid;
       if (remaining > 0) {
         items.push({
-          tone: "#DC2626",
+          tone: "danger",
           title: `Hutang jatuh tempo: ${payable.supplierName}`,
-          detail: `${payable.invoice} — sisa Rp ${remaining.toLocaleString("id-ID")}.`,
+          detail: `${payable.invoice} · sisa Rp ${remaining.toLocaleString("id-ID")}.`,
         });
       }
     }
@@ -115,7 +141,6 @@ export function AppLayout(props: { children?: JSX.Element }) {
     return items;
   });
 
-  // Close the off-canvas sidebar whenever the route changes.
   createEffect(
     on(
       () => location.pathname,
@@ -126,13 +151,13 @@ export function AppLayout(props: { children?: JSX.Element }) {
   const submitSearch = (event: SubmitEvent) => {
     event.preventDefault();
     const query = search().trim();
-    navigate(query ? `/products?q=${encodeURIComponent(query)}` : "/products");
+    navigate(query ? `/produk?q=${encodeURIComponent(query)}` : "/produk");
   };
 
   const logout = () => {
     auth.logout();
     navigate("/login", { replace: true });
-    toast.notify("Sesi berakhir. Sampai jumpa.", "warn");
+    toast.notify("Sesi berakhir. Sampai jumpa.", "warning");
   };
 
   return (
@@ -141,44 +166,48 @@ export function AppLayout(props: { children?: JSX.Element }) {
         <button
           type="button"
           aria-label="Tutup menu"
-          class="fixed inset-0 z-40 cursor-default bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
+          class="fixed inset-0 z-40 cursor-default bg-[var(--tj-overlay)] lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       </Show>
 
       <aside
-        class={`fixed inset-y-0 left-0 z-50 flex flex-col bg-navy text-white transition-[width,transform] duration-200 lg:static lg:translate-x-0 ${
+        class={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-line bg-surface transition-[width,transform] duration-200 lg:static lg:translate-x-0 ${
           mobileOpen() ? "translate-x-0" : "-translate-x-full"
-        } ${collapsed() ? "w-16" : "w-[232px]"}`}
+        } ${collapsed() ? "w-16" : "w-[240px]"}`}
       >
-        <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-white/10 px-3.5">
-          <span class="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-white text-[13px] font-extrabold text-navy">
+        <div class="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-3">
+          <span class="relative flex size-8 shrink-0 items-center justify-center rounded-[8px] bg-primary text-xs font-extrabold text-on-primary">
             TJ
+            <span class="absolute -top-1 -right-1 size-2 rounded-[2px] bg-accent" />
           </span>
           <Show when={!collapsed()}>
             <div class="min-w-0">
-              <div class="truncate text-sm font-extrabold tracking-[.05em]">
-                TOKO JOJO
+              <div class="truncate text-sm font-bold text-ink">
+                <span class="font-semibold">Toko</span>
+                <span class="font-extrabold">Jojo</span>
               </div>
-              <div class="text-[9.5px] text-[#8FA5C8]">ADMIN ERP</div>
+              <div class="text-[10px] font-bold tracking-[0.08em] text-ink-muted uppercase">
+                Admin ERP
+              </div>
             </div>
           </Show>
           <button
             type="button"
             aria-label="Tutup menu"
-            class="ml-auto flex size-8 cursor-pointer items-center justify-center rounded-lg text-[#C4D2EA] hover:bg-white/10 lg:hidden"
+            class="ml-auto flex size-8 cursor-pointer items-center justify-center rounded-[6px] text-ink-muted hover:bg-subtle hover:text-ink lg:hidden"
             onClick={() => setMobileOpen(false)}
           >
             <X size={18} />
           </button>
         </div>
 
-        <nav class="flex-1 overflow-y-auto px-2 py-2.5">
+        <nav class="flex-1 overflow-y-auto px-2 py-2">
           <For each={sections()}>
             {(section) => (
               <div>
                 <Show when={!collapsed()}>
-                  <div class="px-2.5 pt-3 pb-1 text-[9.5px] font-extrabold tracking-[.12em] whitespace-nowrap text-[#5E77A3]">
+                  <div class="px-2 pt-3 pb-1 text-[10px] font-extrabold tracking-[0.12em] text-ink-muted uppercase">
                     {section.title}
                   </div>
                 </Show>
@@ -189,28 +218,24 @@ export function AppLayout(props: { children?: JSX.Element }) {
                       <A
                         href={item.path}
                         title={item.label}
-                        class={`mb-0.5 flex items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13px] font-medium whitespace-nowrap transition-colors ${
+                        aria-current={active() ? "page" : undefined}
+                        class={`mb-0.5 flex min-h-9 items-center gap-2.5 rounded-[6px] px-2 text-sm transition-colors ${
                           active()
-                            ? "bg-royal font-bold text-white shadow-[0_2px_8px_rgba(29,78,216,.4)]"
-                            : "text-[#C4D2EA] hover:bg-white/10 hover:text-white"
+                            ? "bg-primary-soft font-bold text-primary"
+                            : "font-semibold text-ink-secondary hover:bg-subtle hover:text-ink"
                         }`}
                       >
                         <span
-                          class="flex size-[30px] shrink-0 items-center justify-center rounded-lg text-[10px] font-extrabold tracking-[.03em]"
-                          style={{
-                            background: `${item.color}22`,
-                            color: item.color,
-                          }}
+                          class={`flex size-7 shrink-0 items-center justify-center rounded-[4px] ${
+                            active()
+                              ? "bg-primary text-on-primary"
+                              : "bg-subtle text-ink-muted"
+                          }`}
                         >
-                          {item.short}
+                          <item.icon size={16} />
                         </span>
                         <Show when={!collapsed()}>
                           <span class="truncate">{item.label}</span>
-                          <Show when={!item.built}>
-                            <span class="ml-auto rounded-full bg-white/10 px-1.5 py-px text-[8.5px] font-extrabold tracking-wide text-[#8FA5C8]">
-                              SEGERA
-                            </span>
-                          </Show>
                         </Show>
                       </A>
                     );
@@ -221,15 +246,23 @@ export function AppLayout(props: { children?: JSX.Element }) {
           </For>
         </nav>
 
-        <div class="shrink-0 border-t border-white/10 p-2">
-          <div class="flex items-center gap-2.5 rounded-[9px] bg-white/5 px-2.5 py-2">
-            <span class="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-blue text-[11px] font-bold">
+        <div class="shrink-0 border-t border-line p-2">
+          <div class="flex items-center gap-2 rounded-[6px] px-2 py-1.5">
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+              style={{
+                background: `${roleInfo().color}18`,
+                color: roleInfo().color,
+              }}
+            >
               {initials(user()?.name ?? "TJ")}
             </span>
             <Show when={!collapsed()}>
               <div class="min-w-0">
-                <div class="truncate text-xs font-bold">{user()?.name}</div>
-                <div class="truncate text-[10px] text-[#8FA5C8]">
+                <div class="truncate text-xs font-bold text-ink">
+                  {user()?.name}
+                </div>
+                <div class="truncate text-[10px] font-semibold text-ink-muted">
                   {roleInfo().label}
                 </div>
               </div>
@@ -239,87 +272,86 @@ export function AppLayout(props: { children?: JSX.Element }) {
       </aside>
 
       <div class="flex min-w-0 flex-1 flex-col">
-        <header class="flex h-14 shrink-0 items-center gap-2.5 border-b border-line bg-white px-3 md:gap-3.5 md:px-[18px]">
+        <header class="flex min-h-14 shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-3 md:gap-3 md:px-4">
           <button
             type="button"
             aria-label="Buka menu"
-            class="flex size-[34px] cursor-pointer items-center justify-center rounded-lg border border-line bg-white text-muted hover:bg-canvas lg:hidden"
+            class="flex size-9 cursor-pointer items-center justify-center rounded-[6px] text-ink-muted hover:bg-subtle hover:text-ink lg:hidden"
             onClick={() => setMobileOpen(true)}
           >
-            <Menu size={17} />
+            <Menu size={18} />
           </button>
           <button
             type="button"
             aria-label={collapsed() ? "Perluas sidebar" : "Ciutkan sidebar"}
-            class="hidden size-[34px] cursor-pointer items-center justify-center rounded-lg border border-line bg-white text-muted hover:bg-canvas lg:flex"
+            class="hidden size-9 cursor-pointer items-center justify-center rounded-[6px] text-ink-muted hover:bg-subtle hover:text-ink lg:flex"
             onClick={() => setCollapsed((value) => !value)}
           >
             {collapsed() ? (
-              <PanelLeftOpen size={16} />
+              <PanelLeftOpen size={17} />
             ) : (
-              <PanelLeftClose size={16} />
+              <PanelLeftClose size={17} />
             )}
           </button>
 
-          <div class="hidden min-w-0 text-[13px] whitespace-nowrap text-muted sm:block">
-            <span class="hidden md:inline">Toko Jojo / </span>
+          <div class="hidden min-w-0 text-xs whitespace-nowrap text-ink-muted sm:block">
+            TokoJojo /{" "}
             <b class="font-bold text-ink">
-              {activeModule()?.label ?? "Dashboard"}
+              {activeModule()?.label ?? "Ringkasan"}
             </b>
           </div>
 
           <form
-            class="hidden h-[38px] max-w-[380px] flex-1 items-center gap-2 rounded-[9px] border-[1.5px] border-line bg-canvas px-3 md:flex"
+            class="order-last flex h-10 w-full items-center gap-2 rounded-[6px] border border-line-control bg-surface px-3 md:order-none md:max-w-[360px] md:flex-1"
             onSubmit={submitSearch}
           >
-            <Search size={14} class="shrink-0 text-faint" />
+            <Search size={15} class="shrink-0 text-ink-muted" />
             <input
-              class="min-w-0 flex-1 border-none bg-transparent text-[13px] outline-none placeholder:text-faint"
-              placeholder="Cari produk, SKU, barcode, no. struk..."
+              class="min-w-0 flex-1 border-none bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
+              placeholder="Cari produk, SKU, barcode, invoice..."
               value={search()}
               onInput={(event) => setSearch(event.currentTarget.value)}
             />
           </form>
 
-          <div class="ml-auto flex items-center gap-2 md:gap-2.5">
+          <div class="ml-auto flex items-center gap-1.5">
             <DropdownMenu>
               <DropdownMenu.Trigger
                 aria-label="Notifikasi"
-                class="relative flex size-[34px] cursor-pointer items-center justify-center rounded-lg border border-line bg-white text-muted outline-none hover:bg-canvas"
+                class="relative flex size-9 cursor-pointer items-center justify-center rounded-[6px] text-ink-muted outline-none hover:bg-subtle hover:text-ink"
               >
-                <Bell size={16} />
+                <Bell size={17} />
                 <Show when={notifications().length > 0}>
-                  <span class="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-extrabold text-white">
+                  <span class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-white">
                     {notifications().length}
                   </span>
                 </Show>
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
-                <DropdownMenu.Content class="z-[300] w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-line bg-white shadow-[0_12px_32px_rgba(15,23,42,.16)] outline-none">
-                  <div class="border-b border-line px-4 py-3 text-xs font-extrabold text-ink">
+                <DropdownMenu.Content class="z-[300] w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-[8px] border border-line bg-surface shadow-dropdown outline-none">
+                  <div class="border-b border-line px-4 py-3 text-sm font-bold text-ink">
                     Notifikasi ({notifications().length})
                   </div>
                   <Show
                     when={notifications().length > 0}
                     fallback={
-                      <div class="px-4 py-8 text-center text-xs text-faint">
+                      <div class="px-4 py-8 text-center text-sm text-ink-muted">
                         Tidak ada notifikasi
                       </div>
                     }
                   >
-                    <div class="max-h-[320px] overflow-y-auto">
+                    <div class="max-h-[340px] overflow-y-auto">
                       <For each={notifications()}>
                         {(item) => (
-                          <DropdownMenu.Item class="flex cursor-default gap-2.5 border-b border-slate-100 px-4 py-2.5 text-xs outline-none hover:bg-canvas">
+                          <DropdownMenu.Item class="flex cursor-default gap-2.5 border-b border-line px-4 py-2.5 text-sm outline-none last:border-0 hover:bg-hover">
                             <span
-                              class="mt-1.5 size-[7px] shrink-0 rounded-full"
-                              style={{ background: item.tone }}
+                              class={`mt-1.5 size-2 shrink-0 rounded-full ${toneDot[item.tone]}`}
                             />
                             <span class="min-w-0">
-                              <span class="block font-bold text-ink">
+                              <span class="block font-semibold text-ink">
                                 {item.title}
                               </span>
-                              <span class="mt-0.5 block text-muted">
+                              <span class="mt-0.5 block text-xs text-ink-muted">
                                 {item.detail}
                               </span>
                             </span>
@@ -333,30 +365,103 @@ export function AppLayout(props: { children?: JSX.Element }) {
             </DropdownMenu>
 
             <DropdownMenu>
-              <DropdownMenu.Trigger class="flex h-[34px] cursor-pointer items-center gap-2 rounded-lg border border-line bg-white px-2 text-xs font-bold text-muted outline-none hover:bg-canvas md:px-3">
-                <span class="flex size-[22px] items-center justify-center rounded-full bg-blue text-[10px] text-white">
+              <DropdownMenu.Trigger class="flex h-9 cursor-pointer items-center gap-2 rounded-[6px] px-1.5 text-xs font-semibold text-ink-secondary outline-none hover:bg-subtle md:px-2">
+                <span
+                  class="flex size-7 items-center justify-center rounded-full text-[10px] font-bold"
+                  style={{
+                    background: `${roleInfo().color}18`,
+                    color: roleInfo().color,
+                  }}
+                >
                   {initials(user()?.name ?? "TJ")}
                 </span>
                 <span class="hidden max-w-28 truncate md:inline">
                   {user()?.name.split(" ")[0]}
                 </span>
-                <ChevronDown size={13} class="hidden md:block" />
+                <ChevronDown size={14} class="hidden md:block" />
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
-                <DropdownMenu.Content class="z-[300] w-[250px] overflow-hidden rounded-xl border border-line bg-white shadow-[0_12px_32px_rgba(15,23,42,.16)] outline-none">
+                <DropdownMenu.Content class="z-[300] w-[280px] overflow-hidden rounded-[8px] border border-line bg-surface shadow-dropdown outline-none">
                   <div class="border-b border-line px-4 py-3">
-                    <div class="truncate text-xs font-extrabold text-ink">
+                    <div class="truncate text-sm font-bold text-ink">
                       {user()?.name}
                     </div>
-                    <div class="mt-0.5 truncate text-[10.5px] text-muted">
-                      {roleInfo().label} &middot; {user()?.email}
+                    <div class="mt-0.5 truncate text-xs text-ink-muted">
+                      {roleInfo().label} · {user()?.email}
                     </div>
                   </div>
+                  <div class="space-y-3 border-b border-line px-4 py-3">
+                    <div>
+                      <div class="mb-1 text-[11px] font-bold tracking-wide text-ink-muted uppercase">
+                        Tema
+                      </div>
+                      <div class="flex gap-1">
+                        <For
+                          each={
+                            [
+                              ["light", "Terang"],
+                              ["dark", "Gelap"],
+                              ["system", "Sistem"],
+                            ] as const
+                          }
+                        >
+                          {([value, label]) => (
+                            <button
+                              type="button"
+                              onClick={() => preferences.setTheme(value)}
+                              class={`h-7 flex-1 cursor-pointer rounded-[4px] text-xs font-semibold ${
+                                preferences.theme() === value
+                                  ? "bg-primary-soft text-primary"
+                                  : "text-ink-muted hover:bg-subtle"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="mb-1 text-[11px] font-bold tracking-wide text-ink-muted uppercase">
+                        Ukuran teks
+                      </div>
+                      <div class="flex gap-1">
+                        <For
+                          each={
+                            [
+                              ["normal", "Normal"],
+                              ["large", "Besar"],
+                            ] as const
+                          }
+                        >
+                          {([value, label]) => (
+                            <button
+                              type="button"
+                              onClick={() => preferences.setTextSize(value)}
+                              class={`h-7 flex-1 cursor-pointer rounded-[4px] text-xs font-semibold ${
+                                preferences.textSize() === value
+                                  ? "bg-primary-soft text-primary"
+                                  : "text-ink-muted hover:bg-subtle"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </div>
+                  <A
+                    href="/pengaturan"
+                    class="flex items-center gap-2 border-b border-line px-4 py-2.5 text-sm font-semibold text-ink-secondary hover:bg-hover"
+                  >
+                    <Check size={14} /> Pengaturan tampilan
+                  </A>
                   <DropdownMenu.Item
                     onSelect={logout}
-                    class="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-xs font-bold text-danger outline-none hover:bg-red-50"
+                    class="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm font-bold text-danger outline-none hover:bg-danger-soft"
                   >
-                    <LogOut size={14} /> Keluar Sesi
+                    <LogOut size={15} /> Keluar
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
@@ -364,16 +469,7 @@ export function AppLayout(props: { children?: JSX.Element }) {
           </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-4 md:p-[22px]">
-          {props.children}
-        </main>
-
-        <footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-line bg-white px-4 py-2 text-[10.5px] text-faint">
-          <span class="flex items-center gap-1.5">
-            <Store size={12} /> Toko Jojo &middot; Batam Centre
-          </span>
-          <span>Data contoh &mdash; belum terhubung ke API</span>
-        </footer>
+        <main class="flex-1 overflow-y-auto p-4 md:p-6">{props.children}</main>
       </div>
     </div>
   );

@@ -1,41 +1,42 @@
+import { EmptyState } from "@tokojojo/ui";
 import { For, Show } from "solid-js";
 
 import type { DailySalesPoint } from "../../lib/calc";
 import { formatRupiah } from "../../lib/format";
-import { EmptyState } from "../ui/EmptyState";
 
 const W = 640;
 const H = 240;
-const LEFT = 30;
-const RIGHT = 14;
-const TOP = 18;
-const BASE = 200;
+const LEFT = 64;
+const RIGHT = 12;
+const TOP = 20;
+const BASE = 210;
 
 export function SalesChart(props: { points: DailySalesPoint[] }) {
   const maxValue = () =>
-    Math.max(
-      1,
-      ...props.points.flatMap((point) => [point.revenue, point.cogs]),
-    );
+    Math.max(1, ...props.points.map((point) => point.revenue));
+  const step = () => (W - LEFT - RIGHT) / Math.max(1, props.points.length - 1);
+  const x = (index: number) => LEFT + index * step();
+  const y = (value: number) =>
+    BASE - (Math.max(0, value) / maxValue()) * (BASE - TOP);
 
-  const groupWidth = () =>
-    (W - LEFT - RIGHT) / Math.max(1, props.points.length);
-
-  const barWidth = () => Math.min(18, groupWidth() * 0.3);
-
-  const height = (value: number) =>
-    (Math.max(0, value) / maxValue()) * (BASE - TOP);
-
-  const centerX = (index: number) =>
-    LEFT + index * groupWidth() + groupWidth() / 2;
+  const axisLabel = (value: number) => {
+    if (value >= 1_000_000_000)
+      return `${(value / 1_000_000_000).toFixed(1)} M`;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} jt`;
+    if (value >= 1_000) return `${Math.round(value / 1_000)} rb`;
+    return "0";
+  };
 
   const linePoints = () =>
     props.points
-      .map(
-        (point, index) =>
-          `${centerX(index)},${BASE - height(point.grossProfit)}`,
-      )
+      .map((point, index) => `${x(index)},${y(point.revenue)}`)
       .join(" ");
+  const areaPath = () => {
+    if (props.points.length === 0) return "";
+    return `M${x(0)} ${BASE} L${props.points
+      .map((point, index) => `${x(index)} ${y(point.revenue)}`)
+      .join(" L")} L${x(props.points.length - 1)} ${BASE} Z`;
+  };
 
   return (
     <Show
@@ -49,90 +50,72 @@ export function SalesChart(props: { points: DailySalesPoint[] }) {
     >
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        class="w-full"
+        class="h-auto w-full"
         role="img"
-        aria-label="Grafik penjualan, HPP, dan laba kotor"
+        aria-label="Tren penjualan"
       >
         <For each={[0, 0.25, 0.5, 0.75, 1]}>
           {(ratio) => (
-            <line
-              x1={LEFT}
-              x2={W - RIGHT}
-              y1={BASE - ratio * (BASE - TOP)}
-              y2={BASE - ratio * (BASE - TOP)}
-              stroke="#EEF2F7"
-              stroke-width="1"
-            />
+            <g>
+              <line
+                x1={LEFT}
+                x2={W - RIGHT}
+                y1={TOP + ratio * (BASE - TOP)}
+                y2={TOP + ratio * (BASE - TOP)}
+                stroke="var(--tj-line)"
+                stroke-width="1"
+              />
+              <text
+                x={LEFT - 8}
+                y={TOP + ratio * (BASE - TOP) + 4}
+                text-anchor="end"
+                font-size="10"
+                fill="var(--tj-ink-muted)"
+              >
+                {axisLabel(Math.round(maxValue() * (1 - ratio)))}
+              </text>
+            </g>
           )}
         </For>
-
-        <For each={props.points}>
-          {(point, index) => {
-            const revenueHeight = () => height(point.revenue);
-            const cogsHeight = () => height(point.cogs);
-            const x = () => centerX(index());
-            const labelStep = () => Math.ceil(props.points.length / 7);
-
-            return (
-              <g>
-                <rect
-                  x={x() - barWidth() - 1.5}
-                  y={BASE - revenueHeight()}
-                  width={barWidth()}
-                  height={revenueHeight()}
-                  rx="3"
-                  fill="#2563EB"
-                >
-                  <title>{`Penjualan ${point.label}: ${formatRupiah(point.revenue)}`}</title>
-                </rect>
-                <rect
-                  x={x() + 1.5}
-                  y={BASE - cogsHeight()}
-                  width={barWidth()}
-                  height={cogsHeight()}
-                  rx="3"
-                  fill="#CBD5E1"
-                >
-                  <title>{`HPP ${point.label}: ${formatRupiah(point.cogs)}`}</title>
-                </rect>
-                <Show
-                  when={
-                    index() % labelStep() === 0 ||
-                    index() === props.points.length - 1
-                  }
-                >
-                  <text
-                    x={x()}
-                    y={BASE + 20}
-                    font-size="9.5"
-                    fill="#64748B"
-                    text-anchor="middle"
-                  >
-                    {point.label}
-                  </text>
-                </Show>
-              </g>
-            );
-          }}
-        </For>
-
+        <path d={areaPath()} fill="var(--tj-primary-soft)" opacity="0.8" />
         <polyline
           points={linePoints()}
           fill="none"
-          stroke="#16A34A"
+          stroke="var(--tj-chart-1)"
           stroke-width="2.5"
+          stroke-linecap="round"
           stroke-linejoin="round"
         />
         <For each={props.points}>
           {(point, index) => (
-            <circle
-              cx={centerX(index())}
-              cy={BASE - height(point.grossProfit)}
-              r="3.5"
-              fill="#16A34A"
-            >
-              <title>{`Laba kotor ${point.label}: ${formatRupiah(point.grossProfit)}`}</title>
-            </circle>
+            <g>
+              <circle
+                cx={x(index())}
+                cy={y(point.revenue)}
+                r="3.5"
+                fill="var(--tj-surface)"
+                stroke="var(--tj-chart-1)"
+                stroke-width="2"
+              >
+                <title>{`${point.label}: ${formatRupiah(point.revenue)}`}</title>
+              </circle>
+              <Show
+                when={
+                  index() % Math.ceil(props.points.length / 6) === 0 ||
+                  index() === props.points.length - 1
+                }
+              >
+                <text
+                  x={x(index())}
+                  y={BASE + 20}
+                  text-anchor="middle"
+                  font-size="10"
+                  fill="var(--tj-ink-muted)"
+                >
+                  {point.label}
+                </text>
+              </Show>
+            </g>
           )}
         </For>
       </svg>

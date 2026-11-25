@@ -1,25 +1,38 @@
+import {
+  ArrowLeftRight,
+  FileBarChart,
+  LayoutDashboard,
+  Package,
+  Settings,
+  ShoppingCart,
+  Truck,
+  UserRound,
+  Users,
+  Wallet,
+  Warehouse,
+} from "lucide-solid";
+import type { Component } from "solid-js";
+
 import type { Role } from "../data/types";
 
 export type ModuleKey =
-  | "DASHBOARD"
-  | "PRODUCTS"
-  | "INVENTORY"
-  | "PURCHASING"
-  | "SALES"
-  | "WAREHOUSE"
-  | "FINANCE"
-  | "REPORTS"
-  | "EMPLOYEES"
-  | "SETTINGS";
+  | "RINGKASAN"
+  | "PRODUK"
+  | "PELANGGAN"
+  | "PERSEDIAAN"
+  | "PEMBELIAN"
+  | "PENJUALAN"
+  | "GUDANG"
+  | "KEUANGAN"
+  | "LAPORAN"
+  | "PENGGUNA"
+  | "PENGATURAN";
 
 export type ModuleDefinition = {
   key: ModuleKey;
   label: string;
-  short: string;
-  color: string;
   path: string;
-  built: boolean;
-  description?: string;
+  icon: Component<{ size?: number | string; class?: string }>;
 };
 
 export type NavSection = {
@@ -30,37 +43,53 @@ export type NavSection = {
 export const roleMeta: Record<Role, { label: string; color: string }> = {
   OWNER: { label: "Pemilik Toko", color: "#6D28D9" },
   ADMIN: { label: "Admin Operasional", color: "#1D4ED8" },
-  CASHIER: { label: "Kasir Toko", color: "#059669" },
-  WAREHOUSE: { label: "Staf Gudang", color: "#D97706" },
+  CASHIER: { label: "Kasir Toko", color: "#15803D" },
+  WAREHOUSE: { label: "Staf Gudang", color: "#B45309" },
 };
 
 export const roleModules: Record<Role, ModuleKey[]> = {
   OWNER: [
-    "DASHBOARD",
-    "PRODUCTS",
-    "INVENTORY",
-    "PURCHASING",
-    "SALES",
-    "WAREHOUSE",
-    "FINANCE",
-    "REPORTS",
-    "EMPLOYEES",
-    "SETTINGS",
+    "RINGKASAN",
+    "PRODUK",
+    "PELANGGAN",
+    "PERSEDIAAN",
+    "PEMBELIAN",
+    "PENJUALAN",
+    "GUDANG",
+    "KEUANGAN",
+    "LAPORAN",
+    "PENGGUNA",
+    "PENGATURAN",
   ],
   ADMIN: [
-    "DASHBOARD",
-    "PRODUCTS",
-    "INVENTORY",
-    "PURCHASING",
-    "SALES",
-    "WAREHOUSE",
-    "FINANCE",
-    "REPORTS",
-    "EMPLOYEES",
-    "SETTINGS",
+    "RINGKASAN",
+    "PRODUK",
+    "PELANGGAN",
+    "PERSEDIAAN",
+    "PEMBELIAN",
+    "PENJUALAN",
+    "GUDANG",
+    "KEUANGAN",
+    "LAPORAN",
+    "PENGGUNA",
+    "PENGATURAN",
   ],
-  CASHIER: ["DASHBOARD", "PRODUCTS", "INVENTORY", "SALES"],
-  WAREHOUSE: ["DASHBOARD", "PRODUCTS", "INVENTORY", "PURCHASING", "WAREHOUSE"],
+  CASHIER: [
+    "RINGKASAN",
+    "PRODUK",
+    "PELANGGAN",
+    "PERSEDIAAN",
+    "PENJUALAN",
+    "PENGATURAN",
+  ],
+  WAREHOUSE: [
+    "RINGKASAN",
+    "PRODUK",
+    "PERSEDIAAN",
+    "PEMBELIAN",
+    "GUDANG",
+    "PENGATURAN",
+  ],
 };
 
 export const navSections: NavSection[] = [
@@ -68,12 +97,10 @@ export const navSections: NavSection[] = [
     title: "UTAMA",
     items: [
       {
-        key: "DASHBOARD",
-        label: "Dashboard",
-        short: "DB",
-        color: "#2563EB",
+        key: "RINGKASAN",
+        label: "Ringkasan",
         path: "/",
-        built: true,
+        icon: LayoutDashboard,
       },
     ],
   },
@@ -81,23 +108,22 @@ export const navSections: NavSection[] = [
     title: "TRANSAKSI",
     items: [
       {
-        key: "SALES",
-        label: "Penjualan (POS)",
-        short: "PJ",
-        color: "#059669",
-        path: "/soon/sales",
-        built: false,
-        description:
-          "Sinkronisasi struk POS, retur, dan rekap penjualan per kasir.",
+        key: "PENJUALAN",
+        label: "Penjualan",
+        path: "/penjualan",
+        icon: ShoppingCart,
       },
       {
-        key: "PURCHASING",
+        key: "PELANGGAN",
+        label: "Pelanggan",
+        path: "/pelanggan",
+        icon: UserRound,
+      },
+      {
+        key: "PEMBELIAN",
         label: "Pembelian",
-        short: "PB",
-        color: "#D97706",
-        path: "/soon/purchasing",
-        built: false,
-        description: "Purchase order, pembelian langsung, dan hutang supplier.",
+        path: "/pembelian",
+        icon: Truck,
       },
     ],
   },
@@ -105,32 +131,22 @@ export const navSections: NavSection[] = [
     title: "PERSEDIAAN",
     items: [
       {
-        key: "PRODUCTS",
+        key: "PRODUK",
         label: "Produk",
-        short: "PR",
-        color: "#4F46E5",
-        path: "/products",
-        built: true,
+        path: "/produk",
+        icon: Package,
       },
       {
-        key: "INVENTORY",
+        key: "PERSEDIAAN",
         label: "Persediaan",
-        short: "PS",
-        color: "#0891B2",
-        path: "/soon/inventory",
-        built: false,
-        description:
-          "Stok per lokasi, buku besar pergerakan, dan stock opname.",
+        path: "/persediaan",
+        icon: Warehouse,
       },
       {
-        key: "WAREHOUSE",
-        label: "Gudang & Mutasi",
-        short: "GD",
-        color: "#65A30D",
-        path: "/soon/warehouse",
-        built: false,
-        description:
-          "Mutasi stok Gudang Belakang ke Area Penjualan dengan persetujuan.",
+        key: "GUDANG",
+        label: "Gudang",
+        path: "/gudang",
+        icon: ArrowLeftRight,
       },
     ],
   },
@@ -138,21 +154,16 @@ export const navSections: NavSection[] = [
     title: "KEUANGAN",
     items: [
       {
-        key: "FINANCE",
+        key: "KEUANGAN",
         label: "Keuangan",
-        short: "KU",
-        color: "#DC2626",
-        path: "/soon/finance",
-        built: false,
-        description: "Kas, bank, beban operasional, dan arus kas toko.",
+        path: "/keuangan",
+        icon: Wallet,
       },
       {
-        key: "REPORTS",
+        key: "LAPORAN",
         label: "Laporan",
-        short: "LP",
-        color: "#7C3AED",
-        path: "/reports",
-        built: true,
+        path: "/laporan",
+        icon: FileBarChart,
       },
     ],
   },
@@ -160,22 +171,16 @@ export const navSections: NavSection[] = [
     title: "SISTEM",
     items: [
       {
-        key: "EMPLOYEES",
-        label: "Karyawan & Audit",
-        short: "KY",
-        color: "#0F766E",
-        path: "/soon/employees",
-        built: false,
-        description: "Pengguna, matriks peran RBAC, dan audit log.",
+        key: "PENGGUNA",
+        label: "Pengguna & Audit",
+        path: "/pengguna",
+        icon: Users,
       },
       {
-        key: "SETTINGS",
+        key: "PENGATURAN",
         label: "Pengaturan",
-        short: "ST",
-        color: "#475569",
-        path: "/soon/settings",
-        built: false,
-        description: "Identitas toko, struk, lokasi, dan preferensi sistem.",
+        path: "/pengaturan",
+        icon: Settings,
       },
     ],
   },
@@ -191,7 +196,9 @@ export function moduleByPath(pathname: string): ModuleDefinition | undefined {
   return [...allModules]
     .sort((a, b) => b.path.length - a.path.length)
     .find((module) =>
-      module.path === "/" ? pathname === "/" : pathname.startsWith(module.path),
+      module.path === "/"
+        ? pathname === "/"
+        : pathname === module.path || pathname.startsWith(`${module.path}/`),
     );
 }
 
@@ -215,4 +222,8 @@ export function initials(name: string): string {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+export function canManageSettings(role: Role): boolean {
+  return role === "OWNER" || role === "ADMIN";
 }

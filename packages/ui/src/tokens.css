@@ -1,0 +1,160 @@
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/plus_jakarta_sans_regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/plus_jakarta_sans_medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/plus_jakarta_sans_semibold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/plus_jakarta_sans_bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/plus_jakarta_sans_extrabold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm_plex_mono_regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm_plex_mono_medium.ttf") format("truetype");
+}
+
+:root {
+  color-scheme: light;
+
+  --tj-canvas: #f6f7f9;
+  --tj-surface: #ffffff;
+  --tj-subtle: #f1f2f4;
+  --tj-hover: #f1f2f4;
+  --tj-selected: #f0fdfa;
+  --tj-ink: #18181b;
+  --tj-ink-secondary: #52525b;
+  --tj-ink-muted: #71717a;
+  --tj-ink-disabled: #a1a1aa;
+  --tj-ink-inverse: #fafafa;
+  --tj-line: #e4e4e7;
+  --tj-line-strong: #d4d4d8;
+  --tj-line-control: #8b8b93;
+  --tj-primary: #0f766e;
+  --tj-primary-hover: #115e59;
+  --tj-primary-active: #134e4a;
+  --tj-primary-soft: #f0fdfa;
+  --tj-on-primary: #ffffff;
+  --tj-accent: #d97706;
+  --tj-accent-soft: #fffbeb;
+  --tj-success: #15803d;
+  --tj-success-soft: #f0fdf4;
+  --tj-warning: #b45309;
+  --tj-warning-soft: #fffbeb;
+  --tj-danger: #b91c1c;
+  --tj-danger-soft: #fef2f2;
+  --tj-info: #1d4ed8;
+  --tj-info-soft: #eff6ff;
+  --tj-focus: #0f766e;
+  --tj-overlay: rgb(9 9 11 / 48%);
+  --tj-chart-1: #0f766e;
+  --tj-chart-2: #d97706;
+  --tj-chart-3: #4f46e5;
+  --tj-chart-4: #be123c;
+  --tj-chart-5: #64748b;
+  --tj-violet: #6d28d9;
+  --tj-violet-soft: #f5f3ff;
+  --tj-shadow-dropdown: 0 8px 24px rgb(9 9 11 / 12%);
+  --tj-shadow-modal: 0 20px 48px rgb(9 9 11 / 18%);
+  --tj-shadow-toast: 0 8px 24px rgb(9 9 11 / 16%);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --tj-canvas: #09090b;
+  --tj-surface: #111113;
+  --tj-subtle: #18181b;
+  --tj-hover: #1f1f23;
+  --tj-selected: #0f2e2b;
+  --tj-ink: #fafafa;
+  --tj-ink-secondary: #a1a1aa;
+  --tj-ink-muted: #8b8b93;
+  --tj-ink-disabled: #52525b;
+  --tj-ink-inverse: #18181b;
+  --tj-line: #27272a;
+  --tj-line-strong: #3f3f46;
+  --tj-line-control: #71717a;
+  --tj-primary: #2dd4bf;
+  --tj-primary-hover: #5eead4;
+  --tj-primary-active: #99f6e4;
+  --tj-primary-soft: #042f2e;
+  --tj-on-primary: #042f2e;
+  --tj-accent: #fbbf24;
+  --tj-accent-soft: #451a03;
+  --tj-success: #4ade80;
+  --tj-success-soft: #052e16;
+  --tj-warning: #fbbf24;
+  --tj-warning-soft: #451a03;
+  --tj-danger: #f87171;
+  --tj-danger-soft: #450a0a;
+  --tj-info: #60a5fa;
+  --tj-info-soft: #172554;
+  --tj-focus: #2dd4bf;
+  --tj-overlay: rgb(0 0 0 / 64%);
+  --tj-chart-1: #2dd4bf;
+  --tj-chart-2: #fbbf24;
+  --tj-chart-3: #818cf8;
+  --tj-chart-4: #fb7185;
+  --tj-chart-5: #94a3b8;
+  --tj-violet: #c4b5fd;
+  --tj-violet-soft: #2e1065;
+  --tj-shadow-dropdown: 0 8px 24px rgb(0 0 0 / 40%);
+  --tj-shadow-modal: 0 20px 48px rgb(0 0 0 / 50%);
+  --tj-shadow-toast: 0 8px 24px rgb(0 0 0 / 44%);
+}
+
+[data-text-size="large"] {
+  font-size: 112.5%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

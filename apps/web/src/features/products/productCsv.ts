@@ -15,7 +15,8 @@ const headers = [
 ];
 
 function escapeCell(value: string | number): string {
-  const text = String(value);
+  const raw = String(value);
+  const text = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
 
   if (/[",\r\n]/.test(text)) {
     return `"${text.replaceAll('"', '""')}"`;

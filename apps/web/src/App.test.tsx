@@ -63,9 +63,9 @@ describe("app smoke", () => {
     const root = mount();
     await login(root, "owner");
 
-    expect(root.textContent).toContain("Ringkasan Eksekutif TOKO JOJO");
-    expect(root.textContent).toContain("Tren Penjualan vs HPP");
-    expect(root.textContent).toContain("Transaksi POS Terbaru");
+    expect(root.textContent).toContain("Ringkasan");
+    expect(root.textContent).toContain("Tren penjualan");
+    expect(root.textContent).toContain("Penjualan terbaru");
 
     const productLink = [...root.querySelectorAll("a")].find((link) =>
       link.textContent?.includes("Produk"),
@@ -87,8 +87,8 @@ describe("app smoke", () => {
 
     await wait(500);
 
-    expect(root.textContent).toContain("Pusat Laporan");
-    expect(root.textContent).toContain("Ikhtisar & Valuasi Stok");
+    expect(root.textContent).toContain("Laporan");
+    expect(root.textContent).toContain("Penjualan Harian / Mingguan / Bulanan");
   });
 
   it("limits a cashier to permitted modules in read-only mode", async () => {
@@ -97,7 +97,7 @@ describe("app smoke", () => {
 
     const nav = root.querySelector("nav");
     expect(nav).not.toBeNull();
-    expect(nav!.textContent).toContain("Penjualan (POS)");
+    expect(nav!.textContent).toContain("Penjualan");
     expect(nav!.textContent).toContain("Produk");
     expect(nav!.textContent).not.toContain("Pembelian");
     expect(nav!.textContent).not.toContain("Keuangan");
@@ -110,14 +110,26 @@ describe("app smoke", () => {
     click(productLink!);
     await wait(500);
 
-    expect(root.textContent).toContain("Mode lihat");
     expect(root.textContent).not.toContain("Tambah Produk");
 
-    window.history.pushState(null, "", "/soon/purchasing");
+    window.history.pushState(null, "", "/pembelian");
     window.dispatchEvent(new PopStateEvent("popstate"));
     await wait(300);
 
     expect(root.textContent).toContain("Akses ditolak");
+
+    window.history.pushState(null, "", "/pengaturan?tab=profil");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(300);
+
+    expect(root.textContent).toContain("Akses ditolak");
+
+    window.history.pushState(null, "", "/pengaturan");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(300);
+
+    expect(root.textContent).toContain("Tampilan");
+    expect(root.textContent).toContain("Kembalikan default");
   });
 
   it("opens the off-canvas sidebar from the mobile menu toggle", async () => {
@@ -135,5 +147,30 @@ describe("app smoke", () => {
 
     expect(sidebar!.className).toContain("translate-x-0");
     expect(sidebar!.className).not.toContain("-translate-x-full");
+  });
+
+  it("opens every owner route with mock data", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    const routes = [
+      ["/produk", "Master Produk"],
+      ["/pelanggan", "Pelanggan"],
+      ["/persediaan", "Persediaan"],
+      ["/pembelian", "Pembelian"],
+      ["/penjualan", "Penjualan"],
+      ["/gudang", "Gudang"],
+      ["/keuangan", "Keuangan"],
+      ["/laporan", "Laporan"],
+      ["/pengguna", "Pengguna & Audit"],
+      ["/pengaturan", "Pengaturan"],
+    ] as const;
+
+    for (const [path, heading] of routes) {
+      window.history.pushState(null, "", path);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      await wait(350);
+      expect(root.textContent).toContain(heading);
+    }
   });
 });

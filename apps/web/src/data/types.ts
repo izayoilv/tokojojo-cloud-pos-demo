@@ -13,6 +13,14 @@ export type User = {
   lastLogin: string;
 };
 
+export type ProductUnit = {
+  id: string;
+  name: string;
+  conversionQty: number;
+  sellingPrice: number;
+  barcode: string;
+};
+
 export type Product = {
   id: string;
   sku: string;
@@ -28,6 +36,8 @@ export type Product = {
   minStock: number;
   minStoreStock: number;
   color: string;
+  units?: ProductUnit[];
+  active?: boolean;
 };
 
 export type SaleItem = {
@@ -42,7 +52,8 @@ export type SaleItem = {
 };
 
 export type SaleStatus = "COMPLETED" | "PARTIAL_RETURN";
-export type PaymentMethod = "TUNAI" | "QRIS" | "DEBIT";
+export type PaymentMethod =
+  "TUNAI" | "QRIS" | "DEBIT" | "TRANSFER" | "HUTANG" | "CAMPURAN";
 
 export type Sale = {
   id: string;
@@ -56,17 +67,25 @@ export type Sale = {
   items: SaleItem[];
 };
 
+export type TransferItem = {
+  productId: string;
+  productName: string;
+  unit: string;
+  quantity: number;
+};
+
 export type Transfer = {
   id: string;
   number: string;
   from: LocationCode;
   to: LocationCode;
-  status: "PENDING" | "COMPLETED";
+  status: "PENDING" | "COMPLETED" | "CANCELLED";
   created: string;
   completed: string | null;
   createdBy: string;
   approvedBy: string | null;
   itemCount: number;
+  items?: TransferItem[];
 };
 
 export type Payable = {
@@ -106,4 +125,140 @@ export type SalesKpis = {
   cogs: number;
   grossProfit: number;
   margin: number;
+};
+
+export type Supplier = {
+  id: string;
+  code: string;
+  name: string;
+  contact: string;
+  phone: string;
+  address: string;
+  termDays: number;
+  payable: number;
+  active: boolean;
+};
+
+export type Customer = {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  notes: string;
+  outstanding: number;
+  active: boolean;
+};
+
+export type PurchaseStatus = "RECEIVED" | "ORDERED" | "CANCELLED";
+
+export type Purchase = {
+  id: string;
+  number: string;
+  supplierName: string;
+  invoice: string;
+  date: string;
+  due: string;
+  total: number;
+  paid: number;
+  status: PurchaseStatus;
+  payStatus: "PAID" | "PARTIAL" | "UNPAID";
+  itemCount: number;
+};
+
+export type StockMovementType =
+  | "PURCHASE"
+  | "PURCHASE_CANCEL"
+  | "SALE"
+  | "TRANSFER_OUT"
+  | "TRANSFER_IN"
+  | "OPNAME"
+  | "RETURN"
+  | "SALE_VOID"
+  | "ADJUSTMENT";
+
+export type StockMovement = {
+  id: string;
+  time: string;
+  productId: string;
+  productName: string;
+  location: LocationCode;
+  type: StockMovementType;
+  quantity: number;
+  reference: string;
+  note: string;
+  createdBy: string;
+};
+
+export type CashFlow = {
+  id: string;
+  time: string;
+  type: "IN" | "OUT";
+  category: string;
+  method: PaymentMethod;
+  amount: number;
+  reference: string;
+  source: "AUTO" | "MANUAL";
+  createdBy: string;
+};
+
+export type Receivable = {
+  id: string;
+  customerName: string;
+  invoice: string;
+  due: string;
+  total: number;
+  paid: number;
+};
+
+export type AuditEvent = {
+  id: string;
+  time: string;
+  actor: string;
+  role: Role;
+  event: string;
+  entity: string;
+  summary: string;
+};
+
+export type DeviceStatus = "APPROVED" | "PENDING" | "REVOKED";
+
+export type Device = {
+  id: string;
+  name: string;
+  platform: "WEB" | "POS" | "ANDROID";
+  status: DeviceStatus;
+  lastSeen: string;
+};
+
+export type WebSession = {
+  id: string;
+  device: string;
+  created: string;
+  lastSeen: string;
+  current: boolean;
+};
+
+export type ReceiptSettings = {
+  paperSize: "58mm" | "80mm";
+  showPrice: boolean;
+  footer: string;
+  autoPrint: boolean;
+};
+
+export type OpnameItem = {
+  productId: string;
+  productName: string;
+  systemQty: number;
+  physicalQty: number;
+};
+
+export type Opname = {
+  id: string;
+  number: string;
+  location: LocationCode;
+  status: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+  created: string;
+  createdBy: string;
+  reviewedBy: string | null;
+  items: OpnameItem[];
 };
