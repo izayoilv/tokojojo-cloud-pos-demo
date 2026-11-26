@@ -34,6 +34,13 @@ Operation documents (`.graphql` queries/mutations per client) are added by the
 client integration work (web #12, Android #13, POS #8), not here. This package
 owns only the schema and its validation.
 
+## Schema authorship
+
+Until the Pothos server in #7 is stable, `schema.graphql` is the reviewed contract:
+change it first, then make Pothos match. After #7, Pothos becomes the authoring
+source and CI exports the SDL and fails on drift against this file. Do not maintain
+two hand-edited schemas.
+
 ## Conventions
 
 - **Single store.** One database is one store. Authorization comes from the
