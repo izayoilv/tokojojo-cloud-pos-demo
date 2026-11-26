@@ -273,6 +273,9 @@ importers:
       '@tanstack/solid-query':
         specifier: 5.108.0
         version: 5.108.0(solid-js@1.9.19)
+      '@tokojojo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       graphql:
         specifier: 16.14.2
         version: 16.14.2
@@ -316,6 +319,21 @@ importers:
       graphql:
         specifier: 16.14.2
         version: 16.14.2
+
+  packages/ui:
+    devDependencies:
+      '@kobalte/core':
+        specifier: 0.13.14
+        version: 0.13.14(solid-js@1.9.19)
+      lucide-solid:
+        specifier: 1.75.0
+        version: 1.75.0(solid-js@1.9.19)
+      solid-js:
+        specifier: 1.9.19
+        version: 1.9.19
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
 packages:
 

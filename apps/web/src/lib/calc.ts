@@ -1,6 +1,7 @@
 import type {
   LocationCode,
   Product,
+  ProductUnit,
   Sale,
   SalesKpis,
   SaleTotals,
@@ -46,6 +47,26 @@ export function saleTotals(sale: Sale): SaleTotals {
 
 export function totalStock(product: Product): number {
   return product.warehouseStock + product.storeStock;
+}
+
+export function productUnits(product: Product): ProductUnit[] {
+  return product.units?.length
+    ? product.units
+    : [
+        {
+          id: `PU-${product.id}`,
+          name: product.unit,
+          conversionQty: 1,
+          sellingPrice: product.price,
+          barcode: product.barcode,
+        },
+      ];
+}
+
+export function baseUnit(product: Product): ProductUnit {
+  return productUnits(product).reduce((base, unit) =>
+    unit.conversionQty < base.conversionQty ? unit : base,
+  );
 }
 
 export function stockStatus(product: Product): StockStatus {

@@ -50,6 +50,25 @@ export function formatDateTime(iso: string): string {
   return `${value("day")}/${value("month")}/${value("year")} ${value("hour")}:${value("minute")}`;
 }
 
+export function formatCompactRupiah(value: number): string {
+  const absolute = Math.abs(value);
+  const prefix = value < 0 ? "-" : "";
+
+  if (absolute >= 1_000_000_000) {
+    return `${prefix}Rp ${(absolute / 1_000_000_000).toLocaleString("id-ID", {
+      maximumFractionDigits: 1,
+    })} M`;
+  }
+
+  if (absolute >= 1_000_000) {
+    return `${prefix}Rp ${(absolute / 1_000_000).toLocaleString("id-ID", {
+      maximumFractionDigits: 1,
+    })} jt`;
+  }
+
+  return formatRupiah(value);
+}
+
 export function formatPercent(value: number): string {
   return `${new Intl.NumberFormat("id-ID", {
     minimumFractionDigits: 1,

@@ -64,18 +64,18 @@ shared contract are in place. `pnpm dev:web` proxies `/graphql` to
 
 ## Structure
 
-| Path                | Description                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `apps/api/`         | Express + Yoga + Pothos + Drizzle API                      |
-| `apps/web/`         | SolidJS admin dashboard                                    |
-| `apps/pos/`         | Tauri + Rust POS                                           |
-| `apps/android/`     | Kotlin Android stock app                                   |
-| `packages/graphql/` | Shared schema, contract validator, future operations       |
-| `packages/ui/`      | Future shared SolidJS components; not in the workspace yet |
-| `packages/config/`  | Future shared config; not in the workspace yet             |
-| `infra/`            | Compose, Caddy, Cloudflare Tunnel, backup                  |
-| `load/`             | k6 capacity scenarios                                      |
-| `scripts/`          | Development and operations helpers                         |
+| Path                | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `apps/api/`         | Express + Yoga + Pothos + Drizzle API                |
+| `apps/web/`         | SolidJS admin dashboard                              |
+| `apps/pos/`         | Tauri + Rust POS                                     |
+| `apps/android/`     | Kotlin Android stock app                             |
+| `packages/graphql/` | Shared schema, contract validator, future operations |
+| `packages/ui/`      | Shared SolidJS UI primitives, tokens, and fonts      |
+| `packages/config/`  | Future shared config; not in the workspace yet       |
+| `infra/`            | Compose, Caddy, Cloudflare Tunnel, backup            |
+| `load/`             | k6 capacity scenarios                                |
+| `scripts/`          | Development and operations helpers                   |
 
 ## Platform guides
 

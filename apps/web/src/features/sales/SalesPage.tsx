@@ -1,0 +1,297 @@
+import { createQuery } from "@tanstack/solid-query";
+import {
+  Badge,
+  Button,
+  Drawer,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Panel,
+  SearchInput,
+  Select,
+  Table,
+  TableSkeleton,
+  TableWrap,
+  Td,
+  Th,
+  useToast,
+} from "@tokojojo/ui";
+import { Printer, RefreshCcw, ShieldAlert } from "lucide-solid";
+import { createMemo, createSignal, For, Show } from "solid-js";
+
+import { useAuth } from "../../app/auth";
+import { repository } from "../../data/repository";
+import type { Sale } from "../../data/types";
+import { saleTotals } from "../../lib/calc";
+import { formatDateTime, formatRupiah } from "../../lib/format";
+
+const methodTone = (method: string) =>
+  method === "TUNAI"
+    ? "success"
+    : method === "QRIS"
+      ? "info"
+      : method === "HUTANG"
+        ? "warning"
+        : "violet";
+
+export function SalesPage() {
+  const auth = useAuth();
+  const toast = useToast();
+  const [search, setSearch] = createSignal("");
+  const [method, setMethod] = createSignal("SEMUA");
+  const [status, setStatus] = createSignal("SEMUA");
+  const [selected, setSelected] = createSignal<Sale | null>(null);
+
+  const salesQuery = createQuery(() => ({
+    queryKey: ["sales"],
+    queryFn: () => repository.listSales(),
+  }));
+
+  const sales = createMemo(() => {
+    const needle = search().trim().toLowerCase();
+    return (salesQuery.data ?? []).filter((sale) => {
+      const matchesSearch =
+        !needle ||
+        sale.number.toLowerCase().includes(needle) ||
+        sale.cashier.toLowerCase().includes(needle);
+      const matchesMethod = method() === "SEMUA" || sale.method === method();
+      const matchesStatus = status() === "SEMUA" || sale.status === status();
+      return matchesSearch && matchesMethod && matchesStatus;
+    });
+  });
+
+  const canVoid = () =>
+    auth.user()?.role === "OWNER" || auth.user()?.role === "ADMIN";
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Transaksi dari POS"
+        title="Penjualan"
+        subtitle="Riwayat transaksi, pembayaran, retur, dan void."
+      />
+
+      <Panel>
+        <div class="border-b border-line p-4">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px_180px]">
+            <SearchInput
+              aria-label="Cari penjualan"
+              placeholder="Cari invoice atau kasir..."
+              value={search()}
+              onInput={(event) => setSearch(event.currentTarget.value)}
+            />
+            <Select
+              value={method()}
+              onChange={(event) => setMethod(event.currentTarget.value)}
+              aria-label="Filter metode"
+            >
+              <option value="SEMUA">Semua metode</option>
+              <option value="TUNAI">Tunai</option>
+              <option value="QRIS">QRIS</option>
+              <option value="DEBIT">Debit</option>
+              <option value="HUTANG">Hutang</option>
+            </Select>
+            <Select
+              value={status()}
+              onChange={(event) => setStatus(event.currentTarget.value)}
+              aria-label="Filter status"
+            >
+              <option value="SEMUA">Semua status</option>
+              <option value="COMPLETED">Selesai</option>
+              <option value="PARTIAL_RETURN">Retur sebagian</option>
+            </Select>
+          </div>
+        </div>
+
+        <Show
+          when={!salesQuery.isError}
+          fallback={
+            <ErrorState
+              message="Penjualan tidak dapat dimuat."
+              onRetry={() => void salesQuery.refetch()}
+            />
+          }
+        >
+          <Show
+            when={!salesQuery.isPending}
+            fallback={<TableSkeleton rows={8} cols={6} />}
+          >
+            <Show
+              when={sales().length > 0}
+              fallback={
+                <EmptyState
+                  title="Belum ada transaksi"
+                  description="Transaksi POS yang tersinkron akan muncul di sini."
+                />
+              }
+            >
+              <TableWrap>
+                <Table class="min-w-[960px]">
+                  <thead>
+                    <tr>
+                      <Th>Invoice</Th>
+                      <Th>Waktu</Th>
+                      <Th>Kasir</Th>
+                      <Th>Metode</Th>
+                      <Th align="right">Total</Th>
+                      <Th>Status</Th>
+                      <Th align="center">Aksi</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={sales()}>
+                      {(sale) => (
+                        <tr class="hover:bg-hover">
+                          <Td class="font-mono text-[11px]">{sale.number}</Td>
+                          <Td>{formatDateTime(sale.time)}</Td>
+                          <Td>{sale.cashier}</Td>
+                          <Td>
+                            <Badge tone={methodTone(sale.method)}>
+                              {sale.method}
+                            </Badge>
+                          </Td>
+                          <Td align="right">
+                            <b>{formatRupiah(saleTotals(sale).grandTotal)}</b>
+                          </Td>
+                          <Td>
+                            <Badge
+                              tone={
+                                sale.status === "COMPLETED"
+                                  ? "success"
+                                  : "warning"
+                              }
+                            >
+                              {sale.status === "COMPLETED"
+                                ? "Selesai"
+                                : "Retur sebagian"}
+                            </Badge>
+                          </Td>
+                          <Td align="center">
+                            <Button size="sm" onClick={() => setSelected(sale)}>
+                              Detail
+                            </Button>
+                          </Td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </Table>
+              </TableWrap>
+            </Show>
+          </Show>
+        </Show>
+      </Panel>
+
+      <Drawer
+        open={selected() !== null}
+        onOpenChange={(open) => !open && setSelected(null)}
+        title={`Invoice ${selected()?.number ?? ""}`}
+        description={`${selected()?.cashier ?? ""} · ${selected() ? formatDateTime(selected()!.time) : ""}`}
+        footer={
+          <>
+            <Button
+              size="sm"
+              onClick={() => toast.notify("Struk dikirim ke antrean cetak.")}
+            >
+              <Printer size={14} /> Cetak ulang
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => toast.notify("Retur contoh disiapkan.", "warning")}
+            >
+              <RefreshCcw size={14} /> Retur
+            </Button>
+            <Show when={canVoid()}>
+              <Button
+                size="sm"
+                variant="soft-danger"
+                onClick={() => {
+                  toast.notify("Void transaksi tercatat di audit.", "danger");
+                  setSelected(null);
+                }}
+              >
+                <ShieldAlert size={14} /> Void
+              </Button>
+            </Show>
+          </>
+        }
+      >
+        <Show when={selected()}>
+          {(sale) => (
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <div class="text-xs text-ink-muted">Metode</div>
+                  <b>{sale().method}</b>
+                </div>
+                <div>
+                  <div class="text-xs text-ink-muted">Terminal</div>
+                  <b>{sale().terminal}</b>
+                </div>
+                <div>
+                  <div class="text-xs text-ink-muted">Status</div>
+                  <b>{sale().status}</b>
+                </div>
+                <div>
+                  <div class="text-xs text-ink-muted">Diterima</div>
+                  <b>{formatRupiah(sale().received)}</b>
+                </div>
+              </div>
+
+              <div class="overflow-hidden rounded-[8px] border border-line">
+                <TableWrap>
+                  <Table class="min-w-[420px]">
+                    <thead>
+                      <tr>
+                        <Th>Item</Th>
+                        <Th align="right">Qty</Th>
+                        <Th align="right">Harga</Th>
+                        <Th align="right">Total</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={sale().items}>
+                        {(item) => (
+                          <tr>
+                            <Td>
+                              <b class="text-ink">{item.name}</b>
+                              <div class="text-xs text-ink-muted">
+                                per {item.unit}
+                              </div>
+                            </Td>
+                            <Td align="right">{item.quantity}</Td>
+                            <Td align="right">{formatRupiah(item.price)}</Td>
+                            <Td align="right">
+                              {formatRupiah(
+                                (item.quantity - item.returned) * item.price,
+                              )}
+                            </Td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </Table>
+                </TableWrap>
+              </div>
+
+              <div class="ml-auto max-w-xs space-y-1.5 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-ink-muted">Subtotal</span>
+                  <span>{formatRupiah(saleTotals(sale()).subtotal)}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-ink-muted">Diskon</span>
+                  <span>-{formatRupiah(saleTotals(sale()).discount)}</span>
+                </div>
+                <div class="flex justify-between border-t border-line pt-1.5 font-bold">
+                  <span>Total</span>
+                  <span>{formatRupiah(saleTotals(sale()).grandTotal)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </Show>
+      </Drawer>
+    </>
+  );
+}

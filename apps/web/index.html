@@ -1,15 +1,31 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-theme="light" data-text-size="normal">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TokoJojo Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
+    <meta
+      name="description"
+      content="TokoJojo Admin — sistem administrasi bisnis dan inventaris."
     />
+    <title>TokoJojo Admin</title>
+    <script>
+      (() => {
+        try {
+          const stored = JSON.parse(
+            localStorage.getItem("tokojojo.preferences") || "{}",
+          );
+          const dark =
+            stored.theme === "dark" ||
+            (stored.theme !== "light" &&
+              matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+          document.documentElement.dataset.textSize =
+            stored.textSize === "large" ? "large" : "normal";
+        } catch {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

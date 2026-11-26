@@ -1,3 +1,4 @@
+import { productUnits } from "./mockExtra";
 import type {
   Payable,
   Product,
@@ -19,7 +20,7 @@ export const users: User[] = [
     email: "jojo@tokojojo.co.id",
     phone: "0811-7701-889",
     active: true,
-    lastLogin: "2025-05-14T08:15:00+07:00",
+    lastLogin: "2026-11-24T08:15:00+07:00",
   },
   {
     id: "USR-02",
@@ -29,7 +30,7 @@ export const users: User[] = [
     email: "siti.admin@tokojojo.co.id",
     phone: "0812-6612-3401",
     active: true,
-    lastLogin: "2025-05-14T07:50:00+07:00",
+    lastLogin: "2026-11-24T07:50:00+07:00",
   },
   {
     id: "USR-03",
@@ -39,7 +40,7 @@ export const users: User[] = [
     email: "dewi.kasir@tokojojo.co.id",
     phone: "0852-7200-1122",
     active: true,
-    lastLogin: "2025-05-14T07:55:00+07:00",
+    lastLogin: "2026-11-24T07:55:00+07:00",
   },
   {
     id: "USR-04",
@@ -49,7 +50,7 @@ export const users: User[] = [
     email: "hendra.wh@tokojojo.co.id",
     phone: "0813-6400-9988",
     active: true,
-    lastLogin: "2025-05-14T07:45:00+07:00",
+    lastLogin: "2026-11-24T07:45:00+07:00",
   },
 ];
 
@@ -59,7 +60,7 @@ export const products: Product[] = [
     sku: "SMB-BRS-001",
     barcode: "8992761110012",
     name: "Beras Setra Ramos Cap Topi Koki 5kg",
-    category: "Sembako Utama",
+    category: "Sembako",
     brand: "Topi Koki",
     unit: "Karung",
     cost: 64200,
@@ -75,7 +76,7 @@ export const products: Product[] = [
     sku: "SMB-MNY-002",
     barcode: "8992775201027",
     name: "Minyak Goreng Bimoli Klasik Pouch 2L",
-    category: "Sembako Utama",
+    category: "Sembako",
     brand: "Bimoli",
     unit: "Pouch",
     cost: 33000,
@@ -91,7 +92,7 @@ export const products: Product[] = [
     sku: "MIE-IND-003",
     barcode: "089686010947",
     name: "Indomie Mi Instan Goreng Spesial 85g",
-    category: "Mi & Makanan Instan",
+    category: "Makanan Instan",
     brand: "Indomie",
     unit: "Bungkus",
     cost: 2720,
@@ -107,7 +108,7 @@ export const products: Product[] = [
     sku: "SMB-GLA-004",
     barcode: "8995177101018",
     name: "Gulaku Gula Pasir Tebu Premium 1kg",
-    category: "Sembako Utama",
+    category: "Sembako",
     brand: "Gulaku",
     unit: "Bungkus",
     cost: 15750,
@@ -123,7 +124,7 @@ export const products: Product[] = [
     sku: "MNM-KPI-005",
     barcode: "8991002101234",
     name: "Kopi Kapal Api Special Mix Renceng",
-    category: "Minuman & Kopi",
+    category: "Minuman",
     brand: "Kapal Api",
     unit: "Renceng",
     cost: 13100,
@@ -139,7 +140,7 @@ export const products: Product[] = [
     sku: "SUS-FFG-006",
     barcode: "8992753102211",
     name: "SKM Frisian Flag Putih Pouch 545g",
-    category: "Susu & Olahan",
+    category: "Susu",
     brand: "Frisian Flag",
     unit: "Pouch",
     cost: 14850,
@@ -171,7 +172,7 @@ export const products: Product[] = [
     sku: "RTG-SLG-008",
     barcode: "8998866200349",
     name: "Sunlight Jeruk Nipis 650ml",
-    category: "RT & Kebersihan",
+    category: "Rumah Tangga",
     brand: "Sunlight",
     unit: "Pouch",
     cost: 12300,
@@ -187,7 +188,7 @@ export const products: Product[] = [
     sku: "MNM-AQU-009",
     barcode: "8886008101053",
     name: "Aqua Botol 600ml (Dus 24)",
-    category: "Minuman & Kopi",
+    category: "Minuman",
     brand: "Aqua",
     unit: "Dus",
     cost: 43800,
@@ -203,7 +204,7 @@ export const products: Product[] = [
     sku: "SMB-TLR-010",
     barcode: "2001000000105",
     name: "Telur Ayam Negeri (Tray 30 butir)",
-    category: "Sembako Utama",
+    category: "Sembako",
     brand: "Lokal",
     unit: "Tray",
     cost: 48800,
@@ -219,7 +220,7 @@ export const products: Product[] = [
     sku: "MNM-TEH-011",
     barcode: "8991002502016",
     name: "Teh Celup Sariwangi isi 100",
-    category: "Minuman & Kopi",
+    category: "Minuman",
     brand: "Sariwangi",
     unit: "Kotak",
     cost: 8200,
@@ -235,7 +236,7 @@ export const products: Product[] = [
     sku: "RTG-LIF-012",
     barcode: "8999999056230",
     name: "Sabun Mandi Lifebuoy Total 10",
-    category: "RT & Kebersihan",
+    category: "Rumah Tangga",
     brand: "Lifebuoy",
     unit: "Pcs",
     cost: 4100,
@@ -247,6 +248,19 @@ export const products: Product[] = [
     color: "#0e7490",
   },
 ];
+
+for (const product of products) {
+  product.units = productUnits[product.id] ?? [
+    {
+      id: `PU-${product.id}`,
+      name: product.unit,
+      conversionQty: 1,
+      sellingPrice: product.price,
+      barcode: product.barcode,
+    },
+  ];
+  product.active = true;
+}
 
 type RawSale = {
   number: string;
@@ -261,8 +275,8 @@ type RawSale = {
 
 const rawSales: RawSale[] = [
   {
-    number: "POS/20250514/0001",
-    time: "2025-05-14T08:30:00+07:00",
+    number: "POS/20261124/0001",
+    time: "2026-11-24T08:30:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "TUNAI",
@@ -275,8 +289,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250514/0002",
-    time: "2025-05-14T09:42:00+07:00",
+    number: "POS/20261124/0002",
+    time: "2026-11-24T09:42:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "QRIS",
@@ -289,8 +303,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250513/0089",
-    time: "2025-05-13T19:15:00+07:00",
+    number: "POS/20261123/0089",
+    time: "2026-11-23T19:15:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-02",
     method: "DEBIT",
@@ -303,8 +317,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250513/0077",
-    time: "2025-05-13T11:20:00+07:00",
+    number: "POS/20261123/0077",
+    time: "2026-11-23T11:20:00+07:00",
     cashier: "Siti Rahmawati",
     terminal: "KASIR-DESKTOP-01",
     method: "TUNAI",
@@ -317,8 +331,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250512/0065",
-    time: "2025-05-12T16:40:00+07:00",
+    number: "POS/20261122/0065",
+    time: "2026-11-22T16:40:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "QRIS",
@@ -330,8 +344,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250512/0058",
-    time: "2025-05-12T09:05:00+07:00",
+    number: "POS/20261122/0058",
+    time: "2026-11-22T09:05:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "TUNAI",
@@ -344,8 +358,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250511/0044",
-    time: "2025-05-11T14:22:00+07:00",
+    number: "POS/20261121/0044",
+    time: "2026-11-21T14:22:00+07:00",
     cashier: "Siti Rahmawati",
     terminal: "KASIR-DESKTOP-02",
     method: "DEBIT",
@@ -358,8 +372,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250511/0039",
-    time: "2025-05-11T08:50:00+07:00",
+    number: "POS/20261121/0039",
+    time: "2026-11-21T08:50:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "TUNAI",
@@ -371,8 +385,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250510/0021",
-    time: "2025-05-10T13:10:00+07:00",
+    number: "POS/20261120/0021",
+    time: "2026-11-20T13:10:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "QRIS",
@@ -384,8 +398,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250509/0012",
-    time: "2025-05-09T10:35:00+07:00",
+    number: "POS/20261119/0012",
+    time: "2026-11-19T10:35:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "TUNAI",
@@ -398,8 +412,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250508/0007",
-    time: "2025-05-08T15:45:00+07:00",
+    number: "POS/20261118/0007",
+    time: "2026-11-18T15:45:00+07:00",
     cashier: "Siti Rahmawati",
     terminal: "KASIR-DESKTOP-01",
     method: "TUNAI",
@@ -413,8 +427,8 @@ const rawSales: RawSale[] = [
     ],
   },
   {
-    number: "POS/20250514/0003",
-    time: "2025-05-14T10:05:00+07:00",
+    number: "POS/20261124/0003",
+    time: "2026-11-24T10:05:00+07:00",
     cashier: "Dewi Lestari",
     terminal: "KASIR-DESKTOP-01",
     method: "DEBIT",
@@ -479,23 +493,23 @@ export const sales: Sale[] = rawSales.map((sale, index) => {
 export const transfers: Transfer[] = [
   {
     id: "TRF-001",
-    number: "MUT/2025/05/001",
+    number: "MUT/2026/11/001",
     from: "WH-BACK",
     to: "STORE-FRONT",
     status: "COMPLETED",
-    created: "2025-05-13T08:30:00+07:00",
-    completed: "2025-05-13T08:50:00+07:00",
+    created: "2026-11-23T08:30:00+07:00",
+    completed: "2026-11-23T08:50:00+07:00",
     createdBy: "Hendra Saputra",
     approvedBy: "Siti Rahmawati",
     itemCount: 2,
   },
   {
     id: "TRF-002",
-    number: "MUT/2025/05/002",
+    number: "MUT/2026/11/002",
     from: "WH-BACK",
     to: "STORE-FRONT",
     status: "PENDING",
-    created: "2025-05-14T09:10:00+07:00",
+    created: "2026-11-24T09:10:00+07:00",
     completed: null,
     createdBy: "Hendra Saputra",
     approvedBy: null,
@@ -508,7 +522,7 @@ export const payables: Payable[] = [
     id: "PAY-001",
     supplierName: "PT Indomarco Adi Prima (Cabang Batam)",
     invoice: "INV-IAP-88412",
-    due: "2025-05-24",
+    due: "2026-12-01",
     total: 3850000,
     paid: 1000000,
     status: "PARTIAL",
@@ -517,7 +531,7 @@ export const payables: Payable[] = [
     id: "PAY-002",
     supplierName: "CV Sumber Pangan Sembako",
     invoice: "NOTA-SPS-910",
-    due: "2025-05-19",
+    due: "2026-11-28",
     total: 2150000,
     paid: 0,
     status: "UNPAID",

@@ -1,17 +1,33 @@
 import { createQuery } from "@tanstack/solid-query";
-import { Download, FileSpreadsheet, FileText, Printer } from "lucide-solid";
-import { For, Show } from "solid-js";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Panel,
+  PanelBody,
+  PanelHeader,
+  SegmentedControl,
+  Table,
+  TableSkeleton,
+  TableWrap,
+  Td,
+  Th,
+  useToast,
+} from "@tokojojo/ui";
+import { Download, FileText, Printer } from "lucide-solid";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { useAuth } from "../../app/auth";
-import { useToast } from "../../app/toast";
-import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import { ErrorState } from "../../components/ui/ErrorState";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { Skeleton } from "../../components/ui/Skeleton";
 import { repository } from "../../data/repository";
-import type { Payable, Product, Sale } from "../../data/types";
-import { salesKpis, saleTotals, totalStock } from "../../lib/calc";
+import {
+  type DateRange,
+  salesInRange,
+  salesKpis,
+  saleTotals,
+  totalStock,
+} from "../../lib/calc";
 import { formatDate, formatPercent, formatRupiah } from "../../lib/format";
 import { downloadCsv } from "../products/productCsv";
 import {
@@ -21,242 +37,25 @@ import {
   printReport,
   type ReportMeta,
 } from "./reportCsv";
+import {
+  type ReportCategory,
+  type ReportDefinition,
+  reportDefinitions,
+} from "./reportDefinitions";
 
-type ReportKind =
-  | "SALES"
-  | "SALES_PRODUCT"
-  | "SALES_CASHIER"
-  | "PURCHASES"
-  | "PAYABLES"
-  | "STOCK"
-  | "MOVEMENT"
-  | "OPNAME"
-  | "PROFIT"
-  | "CASHFLOW";
-
-type ReportDefinition = {
-  title: string;
-  description: string;
-  code: string;
-  color: string;
-  kind: ReportKind;
-};
-
-const reports: ReportDefinition[] = [
-  {
-    title: "Penjualan Harian / Mingguan / Bulanan",
-    description: "Ringkasan omzet, HPP, laba per periode",
-    code: "PJ",
-    color: "#2563EB",
-    kind: "SALES",
-  },
-  {
-    title: "Penjualan per Produk / Kategori",
-    description: "Produk terlaris & kontribusi margin",
-    code: "PP",
-    color: "#059669",
-    kind: "SALES_PRODUCT",
-  },
-  {
-    title: "Penjualan per Kasir / Metode",
-    description: "Kinerja kasir & pemakaian QRIS/Tunai/Debit",
-    code: "PK",
-    color: "#7C3AED",
-    kind: "SALES_CASHIER",
-  },
-  {
-    title: "Riwayat & Biaya Pembelian",
-    description: "Pembelian per supplier & tren HPP",
-    code: "PB",
-    color: "#D97706",
-    kind: "PURCHASES",
-  },
-  {
-    title: "Hutang Supplier Jatuh Tempo",
-    description: "Aging & rencana pembayaran",
-    code: "HS",
-    color: "#DC2626",
-    kind: "PAYABLES",
-  },
-  {
-    title: "Ikhtisar & Valuasi Stok",
-    description: "Stok per lokasi dengan nilai HPP",
-    code: "VS",
-    color: "#0891B2",
-    kind: "STOCK",
-  },
-  {
-    title: "Pergerakan Stok (Ledger)",
-    description: "Kartu stok masuk-keluar per produk",
-    code: "LG",
-    color: "#65A30D",
-    kind: "MOVEMENT",
-  },
-  {
-    title: "Selisih Stock Opname",
-    description: "Rekapitulasi selisih fisik vs sistem",
-    code: "SO",
-    color: "#B45309",
-    kind: "OPNAME",
-  },
-  {
-    title: "Laba Rugi (P&L)",
-    description: "Penjualan − HPP − beban operasional",
-    code: "LR",
-    color: "#16A34A",
-    kind: "PROFIT",
-  },
-  {
-    title: "Arus Kas",
-    description: "Kas masuk-keluar per akun",
-    code: "AK",
-    color: "#0F766E",
-    kind: "CASHFLOW",
-  },
-];
-
-type ReportTable = {
+type PreviewTable = {
   header: string[];
   rows: Array<Array<string | number>>;
 };
 
-function salesReport(sales: Sale[]): ReportTable {
-  return {
-    header: ["No. Struk", "Waktu", "Kasir", "Metode", "Total", "Laba"],
-    rows: sales.map((sale) => {
-      const totals = saleTotals(sale);
-      return [
-        sale.number,
-        formatDate(sale.time),
-        sale.cashier,
-        sale.method,
-        formatRupiah(totals.grandTotal),
-        formatRupiah(totals.grandTotal - totals.cogs),
-      ];
-    }),
-  };
-}
-
-function productReport(sales: Sale[]): ReportTable {
-  const buckets = new Map<
-    string,
-    { quantity: number; revenue: number; profit: number }
-  >();
-
-  for (const sale of sales) {
-    for (const item of sale.items) {
-      const sold = Math.max(0, item.quantity - item.returned);
-      const current = buckets.get(item.name) ?? {
-        quantity: 0,
-        revenue: 0,
-        profit: 0,
-      };
-      current.quantity += sold;
-      current.revenue += sold * (item.price - item.discount);
-      current.profit += sold * (item.price - item.discount - item.cost);
-      buckets.set(item.name, current);
-    }
-  }
-
-  return {
-    header: ["Produk", "Terjual", "Omzet", "Laba Kotor"],
-    rows: [...buckets.entries()]
-      .sort((a, b) => b[1].revenue - a[1].revenue)
-      .map(([name, value]) => [
-        name,
-        value.quantity,
-        formatRupiah(value.revenue),
-        formatRupiah(value.profit),
-      ]),
-  };
-}
-
-function cashierReport(sales: Sale[]): ReportTable {
-  const buckets = new Map<
-    string,
-    { count: number; revenue: number; profit: number }
-  >();
-
-  for (const sale of sales) {
-    const totals = saleTotals(sale);
-    const current = buckets.get(sale.cashier) ?? {
-      count: 0,
-      revenue: 0,
-      profit: 0,
-    };
-    current.count += 1;
-    current.revenue += totals.grandTotal;
-    current.profit += totals.grandTotal - totals.cogs;
-    buckets.set(sale.cashier, current);
-  }
-
-  return {
-    header: ["Kasir", "Transaksi", "Omzet", "Laba Kotor"],
-    rows: [...buckets.entries()]
-      .sort((a, b) => b[1].revenue - a[1].revenue)
-      .map(([name, value]) => [
-        name,
-        value.count,
-        formatRupiah(value.revenue),
-        formatRupiah(value.profit),
-      ]),
-  };
-}
-
-function payableReport(payables: Payable[], aging: boolean): ReportTable {
-  return {
-    header: aging
-      ? [
-          "Faktur",
-          "Supplier",
-          "Jatuh Tempo",
-          "Total",
-          "Terbayar",
-          "Sisa",
-          "Status",
-        ]
-      : ["Faktur", "Supplier", "Jatuh Tempo", "Total", "Terbayar", "Sisa"],
-    rows: payables.map((payable) => {
-      const base = [
-        payable.invoice,
-        payable.supplierName,
-        formatDate(payable.due),
-        formatRupiah(payable.total),
-        formatRupiah(payable.paid),
-        formatRupiah(payable.total - payable.paid),
-      ];
-      return aging
-        ? [...base, payable.status === "PARTIAL" ? "Cicilan" : "Belum Bayar"]
-        : base;
-    }),
-  };
-}
-
-function stockReport(products: Product[]): ReportTable {
-  return {
-    header: ["Produk", "SKU", "Gudang", "Toko", "Total", "HPP", "Nilai HPP"],
-    rows: products.map((product) => [
-      product.name,
-      product.sku,
-      product.warehouseStock,
-      product.storeStock,
-      totalStock(product),
-      formatRupiah(product.cost),
-      formatRupiah(totalStock(product) * product.cost),
-    ]),
-  };
-}
-
-function noteReport(note: string): ReportTable {
-  return {
-    header: ["Keterangan"],
-    rows: [[note]],
-  };
-}
-
 export function ReportsPage() {
   const auth = useAuth();
   const toast = useToast();
+  const [category, setCategory] = createSignal<ReportCategory>("PENJUALAN");
+  const [range, setRange] = createSignal<DateRange>("MONTH");
+  const [selected, setSelected] = createSignal<ReportDefinition>(
+    reportDefinitions[0]!,
+  );
 
   const productsQuery = createQuery(() => ({
     queryKey: ["products"],
@@ -270,18 +69,168 @@ export function ReportsPage() {
     queryKey: ["payables"],
     queryFn: () => repository.listPayables(),
   }));
+  const movementsQuery = createQuery(() => ({
+    queryKey: ["movements"],
+    queryFn: () => repository.listMovements(),
+  }));
+  const cashFlowsQuery = createQuery(() => ({
+    queryKey: ["cashFlows"],
+    queryFn: () => repository.listCashFlows(),
+  }));
   const settingsQuery = createQuery(() => ({
     queryKey: ["settings"],
     queryFn: () => repository.getSettings(),
   }));
 
-  const products = () => productsQuery.data ?? [];
-  const sales = () => salesQuery.data ?? [];
-  const payables = () => payablesQuery.data ?? [];
   const loading = () =>
     productsQuery.isPending || salesQuery.isPending || payablesQuery.isPending;
   const failed = () =>
     productsQuery.isError || salesQuery.isError || payablesQuery.isError;
+
+  const reports = createMemo(() =>
+    reportDefinitions.filter((report) => report.category === category()),
+  );
+  const filteredSales = createMemo(() =>
+    salesInRange(salesQuery.data ?? [], range()),
+  );
+
+  const preview = createMemo<PreviewTable>(() => {
+    const report = selected();
+
+    if (report.kind === "SALES") {
+      return {
+        header: ["Invoice", "Tanggal", "Kasir", "Metode", "Total", "Laba"],
+        rows: filteredSales().map((sale) => {
+          const totals = saleTotals(sale);
+          return [
+            sale.number,
+            formatDate(sale.time),
+            sale.cashier,
+            sale.method,
+            formatRupiah(totals.grandTotal),
+            formatRupiah(totals.grandTotal - totals.cogs),
+          ];
+        }),
+      };
+    }
+
+    if (report.kind === "PRODUCTS") {
+      const buckets = new Map<string, { qty: number; revenue: number }>();
+      for (const sale of filteredSales()) {
+        for (const item of sale.items) {
+          const sold = Math.max(0, item.quantity - item.returned);
+          const current = buckets.get(item.name) ?? { qty: 0, revenue: 0 };
+          current.qty += sold;
+          current.revenue += sold * item.price;
+          buckets.set(item.name, current);
+        }
+      }
+      return {
+        header: ["Produk", "Terjual", "Omzet"],
+        rows: [...buckets.entries()]
+          .sort((a, b) => b[1].revenue - a[1].revenue)
+          .map(([name, value]) => [
+            name,
+            value.qty,
+            formatRupiah(value.revenue),
+          ]),
+      };
+    }
+
+    if (report.kind === "CASHIER") {
+      const buckets = new Map<string, { count: number; revenue: number }>();
+      for (const sale of filteredSales()) {
+        const current = buckets.get(sale.cashier) ?? { count: 0, revenue: 0 };
+        current.count += 1;
+        current.revenue += saleTotals(sale).grandTotal;
+        buckets.set(sale.cashier, current);
+      }
+      return {
+        header: ["Kasir", "Transaksi", "Omzet"],
+        rows: [...buckets.entries()].map(([name, value]) => [
+          name,
+          value.count,
+          formatRupiah(value.revenue),
+        ]),
+      };
+    }
+
+    if (report.kind === "STOCK") {
+      return {
+        header: ["Produk", "SKU", "Gudang", "Toko", "Total", "Nilai HPP"],
+        rows: (productsQuery.data ?? []).map((product) => [
+          product.name,
+          product.sku,
+          product.warehouseStock,
+          product.storeStock,
+          totalStock(product),
+          formatRupiah(totalStock(product) * product.cost),
+        ]),
+      };
+    }
+
+    if (report.kind === "PAYABLES") {
+      return {
+        header: ["Supplier", "Faktur", "Jatuh tempo", "Total", "Sisa"],
+        rows: (payablesQuery.data ?? []).map((payable) => [
+          payable.supplierName,
+          payable.invoice,
+          formatDate(payable.due),
+          formatRupiah(payable.total),
+          formatRupiah(payable.total - payable.paid),
+        ]),
+      };
+    }
+
+    if (report.kind === "MOVEMENT") {
+      return {
+        header: ["Tanggal", "Produk", "Lokasi", "Tipe", "Qty", "Referensi"],
+        rows: (movementsQuery.data ?? []).map((movement) => [
+          formatDate(movement.time),
+          movement.productName,
+          movement.location,
+          movement.type,
+          movement.quantity,
+          movement.reference,
+        ]),
+      };
+    }
+
+    if (report.kind === "CASHFLOW") {
+      return {
+        header: ["Tanggal", "Tipe", "Kategori", "Nominal", "Sumber"],
+        rows: (cashFlowsQuery.data ?? []).map((flow) => [
+          formatDate(flow.time),
+          flow.type,
+          flow.category,
+          formatRupiah(flow.amount),
+          flow.source,
+        ]),
+      };
+    }
+
+    if (report.kind === "PROFIT") {
+      const kpis = salesKpis(filteredSales());
+      return {
+        header: ["Komponen", "Nilai"],
+        rows: [
+          ["Penjualan Bersih", formatRupiah(kpis.revenue)],
+          ["HPP", formatRupiah(kpis.cogs)],
+          ["Laba Kotor", formatRupiah(kpis.grossProfit)],
+          ["Margin", formatPercent(kpis.margin)],
+        ],
+      };
+    }
+
+    return {
+      header: ["Keterangan"],
+      rows: [
+        [
+          "Laporan ini tersedia sebagai mock. Data lengkap akan mengikuti API laporan.",
+        ],
+      ],
+    };
+  });
 
   const meta = (): ReportMeta => ({
     storeName: settingsQuery.data?.name ?? "TOKO JOJO",
@@ -289,68 +238,28 @@ export function ReportsPage() {
     generatedAt: new Date(),
   });
 
-  const tableFor = (kind: ReportKind): ReportTable => {
-    switch (kind) {
-      case "SALES":
-        return salesReport(sales());
-      case "SALES_PRODUCT":
-        return productReport(sales());
-      case "SALES_CASHIER":
-        return cashierReport(sales());
-      case "PURCHASES":
-        return payableReport(payables(), false);
-      case "PAYABLES":
-        return payableReport(payables(), true);
-      case "STOCK":
-        return stockReport(products());
-      case "MOVEMENT":
-        return noteReport(
-          "Buku besar pergerakan stok akan tersedia setelah API tersambung. Data contoh hanya memuat stok akhir per lokasi.",
-        );
-      case "OPNAME":
-        return noteReport(
-          "Sesi stock opname belum tersedia pada data contoh. Modul opname akan aktif bersama API persediaan.",
-        );
-      case "PROFIT": {
-        const kpis = salesKpis(sales());
-        return {
-          header: ["Komponen", "Nilai"],
-          rows: [
-            ["Penjualan Bersih", formatRupiah(kpis.revenue)],
-            ["HPP (Moving Weighted Average)", formatRupiah(kpis.cogs)],
-            ["Laba Kotor", formatRupiah(kpis.grossProfit)],
-            ["Margin Kotor", formatPercent(kpis.margin)],
-          ],
-        };
-      }
-      case "CASHFLOW":
-        return noteReport(
-          "Rekap kas dan bank memerlukan modul Keuangan. Data contoh belum memuat saldo akun.",
-        );
-    }
-  };
-
-  const exportCsv = (report: ReportDefinition) => {
-    const table = tableFor(report.kind);
-    const csv = buildReportCsv(report.title, meta(), [
+  const exportCsv = () => {
+    const table = preview();
+    const csv = buildReportCsv(selected().title, meta(), [
       table.header,
       ...table.rows,
     ]);
-    const slug = report.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    downloadCsv(`${slug || "laporan"}.csv`, csv);
-    toast.notify(`Ekspor CSV: ${report.title}`);
+    downloadCsv(
+      `${selected()
+        .title.toLowerCase()
+        .replaceAll(/[^a-z0-9]+/g, "-")}.csv`,
+      csv,
+    );
+    toast.notify(`Ekspor CSV: ${selected().title}`);
   };
 
-  const print = (report: ReportDefinition) => {
-    const table = tableFor(report.kind);
+  const print = () => {
+    const table = preview();
     const body = `<table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr>${table.header
         .map(
           (heading) =>
-            `<th style="text-align:left;padding:6px;border-bottom:1px solid #e2e8f0">${escapeHtml(heading)}</th>`,
+            `<th style="text-align:left;padding:6px;border-bottom:1px solid #e4e4e7">${escapeHtml(heading)}</th>`,
         )
         .join("")}</tr></thead>
       <tbody>${table.rows
@@ -359,131 +268,154 @@ export function ReportsPage() {
             `<tr>${row
               .map(
                 (cell) =>
-                  `<td style="padding:6px;border-bottom:1px solid #f1f5f9">${escapeHtml(String(cell))}</td>`,
+                  `<td style="padding:6px;border-bottom:1px solid #f1f2f4">${escapeHtml(String(cell))}</td>`,
               )
               .join("")}</tr>`,
         )
         .join("")}</tbody>
     </table>`;
-
     printReport(
       buildPrintHtml({
         ...meta(),
-        title: report.title,
+        title: selected().title,
         bodyHtml: body,
       }),
     );
   };
 
-  const retry = () => {
-    void productsQuery.refetch();
-    void salesQuery.refetch();
-    void payablesQuery.refetch();
-  };
-
   return (
     <>
       <PageHeader
-        eyebrow="Cetak, ekspor, dan arsipkan laporan operasional"
-        title="Pusat Laporan"
-        subtitle="Laporan memakai data contoh hingga API laporan tersedia"
+        eyebrow="Laporan penjualan, persediaan, dan keuangan"
+        title="Laporan"
+        subtitle="Pratinjau, ekspor CSV, dan cetak laporan."
+        actions={
+          <>
+            <Button size="sm" onClick={exportCsv}>
+              <Download size={14} /> CSV
+            </Button>
+            <Button size="sm" variant="primary" onClick={print}>
+              <Printer size={14} /> Cetak
+            </Button>
+          </>
+        }
       />
+
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <SegmentedControl
+          value={category()}
+          onChange={setCategory}
+          items={[
+            { value: "PENJUALAN", label: "Penjualan" },
+            { value: "PERSEDIAAN", label: "Persediaan" },
+            { value: "KEUANGAN", label: "Keuangan" },
+          ]}
+          label="Kategori laporan"
+        />
+        <SegmentedControl
+          value={range()}
+          onChange={setRange}
+          items={[
+            { value: "TODAY", label: "Hari Ini" },
+            { value: "7DAYS", label: "7 Hari" },
+            { value: "MONTH", label: "Bulan Ini" },
+            { value: "ALL", label: "Semua" },
+          ]}
+          label="Rentang laporan"
+        />
+      </div>
 
       <Show
         when={!failed()}
         fallback={
-          <Card>
+          <Panel>
             <ErrorState
-              message="Data laporan tidak dapat dimuat."
-              onRetry={retry}
+              message="Laporan tidak dapat dimuat."
+              onRetry={() => {
+                void productsQuery.refetch();
+                void salesQuery.refetch();
+                void payablesQuery.refetch();
+                void movementsQuery.refetch();
+                void cashFlowsQuery.refetch();
+              }}
             />
-          </Card>
+          </Panel>
         }
       >
-        <Show
-          when={!loading()}
-          fallback={
-            <div class="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
-              <For each={reports}>
-                {() => (
-                  <Card class="p-4">
-                    <Skeleton class="h-10 w-10" />
-                    <Skeleton class="mt-3 h-4 w-3/4" />
-                    <Skeleton class="mt-2 h-3 w-full" />
-                    <Skeleton class="mt-4 h-8 w-full" />
-                  </Card>
-                )}
-              </For>
-            </div>
-          }
-        >
-          <div class="mb-4 rounded-[10px] border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs text-royal">
-            <b>Catatan:</b> tombol PDF membuka dialog cetak browser. Tombol
-            Excel menunggu ekspor server; CSV sudah berfungsi penuh dengan data
-            contoh.
-          </div>
-
-          <div class="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
-            <For each={reports}>
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-[320px_1fr]">
+          <div class="space-y-2">
+            <For each={reports()}>
               {(report) => (
-                <Card class="px-[18px] py-4">
-                  <div class="flex items-start gap-3">
-                    <span
-                      class="flex size-[38px] shrink-0 items-center justify-center rounded-lg text-xs font-bold"
-                      style={{
-                        background: `${report.color}16`,
-                        color: report.color,
-                      }}
-                    >
-                      {report.code}
-                    </span>
-                    <div class="min-w-0 flex-1">
-                      <b class="text-[13.5px] text-ink">{report.title}</b>
-                      <div class="mt-0.5 text-xs text-muted">
-                        {report.description}
+                <button
+                  type="button"
+                  onClick={() => setSelected(report)}
+                  class={`w-full cursor-pointer rounded-[8px] border p-3 text-left transition-colors ${
+                    selected().title === report.title
+                      ? "border-primary bg-primary-soft"
+                      : "border-line bg-surface hover:bg-hover"
+                  }`}
+                >
+                  <div class="flex items-start gap-2">
+                    <FileText size={16} class="mt-0.5 text-primary" />
+                    <div>
+                      <div class="text-sm font-bold text-ink">
+                        {report.title}
                       </div>
-                      <div class="mt-3 flex flex-wrap gap-1.5">
-                        <Button size="sm" onClick={() => print(report)}>
-                          <Printer size={12} /> PDF
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            toast.notify(
-                              "Ekspor Excel tersedia setelah API laporan tersambung.",
-                              "warn",
-                            )
-                          }
-                        >
-                          <FileSpreadsheet size={12} /> Excel
-                        </Button>
-                        <Button size="sm" onClick={() => exportCsv(report)}>
-                          <Download size={12} /> CSV
-                        </Button>
+                      <div class="mt-0.5 text-xs text-ink-muted">
+                        {report.description}
                       </div>
                     </div>
                   </div>
-                </Card>
+                </button>
               )}
             </For>
           </div>
 
-          <Card class="mt-4">
-            <div class="flex items-start gap-3 px-[18px] py-4">
-              <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-muted">
-                <FileText size={16} />
-              </span>
-              <div class="text-xs text-muted">
-                <b class="text-ink">Format cetak</b>
-                <p class="mt-0.5">
-                  Setiap laporan dicetak dengan nama toko, judul laporan, waktu
-                  cetak, dan nama pengguna aktif. Gunakan orientasi potret;
-                  tabel lebar otomatis menyesuaikan.
-                </p>
-              </div>
-            </div>
-          </Card>
-        </Show>
+          <Panel>
+            <PanelHeader
+              title={selected().title}
+              description={selected().description}
+              actions={<Badge tone="info">{preview().rows.length} baris</Badge>}
+            />
+            <PanelBody>
+              <Show
+                when={!loading()}
+                fallback={<TableSkeleton rows={8} cols={5} />}
+              >
+                <Show
+                  when={preview().rows.length > 0}
+                  fallback={
+                    <EmptyState
+                      title="Tidak ada data pada periode ini"
+                      description="Ubah rentang atau pilih laporan lain."
+                    />
+                  }
+                >
+                  <TableWrap>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <For each={preview().header}>
+                            {(heading) => <Th>{heading}</Th>}
+                          </For>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={preview().rows}>
+                          {(row) => (
+                            <tr class="hover:bg-hover">
+                              <For each={row}>{(cell) => <Td>{cell}</Td>}</For>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </Table>
+                  </TableWrap>
+                </Show>
+              </Show>
+            </PanelBody>
+          </Panel>
+        </div>
       </Show>
 
       <div id="print-area" />

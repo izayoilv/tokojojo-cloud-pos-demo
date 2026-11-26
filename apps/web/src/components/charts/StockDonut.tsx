@@ -1,55 +1,41 @@
 import { For, Show } from "solid-js";
 
-import type { StockValuationSlice } from "../../lib/calc";
-import { formatRupiah } from "../../lib/format";
+export type DonutSlice = {
+  label: string;
+  value: number;
+  color: string;
+};
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function compact(value: number): string {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1)} M`;
-  }
-
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)} Jt`;
-  }
-
-  return formatRupiah(value);
-}
-
-export function StockDonut(props: { slices: StockValuationSlice[] }) {
+export function StockDonut(props: { slices: DonutSlice[] }) {
   const total = () => props.slices.reduce((sum, slice) => sum + slice.value, 0);
-
   let offset = 0;
   const segments = () =>
     props.slices.map((slice) => {
       const length =
         total() === 0 ? 0 : (slice.value / total()) * CIRCUMFERENCE;
-      const segment = {
-        ...slice,
-        length,
-        offset,
-      };
+      const segment = { ...slice, length, offset };
       offset += length;
       return segment;
     });
 
   return (
-    <div class="flex flex-wrap items-center gap-[18px]">
+    <div class="flex flex-wrap items-center gap-5">
       <svg
         viewBox="0 0 140 140"
-        class="w-[150px] shrink-0"
+        class="size-[140px] shrink-0 -rotate-90"
         role="img"
-        aria-label="Valuasi stok per lokasi"
+        aria-label="Komposisi status stok"
       >
         <circle
           cx="70"
           cy="70"
           r={RADIUS}
           fill="none"
-          stroke="#EEF2F7"
-          stroke-width="22"
+          stroke="var(--tj-subtle)"
+          stroke-width="16"
         />
         <For each={segments()}>
           {(slice) => (
@@ -60,50 +46,56 @@ export function StockDonut(props: { slices: StockValuationSlice[] }) {
                 r={RADIUS}
                 fill="none"
                 stroke={slice.color}
-                stroke-width="22"
+                stroke-width="16"
                 stroke-dasharray={`${slice.length} ${CIRCUMFERENCE - slice.length}`}
                 stroke-dashoffset={-slice.offset}
-                transform="rotate(-90 70 70)"
               >
-                <title>{`${slice.label}: ${formatRupiah(slice.value)}`}</title>
+                <title>{`${slice.label}: ${slice.value} SKU`}</title>
               </circle>
             </Show>
           )}
         </For>
-        <text x="70" y="66" text-anchor="middle" font-size="10" fill="#64748B">
-          Total
-        </text>
-        <text
-          x="70"
-          y="81"
-          text-anchor="middle"
-          font-size="11.5"
-          font-weight="800"
-          fill="#0F172A"
-        >
-          {compact(total())}
-        </text>
+        <g class="rotate-90 origin-center">
+          <text
+            x="70"
+            y="68"
+            text-anchor="middle"
+            font-size="24"
+            font-weight="800"
+            fill="var(--tj-ink)"
+          >
+            {total()}
+          </text>
+          <text
+            x="70"
+            y="84"
+            text-anchor="middle"
+            font-size="11"
+            font-weight="700"
+            fill="var(--tj-ink-muted)"
+          >
+            SKU
+          </text>
+        </g>
       </svg>
-
-      <div class="flex min-w-[150px] flex-1 flex-col gap-2">
+      <ul class="flex min-w-[130px] flex-1 list-none flex-col gap-2 p-0 text-sm text-ink-secondary">
         <For each={props.slices}>
           {(slice) => (
-            <div class="flex items-center justify-between gap-2 text-xs">
-              <span class="flex items-center gap-2 font-semibold text-muted">
-                <i
-                  class="inline-block size-[11px] rounded-[3px]"
-                  style={{ background: slice.color }}
-                />
-                {slice.location}
-              </span>
-              <b class="text-ink">{formatRupiah(slice.value)}</b>
-            </div>
+            <li class="flex items-center gap-2">
+              <span
+                class="size-2.5 rounded-full"
+                style={{ background: slice.color }}
+              />
+              {slice.label}
+              <strong class="ml-auto tabular-nums text-ink">
+                {total() === 0
+                  ? "0%"
+                  : `${Math.round((slice.value / total()) * 100)}%`}
+              </strong>
+            </li>
           )}
         </For>
-        <div class="mt-1 border-t border-slate-100 pt-2 text-[11px] text-faint">
-          {props.slices[0]?.label} &middot; {props.slices[1]?.label}
-        </div>
-      </div>
+      </ul>
     </div>
   );
 }
