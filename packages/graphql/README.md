@@ -34,6 +34,13 @@ Operation documents (`.graphql` queries/mutations per client) are added by the
 client integration work (web #12, Android #13, POS #8), not here. This package
 owns only the schema and its validation.
 
+## Schema authorship
+
+Until the Pothos server in #7 is stable, `schema.graphql` is the reviewed contract:
+change it first, then make Pothos match. After #7, Pothos becomes the authoring
+source and CI exports the SDL and fails on drift against this file. Do not maintain
+two hand-edited schemas.
+
 ## Conventions
 
 - **Single store.** One database is one store. Authorization comes from the
@@ -97,6 +104,11 @@ Decisions made while writing the SDL, beyond the literal matrix:
 - `approveDevice`/`devices` close the Phase 2 contract gap (enrollment existed
   without an admin approval mutation). Approving a `PENDING` device activates
   its key; Android/POS never receive an offline token before approval.
+- `StoreSettings.lowStockGuidance` is store-wide guidance. Per-product thresholds
+  remain in `product_stock_thresholds`.
+- `OpenShiftInput.userId` and `currentShift(userId)` support multiple local POS
+  users. The device token identifies the terminal; the shift identifies the cashier.
+  `createSale` and `closeShift` derive the cashier from `shiftId`.
 - `submitOpname` finalizes a count for review. The core opname enum is
   `PENDING/APPROVED/REJECTED` (no draft state), so submit keeps `PENDING` and
   sets `submittedAt`. While `submittedAt` is set, the service locks item

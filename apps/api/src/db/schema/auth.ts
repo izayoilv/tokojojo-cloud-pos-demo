@@ -99,3 +99,32 @@ export const offlineTokens = pgTable(
     ),
   ],
 );
+
+export const authNonces = pgTable(
+  "auth_nonces",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    nonceHash: text("nonce_hash").notNull().unique(),
+    deviceId: uuid("device_id")
+      .notNull()
+      .references(() => devices.id, { onDelete: "restrict" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("auth_nonces_device_id_expires_at_idx").on(
+      table.deviceId,
+      table.expiresAt,
+    ),
+    index("auth_nonces_expires_at_idx").on(table.expiresAt),
+    check(
+      "auth_nonces_expires_after_created",
+      sql`${table.expiresAt} > ${table.createdAt}`,
+    ),
+  ],
+);

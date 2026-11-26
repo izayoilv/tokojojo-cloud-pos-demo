@@ -217,6 +217,19 @@ requireFields("SyncOfflineBatchInput", [
   "shifts",
   "orders",
 ]);
+requireFields("StoreSettings", [
+  "storeName",
+  "defaultLocation",
+  "lowStockGuidance",
+  "updatedAt",
+]);
+requireFields("UpdateStoreSettingsInput", ["lowStockGuidance"]);
+requireFields("OpenShiftInput", ["userId", "openingCash"]);
+
+const currentShift = queryFields.currentShift;
+if (!currentShift?.args.some((arg) => arg.name === "userId")) {
+  errors.push("Query.currentShift.userId argument is missing");
+}
 requireFields("SyncOfflineBatchPayload", ["batchId", "shifts", "orders"]);
 requireFields("SyncItemResult", ["clientId", "status", "serverId", "code"]);
 requireFields("CashierShift", [

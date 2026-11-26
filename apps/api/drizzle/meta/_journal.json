@@ -43,6 +43,13 @@
       "when": 1795542039779,
       "tag": "0005_phase2_auth_offline",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795680936035,
+      "tag": "0006_store_settings_auth_nonces",
+      "breakpoints": true
     }
   ]
 }

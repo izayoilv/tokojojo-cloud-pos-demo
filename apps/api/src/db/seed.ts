@@ -385,6 +385,27 @@ export async function seedDatabase(client: postgres.Sql = sql): Promise<void> {
         )
         on conflict (id) do nothing`;
     }
+
+    await tx`
+      insert into store_settings (
+        id, store_name, tagline, city, default_location,
+        low_stock_guidance, updated_by
+      )
+      values (
+        true, 'TokoJoJo', 'Toko Kelontong', 'Batam', 'STORE',
+        'Stok menipis: segera lakukan pembelian.', ${SEED_USER_IDS.owner}
+      )
+      on conflict (id) do nothing`;
+
+    await tx`
+      insert into receipt_settings (
+        id, paper_size, show_price, footer_text, auto_print, updated_by
+      )
+      values (
+        true, 'MM80', true, 'Terima kasih telah berbelanja.', false,
+        ${SEED_USER_IDS.owner}
+      )
+      on conflict (id) do nothing`;
   });
 }
 
