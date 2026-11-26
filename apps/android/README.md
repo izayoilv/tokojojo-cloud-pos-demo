@@ -8,6 +8,8 @@ Kotlin/JVM Android app for monitoring and barcode stock receiving.
 - Stock list/search and product detail.
 - Barcode scanning for receiving/adding stock.
 - `receiveStock` and `adjustStock` mutations.
+- Transfer and opname mutations: `createTransfer`/`completeTransfer`/
+  `cancelTransfer` and `createOpname`/`submitOpname`.
 
 This app does **not** sell, does not create offline sales, and does not receive an
 offline token. It is online-only. A stock draft may be kept locally and retried, but
@@ -45,7 +47,7 @@ combination.
 ## Feature flow
 
 1. Add the GraphQL operation to `packages/graphql/operations`.
-2. Generate Apollo Kotlin models when the schema exists.
+2. Generate Apollo Kotlin models from `packages/graphql/schema.graphql`.
 3. Add a repository method; keep network DTOs out of Compose.
 4. Expose UI state through a ViewModel and `StateFlow`.
 5. Use Room only for cache/drafts, not for authorization.
@@ -64,6 +66,8 @@ combination.
 ## Security
 
 - Refresh token belongs in Android Keystore/StrongBox.
+- Before pinning a PASETO library, verify v4.public test vectors on the target
+  Android runtime; see #13.
 - Biometric unlock is optional via `BiometricPrompt`; PIN/password is the fallback.
 - Never store tokens in plain SharedPreferences or logs.
 - Server enforces roles; UI hiding is not authorization.

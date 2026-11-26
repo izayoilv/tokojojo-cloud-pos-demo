@@ -12,6 +12,11 @@ export const stockLocationEnum = pgEnum("stock_location", [
   "STORE",
 ]);
 
+export const receiptPaperSizeEnum = pgEnum("receipt_paper_size", [
+  "MM58",
+  "MM80",
+]);
+
 export const paymentMethodEnum = pgEnum("payment_method", [
   "CASH",
   "QRIS",

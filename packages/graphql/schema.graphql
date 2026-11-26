@@ -792,9 +792,11 @@ type StoreSettings {
   phone: String
   npwp: String
   defaultLocation: StockLocation!
+  lowStockGuidance: String
   updatedAt: DateTime!
 }
 
+# Server defaults; POS may override paperSize/autoPrint locally.
 type ReceiptSettings {
   paperSize: ReceiptPaperSize!
   showPrice: Boolean!
@@ -997,6 +999,7 @@ input SalePaymentInput {
 # Client order fields and signature are required for OFFLINE/GRACE replay;
 # settlementMethod is derived by the server, never sent by the client.
 input CreateSaleInput {
+  # The sale cashier is derived from this shift.
   shiftId: ID!
   customerId: ID
   items: [CreateSaleItemInput!]!
@@ -1025,6 +1028,8 @@ input CreateSaleReturnInput {
 # required when the shift is opened offline.
 input OpenShiftInput {
   id: ID
+  # Local cashier for POS; defaults to the authenticated user.
+  userId: ID
   openingCash: String!
   openedAtClient: DateTime
 }
@@ -1064,6 +1069,7 @@ input UpdateStoreSettingsInput {
   phone: String
   npwp: String
   defaultLocation: StockLocation
+  lowStockGuidance: String
 }
 
 input UpdateReceiptSettingsInput {
@@ -1076,7 +1082,7 @@ input UpdateReceiptSettingsInput {
 # Offline shift open/close; the server accepts the client id idempotently.
 input SyncShiftInput {
   id: ID!
-  # Server must reject userId != the authenticated user.
+  # Server verifies this user is active and authorized; it need not equal the token subject.
   userId: ID!
   openingCash: String!
   openedAtClient: DateTime!
@@ -1097,6 +1103,7 @@ input SyncOrderInput {
   clientOrderId: ID!
   clientSeq: String!
   clientCreatedAt: DateTime!
+  # The user is derived from this shift and included in the order signature.
   shiftId: ID!
   customerId: ID
   items: [SyncOrderItemInput!]!
@@ -1383,7 +1390,8 @@ type Query {
   ): ReceivablePage!
   shifts(filter: ShiftFilter, page: PageInput, sort: SortInput): ShiftPage!
   shift(id: ID!): CashierShift
-  currentShift: CashierShift
+  # userId defaults to the authenticated user; POS sends the local cashier.
+  currentShift(userId: ID): CashierShift
   cashFlows(
     filter: CashFlowFilter
     page: PageInput
