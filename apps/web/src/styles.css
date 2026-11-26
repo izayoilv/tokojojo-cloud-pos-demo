@@ -31,10 +31,12 @@
   --color-accent-soft: var(--tj-accent-soft);
   --color-success: var(--tj-success);
   --color-success-soft: var(--tj-success-soft);
+  --color-on-success: var(--tj-on-success);
   --color-warning: var(--tj-warning);
   --color-warning-soft: var(--tj-warning-soft);
   --color-danger: var(--tj-danger);
   --color-danger-soft: var(--tj-danger-soft);
+  --color-on-danger: var(--tj-on-danger);
   --color-info: var(--tj-info);
   --color-info-soft: var(--tj-info-soft);
   --color-focus: var(--tj-focus);

@@ -23,10 +23,10 @@ import {
   RefreshCw,
   ShoppingCart,
 } from "lucide-solid";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, type JSX, Show } from "solid-js";
 
 import { useAuth } from "../../app/auth";
-import { canAccess } from "../../app/rbac";
+import { canAccess, canViewSales } from "../../app/rbac";
 import { SalesChart } from "../../components/charts/SalesChart";
 import { StockDonut } from "../../components/charts/StockDonut";
 import { repository } from "../../data/repository";
@@ -62,6 +62,26 @@ const methodTone = (method: Sale["method"]) =>
       : method === "HUTANG"
         ? "warning"
         : "violet";
+
+function LinkButton(props: {
+  href: string;
+  children: JSX.Element;
+  variant?: "secondary" | "ghost";
+}) {
+  const style = () =>
+    props.variant === "ghost"
+      ? "text-ink-secondary hover:bg-subtle hover:text-ink"
+      : "border border-line-control bg-surface text-ink hover:bg-hover";
+
+  return (
+    <A
+      href={props.href}
+      class={`inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-[6px] px-3 text-xs font-semibold whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${style()}`}
+    >
+      {props.children}
+    </A>
+  );
+}
 
 function KpiCard(props: {
   label: string;
@@ -158,6 +178,7 @@ export function DashboardPage() {
     role() ? canAccess(role()!, "PEMBELIAN") : false;
   const canWarehouse = () => (role() ? canAccess(role()!, "GUDANG") : false);
   const canReports = () => (role() ? canAccess(role()!, "LAPORAN") : false);
+  const canSales = () => (role() ? canViewSales(role()!) : false);
   const canEditProducts = () => role() === "OWNER" || role() === "ADMIN";
 
   const refresh = () => {
@@ -176,12 +197,14 @@ export function DashboardPage() {
         subtitle="Terakhir diperbarui 24 Nov 2026, 14:30 WIB"
         actions={
           <>
-            <SegmentedControl
-              value={range()}
-              onChange={setRange}
-              items={ranges}
-              label="Rentang tanggal"
-            />
+            <Show when={canSales()}>
+              <SegmentedControl
+                value={range()}
+                onChange={setRange}
+                items={ranges}
+                label="Rentang tanggal"
+              />
+            </Show>
             <Button size="sm" onClick={refresh}>
               <RefreshCw size={14} /> Muat ulang
             </Button>
@@ -202,73 +225,108 @@ export function DashboardPage() {
       >
         <Show when={!loading()} fallback={<PageSkeleton />}>
           <div class="space-y-3">
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <KpiCard
-                label="Penjualan"
-                value={formatCompactRupiah(kpis().revenue)}
-                foot={`${rangeSales().length} transaksi`}
-              />
-              <KpiCard
-                label="HPP"
-                value={formatCompactRupiah(kpis().cogs)}
-                foot={
-                  kpis().revenue === 0
-                    ? "Belum ada penjualan"
-                    : `${formatPercent((kpis().cogs / kpis().revenue) * 100)} dari penjualan`
-                }
-              />
-              <KpiCard
-                label="Laba kotor"
-                value={formatCompactRupiah(kpis().grossProfit)}
-                foot="Penjualan − HPP"
-                tone="success"
-              />
-              <KpiCard
-                label="Margin"
-                value={formatPercent(kpis().margin)}
-                foot="Target 30%"
-              />
-            </div>
+            <Show
+              when={canSales()}
+              fallback={
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <KpiCard
+                    label="Total SKU"
+                    value={String(products().length)}
+                    foot="Produk di katalog"
+                  />
+                  <KpiCard
+                    label="Stok menipis"
+                    value={String(statusCounts().menipis)}
+                    foot="Perlu restock"
+                    tone="warning"
+                  />
+                  <KpiCard
+                    label="Stok habis"
+                    value={String(statusCounts().habis)}
+                    foot="Segera restock"
+                    tone="warning"
+                  />
+                  <KpiCard
+                    label="Hutang supplier"
+                    value={formatCompactRupiah(
+                      payables().reduce(
+                        (sum, payable) => sum + payable.total - payable.paid,
+                        0,
+                      ),
+                    )}
+                    foot={`${payables().length} supplier`}
+                  />
+                </div>
+              }
+            >
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <KpiCard
+                  label="Penjualan"
+                  value={formatCompactRupiah(kpis().revenue)}
+                  foot={`${rangeSales().length} transaksi`}
+                />
+                <KpiCard
+                  label="HPP"
+                  value={formatCompactRupiah(kpis().cogs)}
+                  foot={
+                    kpis().revenue === 0
+                      ? "Belum ada penjualan"
+                      : `${formatPercent((kpis().cogs / kpis().revenue) * 100)} dari penjualan`
+                  }
+                />
+                <KpiCard
+                  label="Laba kotor"
+                  value={formatCompactRupiah(kpis().grossProfit)}
+                  foot="Penjualan − HPP"
+                  tone="success"
+                />
+                <KpiCard
+                  label="Margin"
+                  value={formatPercent(kpis().margin)}
+                  foot="Target 30%"
+                />
+              </div>
+            </Show>
 
             <div class="flex flex-wrap gap-2">
               <Show when={canEditProducts()}>
-                <A href="/produk">
-                  <Button size="sm" variant="secondary">
-                    <PackagePlus size={14} /> Tambah Produk
-                  </Button>
-                </A>
+                <LinkButton href="/produk">
+                  <PackagePlus size={14} /> Tambah Produk
+                </LinkButton>
               </Show>
               <Show when={canPurchasing()}>
-                <A href="/pembelian">
-                  <Button size="sm" variant="secondary">
-                    <ShoppingCart size={14} /> Buat Pembelian
-                  </Button>
-                </A>
+                <LinkButton href="/pembelian">
+                  <ShoppingCart size={14} /> Buat Pembelian
+                </LinkButton>
               </Show>
               <Show when={canReports()}>
-                <A href="/laporan">
-                  <Button size="sm" variant="secondary">
-                    <FileBarChart size={14} /> Lihat Laporan
-                  </Button>
-                </A>
+                <LinkButton href="/laporan">
+                  <FileBarChart size={14} /> Lihat Laporan
+                </LinkButton>
               </Show>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.7fr_1fr]">
-              <Panel>
-                <PanelHeader
-                  title="Tren penjualan"
-                  description={ranges.find((r) => r.value === range())?.label}
-                  actions={
-                    <Badge tone={kpis().margin >= 30 ? "success" : "warning"}>
-                      Margin {formatPercent(kpis().margin)}
-                    </Badge>
-                  }
-                />
-                <PanelBody>
-                  <SalesChart points={chart()} />
-                </PanelBody>
-              </Panel>
+            <div
+              class={`grid grid-cols-1 gap-3 ${
+                canSales() ? "xl:grid-cols-[1.7fr_1fr]" : ""
+              }`}
+            >
+              <Show when={canSales()}>
+                <Panel>
+                  <PanelHeader
+                    title="Tren penjualan"
+                    description={ranges.find((r) => r.value === range())?.label}
+                    actions={
+                      <Badge tone={kpis().margin >= 30 ? "success" : "warning"}>
+                        Margin {formatPercent(kpis().margin)}
+                      </Badge>
+                    }
+                  />
+                  <PanelBody>
+                    <SalesChart points={chart()} />
+                  </PanelBody>
+                </Panel>
+              </Show>
 
               <Panel>
                 <PanelHeader
@@ -308,11 +366,9 @@ export function DashboardPage() {
                 <PanelHeader
                   title="Stok menipis"
                   actions={
-                    <A href="/persediaan">
-                      <Button size="sm" variant="ghost">
-                        Lihat semua <ArrowRight size={14} />
-                      </Button>
-                    </A>
+                    <LinkButton href="/persediaan" variant="ghost">
+                      Lihat semua <ArrowRight size={14} />
+                    </LinkButton>
                   }
                 />
                 <Show
@@ -375,11 +431,9 @@ export function DashboardPage() {
                   <PanelHeader
                     title="Hutang jatuh tempo"
                     actions={
-                      <A href="/pembelian">
-                        <Button size="sm" variant="ghost">
-                          Lihat semua <ArrowRight size={14} />
-                        </Button>
-                      </A>
+                      <LinkButton href="/pembelian" variant="ghost">
+                        Lihat semua <ArrowRight size={14} />
+                      </LinkButton>
                     }
                   />
                   <PanelBody class="space-y-3">
@@ -421,69 +475,75 @@ export function DashboardPage() {
               </Show>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
-              <Panel>
-                <PanelHeader
-                  title="Penjualan terbaru"
-                  actions={
-                    <A href="/penjualan">
-                      <Button size="sm" variant="ghost">
+            <div
+              class={`grid grid-cols-1 gap-3 ${
+                canSales() && canWarehouse() ? "xl:grid-cols-2" : ""
+              }`}
+            >
+              <Show when={canSales()}>
+                <Panel>
+                  <PanelHeader
+                    title="Penjualan terbaru"
+                    actions={
+                      <LinkButton href="/penjualan" variant="ghost">
                         Lihat semua <ArrowRight size={14} />
-                      </Button>
-                    </A>
-                  }
-                />
-                <TableWrap>
-                  <Table class="min-w-[560px]">
-                    <thead>
-                      <tr>
-                        <Th>Invoice</Th>
-                        <Th>Kasir</Th>
-                        <Th>Metode</Th>
-                        <Th align="right">Total</Th>
-                        <Th>Status</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={recentSales()}>
-                        {(sale) => (
-                          <tr class="hover:bg-hover">
-                            <Td class="font-mono text-[11px]">{sale.number}</Td>
-                            <Td>{sale.cashier.split(" ")[0]}</Td>
-                            <Td>
-                              <Badge tone={methodTone(sale.method)}>
-                                {sale.method}
-                              </Badge>
-                            </Td>
-                            <Td align="right">
-                              {formatRupiah(saleTotals(sale).grandTotal)}
-                            </Td>
-                            <Td>
-                              <Badge
-                                tone={
-                                  sale.status === "COMPLETED"
-                                    ? "success"
-                                    : "warning"
-                                }
-                              >
-                                {sale.status === "COMPLETED"
-                                  ? "Selesai"
-                                  : "Sebagian"}
-                              </Badge>
-                            </Td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </Table>
-                </TableWrap>
-                <Show when={recentSales().length === 0}>
-                  <EmptyState
-                    title="Belum ada penjualan"
-                    description="Transaksi POS yang tersinkron akan muncul di sini."
+                      </LinkButton>
+                    }
                   />
-                </Show>
-              </Panel>
+                  <TableWrap>
+                    <Table class="min-w-[560px]">
+                      <thead>
+                        <tr>
+                          <Th>Invoice</Th>
+                          <Th>Kasir</Th>
+                          <Th>Metode</Th>
+                          <Th align="right">Total</Th>
+                          <Th>Status</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={recentSales()}>
+                          {(sale) => (
+                            <tr class="hover:bg-hover">
+                              <Td class="font-mono text-[11px]">
+                                {sale.number}
+                              </Td>
+                              <Td>{sale.cashier.split(" ")[0]}</Td>
+                              <Td>
+                                <Badge tone={methodTone(sale.method)}>
+                                  {sale.method}
+                                </Badge>
+                              </Td>
+                              <Td align="right">
+                                {formatRupiah(saleTotals(sale).grandTotal)}
+                              </Td>
+                              <Td>
+                                <Badge
+                                  tone={
+                                    sale.status === "COMPLETED"
+                                      ? "success"
+                                      : "warning"
+                                  }
+                                >
+                                  {sale.status === "COMPLETED"
+                                    ? "Selesai"
+                                    : "Sebagian"}
+                                </Badge>
+                              </Td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </Table>
+                  </TableWrap>
+                  <Show when={recentSales().length === 0}>
+                    <EmptyState
+                      title="Belum ada penjualan"
+                      description="Transaksi POS yang tersinkron akan muncul di sini."
+                    />
+                  </Show>
+                </Panel>
+              </Show>
 
               <Show when={canWarehouse()}>
                 <Panel>
@@ -508,9 +568,7 @@ export function DashboardPage() {
                               {transfer.itemCount} item
                             </div>
                           </div>
-                          <A href="/gudang">
-                            <Button size="sm">Tinjau</Button>
-                          </A>
+                          <LinkButton href="/gudang">Tinjau</LinkButton>
                         </div>
                       )}
                     </For>
@@ -529,9 +587,7 @@ export function DashboardPage() {
                               {opname.location} · {opname.items.length} item
                             </div>
                           </div>
-                          <A href="/gudang">
-                            <Button size="sm">Tinjau</Button>
-                          </A>
+                          <LinkButton href="/gudang">Tinjau</LinkButton>
                         </div>
                       )}
                     </For>

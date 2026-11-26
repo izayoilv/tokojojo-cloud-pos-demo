@@ -106,119 +106,200 @@ export function InventoryPage() {
           { value: "MUTASI", label: "Mutasi", count: movements().length },
         ]}
         label="Tampilan persediaan"
+        id="inventory-tabs"
+        panelId="inventory-panel"
         class="mb-3"
       />
 
-      <Show
-        when={!failed()}
-        fallback={
-          <Panel>
-            <ErrorState
-              message="Data persediaan tidak dapat dimuat."
-              onRetry={() => {
-                void productsQuery.refetch();
-                void movementsQuery.refetch();
-              }}
-            />
-          </Panel>
-        }
+      <div
+        role="tabpanel"
+        id="inventory-panel"
+        aria-labelledby={`inventory-tabs-tab-${tab()}`}
       >
         <Show
-          when={!loading()}
+          when={!failed()}
           fallback={
             <Panel>
-              <TableSkeleton rows={8} cols={6} />
+              <ErrorState
+                message="Data persediaan tidak dapat dimuat."
+                onRetry={() => {
+                  void productsQuery.refetch();
+                  void movementsQuery.refetch();
+                }}
+              />
             </Panel>
           }
         >
-          <Panel>
-            <div class="border-b border-line p-4">
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px]">
-                <SearchInput
-                  placeholder="Cari produk, SKU, atau referensi..."
-                  value={search()}
-                  onInput={(event) => setSearch(event.currentTarget.value)}
-                />
-                <Show when={tab() === "MUTASI"}>
-                  <Select
-                    value={type()}
-                    onChange={(event) => setType(event.currentTarget.value)}
-                    aria-label="Filter tipe pergerakan"
-                  >
-                    <option value="SEMUA">Semua tipe</option>
-                    <For each={Object.entries(movementLabels)}>
-                      {([value, label]) => (
-                        <option value={value}>{label}</option>
-                      )}
-                    </For>
-                  </Select>
-                </Show>
+          <Show
+            when={!loading()}
+            fallback={
+              <Panel>
+                <TableSkeleton rows={8} cols={6} />
+              </Panel>
+            }
+          >
+            <Panel>
+              <div class="border-b border-line p-4">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_220px]">
+                  <SearchInput
+                    aria-label="Cari persediaan"
+                    placeholder="Cari produk, SKU, atau referensi..."
+                    value={search()}
+                    onInput={(event) => setSearch(event.currentTarget.value)}
+                  />
+                  <Show when={tab() === "MUTASI"}>
+                    <Select
+                      value={type()}
+                      onChange={(event) => setType(event.currentTarget.value)}
+                      aria-label="Filter tipe pergerakan"
+                    >
+                      <option value="SEMUA">Semua tipe</option>
+                      <For each={Object.entries(movementLabels)}>
+                        {([value, label]) => (
+                          <option value={value}>{label}</option>
+                        )}
+                      </For>
+                    </Select>
+                  </Show>
+                </div>
               </div>
-            </div>
 
-            <Show
-              when={tab() === "STOK"}
-              fallback={
+              <Show
+                when={tab() === "STOK"}
+                fallback={
+                  <Show
+                    when={movements().length > 0}
+                    fallback={
+                      <EmptyState
+                        title="Belum ada pergerakan stok"
+                        description="Pergerakan muncul setelah pembelian, mutasi, penjualan, atau opname."
+                      />
+                    }
+                  >
+                    <TableWrap>
+                      <Table class="min-w-[960px]">
+                        <thead>
+                          <tr>
+                            <Th>Tanggal</Th>
+                            <Th>Produk</Th>
+                            <Th>Lokasi</Th>
+                            <Th>Tipe</Th>
+                            <Th align="right">Qty</Th>
+                            <Th>Referensi</Th>
+                            <Th>Oleh</Th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={movements()}>
+                            {(movement) => (
+                              <tr class="hover:bg-hover">
+                                <Td>{formatDate(movement.time)}</Td>
+                                <Td>
+                                  <b class="text-ink">{movement.productName}</b>
+                                  <div class="text-xs text-ink-muted">
+                                    {movement.note}
+                                  </div>
+                                </Td>
+                                <Td>
+                                  <Badge
+                                    tone={
+                                      movement.location === "WH-BACK"
+                                        ? "neutral"
+                                        : "info"
+                                    }
+                                  >
+                                    {movement.location}
+                                  </Badge>
+                                </Td>
+                                <Td>{movementLabels[movement.type]}</Td>
+                                <Td
+                                  align="right"
+                                  class={
+                                    movement.quantity < 0
+                                      ? "font-bold text-danger"
+                                      : "font-bold text-success"
+                                  }
+                                >
+                                  {movement.quantity > 0 ? "+" : ""}
+                                  {movement.quantity}
+                                </Td>
+                                <Td class="font-mono text-[11px]">
+                                  {movement.reference}
+                                </Td>
+                                <Td>{movement.createdBy}</Td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </Table>
+                    </TableWrap>
+                  </Show>
+                }
+              >
                 <Show
-                  when={movements().length > 0}
+                  when={products().length > 0}
                   fallback={
                     <EmptyState
-                      title="Belum ada pergerakan stok"
-                      description="Pergerakan muncul setelah pembelian, mutasi, penjualan, atau opname."
+                      title="Tidak ada produk"
+                      description="Tambahkan produk terlebih dahulu."
                     />
                   }
                 >
                   <TableWrap>
-                    <Table class="min-w-[960px]">
+                    <Table class="min-w-[880px]">
                       <thead>
                         <tr>
-                          <Th>Tanggal</Th>
+                          <Th>SKU</Th>
                           <Th>Produk</Th>
-                          <Th>Lokasi</Th>
-                          <Th>Tipe</Th>
-                          <Th align="right">Qty</Th>
-                          <Th>Referensi</Th>
-                          <Th>Oleh</Th>
+                          <Th align="right">Gudang</Th>
+                          <Th align="right">Toko</Th>
+                          <Th align="right">Total</Th>
+                          <Th align="right">Minimum</Th>
+                          <Th>Status</Th>
+                          <Th align="right">Nilai HPP</Th>
                         </tr>
                       </thead>
                       <tbody>
-                        <For each={movements()}>
-                          {(movement) => (
+                        <For each={products()}>
+                          {(product) => (
                             <tr class="hover:bg-hover">
-                              <Td>{formatDate(movement.time)}</Td>
+                              <Td class="font-mono text-[11px]">
+                                {product.sku}
+                              </Td>
                               <Td>
-                                <b class="text-ink">{movement.productName}</b>
+                                <b class="text-ink">{product.name}</b>
                                 <div class="text-xs text-ink-muted">
-                                  {movement.note}
+                                  {product.category}
                                 </div>
                               </Td>
+                              <Td align="right">{product.warehouseStock}</Td>
+                              <Td align="right">{product.storeStock}</Td>
+                              <Td align="right">
+                                <b>{totalStock(product)}</b>
+                              </Td>
+                              <Td align="right">{product.minStock}</Td>
                               <Td>
                                 <Badge
                                   tone={
-                                    movement.location === "WH-BACK"
-                                      ? "neutral"
-                                      : "info"
+                                    stockStatus(product) === "HABIS"
+                                      ? "danger"
+                                      : stockStatus(product) === "MENIPIS"
+                                        ? "warning"
+                                        : "success"
                                   }
                                 >
-                                  {movement.location}
+                                  {stockStatus(product) === "HABIS"
+                                    ? "Habis"
+                                    : stockStatus(product) === "MENIPIS"
+                                      ? "Menipis"
+                                      : "Aman"}
                                 </Badge>
                               </Td>
-                              <Td>{movementLabels[movement.type]}</Td>
-                              <Td
-                                align="right"
-                                class={
-                                  movement.quantity < 0
-                                    ? "font-bold text-danger"
-                                    : "font-bold text-success"
-                                }
-                              >
-                                {movement.quantity > 0 ? "+" : ""}
-                                {movement.quantity}
+                              <Td align="right">
+                                {formatRupiah(
+                                  totalStock(product) * product.cost,
+                                )}
                               </Td>
-                              <Td class="font-mono text-[11px]">
-                                {movement.reference}
-                              </Td>
-                              <Td>{movement.createdBy}</Td>
                             </tr>
                           )}
                         </For>
@@ -226,79 +307,11 @@ export function InventoryPage() {
                     </Table>
                   </TableWrap>
                 </Show>
-              }
-            >
-              <Show
-                when={products().length > 0}
-                fallback={
-                  <EmptyState
-                    title="Tidak ada produk"
-                    description="Tambahkan produk terlebih dahulu."
-                  />
-                }
-              >
-                <TableWrap>
-                  <Table class="min-w-[880px]">
-                    <thead>
-                      <tr>
-                        <Th>SKU</Th>
-                        <Th>Produk</Th>
-                        <Th align="right">Gudang</Th>
-                        <Th align="right">Toko</Th>
-                        <Th align="right">Total</Th>
-                        <Th align="right">Minimum</Th>
-                        <Th>Status</Th>
-                        <Th align="right">Nilai HPP</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={products()}>
-                        {(product) => (
-                          <tr class="hover:bg-hover">
-                            <Td class="font-mono text-[11px]">{product.sku}</Td>
-                            <Td>
-                              <b class="text-ink">{product.name}</b>
-                              <div class="text-xs text-ink-muted">
-                                {product.category}
-                              </div>
-                            </Td>
-                            <Td align="right">{product.warehouseStock}</Td>
-                            <Td align="right">{product.storeStock}</Td>
-                            <Td align="right">
-                              <b>{totalStock(product)}</b>
-                            </Td>
-                            <Td align="right">{product.minStock}</Td>
-                            <Td>
-                              <Badge
-                                tone={
-                                  stockStatus(product) === "HABIS"
-                                    ? "danger"
-                                    : stockStatus(product) === "MENIPIS"
-                                      ? "warning"
-                                      : "success"
-                                }
-                              >
-                                {stockStatus(product) === "HABIS"
-                                  ? "Habis"
-                                  : stockStatus(product) === "MENIPIS"
-                                    ? "Menipis"
-                                    : "Aman"}
-                              </Badge>
-                            </Td>
-                            <Td align="right">
-                              {formatRupiah(totalStock(product) * product.cost)}
-                            </Td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </Table>
-                </TableWrap>
               </Show>
-            </Show>
-          </Panel>
+            </Panel>
+          </Show>
         </Show>
-      </Show>
+      </div>
     </>
   );
 }

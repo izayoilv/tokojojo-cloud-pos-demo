@@ -75,6 +75,7 @@ export function SalesPage() {
         <div class="border-b border-line p-4">
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_180px_180px]">
             <SearchInput
+              aria-label="Cari penjualan"
               placeholder="Cari invoice atau kasir..."
               value={search()}
               onInput={(event) => setSearch(event.currentTarget.value)}

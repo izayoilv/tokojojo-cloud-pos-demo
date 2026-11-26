@@ -10,6 +10,7 @@ import {
   PageHeader,
   Panel,
   SearchInput,
+  Select,
   Table,
   TableSkeleton,
   TableWrap,
@@ -122,6 +123,7 @@ export function CustomersPage() {
       <Panel>
         <div class="border-b border-line p-4">
           <SearchInput
+            aria-label="Cari pelanggan"
             class="max-w-md"
             placeholder="Cari nama atau telepon..."
             value={search()}
@@ -266,8 +268,7 @@ export function CustomersPage() {
                 />
               </Field>
               <Field label="Status">
-                <select
-                  class="h-10 w-full rounded-[6px] border border-line-control bg-surface px-3 text-sm"
+                <Select
                   value={form().active ? "active" : "inactive"}
                   disabled={!canEdit()}
                   onChange={(event) =>
@@ -279,7 +280,7 @@ export function CustomersPage() {
                 >
                   <option value="active">Aktif</option>
                   <option value="inactive">Nonaktif</option>
-                </select>
+                </Select>
               </Field>
             </div>
             <Field label="Alamat">

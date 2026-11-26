@@ -174,6 +174,7 @@ export function ProductsPage() {
             <div class="flex flex-col gap-1.5">
               <span class="text-xs font-semibold text-ink-secondary">Cari</span>
               <SearchInput
+                aria-label="Cari produk"
                 placeholder="Nama, SKU, barcode"
                 value={search()}
                 onInput={(event) => {

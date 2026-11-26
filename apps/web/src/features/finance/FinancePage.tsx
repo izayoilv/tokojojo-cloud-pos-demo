@@ -154,237 +154,251 @@ export function FinancePage() {
           },
         ]}
         label="Tampilan keuangan"
+        id="finance-tabs"
+        panelId="finance-panel"
         class="mb-3"
       />
 
-      <Show
-        when={!failed()}
-        fallback={
-          <Panel>
-            <ErrorState
-              message="Data keuangan tidak dapat dimuat."
-              onRetry={() => {
-                void flowsQuery.refetch();
-                void receivablesQuery.refetch();
-                void payablesQuery.refetch();
-              }}
-            />
-          </Panel>
-        }
+      <div
+        role="tabpanel"
+        id="finance-panel"
+        aria-labelledby={`finance-tabs-tab-${tab()}`}
       >
         <Show
-          when={!loading()}
+          when={!failed()}
           fallback={
             <Panel>
-              <TableSkeleton rows={8} cols={6} />
+              <ErrorState
+                message="Data keuangan tidak dapat dimuat."
+                onRetry={() => {
+                  void flowsQuery.refetch();
+                  void receivablesQuery.refetch();
+                  void payablesQuery.refetch();
+                }}
+              />
             </Panel>
           }
         >
-          <Show when={tab() === "ARUS"}>
-            <Panel>
-              <Show
-                when={flows().length > 0}
-                fallback={
-                  <EmptyState
-                    title="Belum ada arus kas"
-                    description="Catat kas masuk atau keluar pertama."
-                  />
-                }
-              >
+          <Show
+            when={!loading()}
+            fallback={
+              <Panel>
+                <TableSkeleton rows={8} cols={6} />
+              </Panel>
+            }
+          >
+            <Show when={tab() === "ARUS"}>
+              <Panel>
+                <Show
+                  when={flows().length > 0}
+                  fallback={
+                    <EmptyState
+                      title="Belum ada arus kas"
+                      description="Catat kas masuk atau keluar pertama."
+                    />
+                  }
+                >
+                  <TableWrap>
+                    <Table class="min-w-[880px]">
+                      <thead>
+                        <tr>
+                          <Th>Tanggal</Th>
+                          <Th>Tipe</Th>
+                          <Th>Kategori</Th>
+                          <Th>Metode</Th>
+                          <Th align="right">Nominal</Th>
+                          <Th>Referensi</Th>
+                          <Th>Sumber</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={flows()}>
+                          {(flow) => (
+                            <tr class="hover:bg-hover">
+                              <Td>{formatDate(flow.time)}</Td>
+                              <Td>
+                                <Badge
+                                  tone={
+                                    flow.type === "IN" ? "success" : "danger"
+                                  }
+                                >
+                                  {flow.type === "IN" ? "Masuk" : "Keluar"}
+                                </Badge>
+                              </Td>
+                              <Td>{flow.category}</Td>
+                              <Td>{flow.method}</Td>
+                              <Td
+                                align="right"
+                                class={
+                                  flow.type === "IN"
+                                    ? "font-bold text-success"
+                                    : "font-bold text-danger"
+                                }
+                              >
+                                {flow.type === "IN" ? "+" : "−"}
+                                {formatRupiah(flow.amount)}
+                              </Td>
+                              <Td class="font-mono text-[11px]">
+                                {flow.reference}
+                              </Td>
+                              <Td>{flow.source}</Td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </Table>
+                  </TableWrap>
+                </Show>
+              </Panel>
+            </Show>
+
+            <Show when={tab() === "PIUTANG"}>
+              <Panel>
                 <TableWrap>
-                  <Table class="min-w-[880px]">
+                  <Table>
                     <thead>
                       <tr>
-                        <Th>Tanggal</Th>
-                        <Th>Tipe</Th>
-                        <Th>Kategori</Th>
-                        <Th>Metode</Th>
-                        <Th align="right">Nominal</Th>
-                        <Th>Referensi</Th>
-                        <Th>Sumber</Th>
+                        <Th>Pelanggan</Th>
+                        <Th>Invoice</Th>
+                        <Th>Jatuh tempo</Th>
+                        <Th align="right">Total</Th>
+                        <Th align="right">Terbayar</Th>
+                        <Th align="right">Sisa</Th>
                       </tr>
                     </thead>
                     <tbody>
-                      <For each={flows()}>
-                        {(flow) => (
+                      <For each={receivablesQuery.data ?? []}>
+                        {(item) => (
                           <tr class="hover:bg-hover">
-                            <Td>{formatDate(flow.time)}</Td>
                             <Td>
-                              <Badge
-                                tone={flow.type === "IN" ? "success" : "danger"}
-                              >
-                                {flow.type === "IN" ? "Masuk" : "Keluar"}
-                              </Badge>
-                            </Td>
-                            <Td>{flow.category}</Td>
-                            <Td>{flow.method}</Td>
-                            <Td
-                              align="right"
-                              class={
-                                flow.type === "IN"
-                                  ? "font-bold text-success"
-                                  : "font-bold text-danger"
-                              }
-                            >
-                              {flow.type === "IN" ? "+" : "−"}
-                              {formatRupiah(flow.amount)}
+                              <b class="text-ink">{item.customerName}</b>
                             </Td>
                             <Td class="font-mono text-[11px]">
-                              {flow.reference}
+                              {item.invoice}
                             </Td>
-                            <Td>{flow.source}</Td>
+                            <Td>{formatDate(item.due)}</Td>
+                            <Td align="right">{formatRupiah(item.total)}</Td>
+                            <Td align="right">{formatRupiah(item.paid)}</Td>
+                            <Td align="right" class="font-bold text-danger">
+                              {formatRupiah(item.total - item.paid)}
+                            </Td>
                           </tr>
                         )}
                       </For>
                     </tbody>
                   </Table>
                 </TableWrap>
-              </Show>
-            </Panel>
-          </Show>
+              </Panel>
+            </Show>
 
-          <Show when={tab() === "PIUTANG"}>
-            <Panel>
-              <TableWrap>
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Pelanggan</Th>
-                      <Th>Invoice</Th>
-                      <Th>Jatuh tempo</Th>
-                      <Th align="right">Total</Th>
-                      <Th align="right">Terbayar</Th>
-                      <Th align="right">Sisa</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <For each={receivablesQuery.data ?? []}>
-                      {(item) => (
-                        <tr class="hover:bg-hover">
-                          <Td>
-                            <b class="text-ink">{item.customerName}</b>
-                          </Td>
-                          <Td class="font-mono text-[11px]">{item.invoice}</Td>
-                          <Td>{formatDate(item.due)}</Td>
-                          <Td align="right">{formatRupiah(item.total)}</Td>
-                          <Td align="right">{formatRupiah(item.paid)}</Td>
-                          <Td align="right" class="font-bold text-danger">
-                            {formatRupiah(item.total - item.paid)}
-                          </Td>
-                        </tr>
-                      )}
-                    </For>
-                  </tbody>
-                </Table>
-              </TableWrap>
-            </Panel>
-          </Show>
-
-          <Show when={tab() === "HUTANG"}>
-            <Panel>
-              <TableWrap>
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Supplier</Th>
-                      <Th>Faktur</Th>
-                      <Th>Jatuh tempo</Th>
-                      <Th align="right">Total</Th>
-                      <Th align="right">Sisa</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <For each={payablesQuery.data ?? []}>
-                      {(item) => (
-                        <tr class="hover:bg-hover">
-                          <Td>
-                            <b class="text-ink">{item.supplierName}</b>
-                          </Td>
-                          <Td class="font-mono text-[11px]">{item.invoice}</Td>
-                          <Td>{formatDate(item.due)}</Td>
-                          <Td align="right">{formatRupiah(item.total)}</Td>
-                          <Td align="right" class="font-bold text-danger">
-                            {formatRupiah(item.total - item.paid)}
-                          </Td>
-                        </tr>
-                      )}
-                    </For>
-                  </tbody>
-                </Table>
-              </TableWrap>
-            </Panel>
+            <Show when={tab() === "HUTANG"}>
+              <Panel>
+                <TableWrap>
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Supplier</Th>
+                        <Th>Faktur</Th>
+                        <Th>Jatuh tempo</Th>
+                        <Th align="right">Total</Th>
+                        <Th align="right">Sisa</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={payablesQuery.data ?? []}>
+                        {(item) => (
+                          <tr class="hover:bg-hover">
+                            <Td>
+                              <b class="text-ink">{item.supplierName}</b>
+                            </Td>
+                            <Td class="font-mono text-[11px]">
+                              {item.invoice}
+                            </Td>
+                            <Td>{formatDate(item.due)}</Td>
+                            <Td align="right">{formatRupiah(item.total)}</Td>
+                            <Td align="right" class="font-bold text-danger">
+                              {formatRupiah(item.total - item.paid)}
+                            </Td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </Table>
+                </TableWrap>
+              </Panel>
+            </Show>
           </Show>
         </Show>
-      </Show>
 
-      <Modal
-        open={modalOpen()}
-        onOpenChange={setModalOpen}
-        title="Catat Kas"
-        description="Entri manual akan tercatat sebagai source MANUAL."
-        footer={
-          <>
-            <Button onClick={() => setModalOpen(false)}>Batal</Button>
-            <Button variant="primary" onClick={() => void saveCash()}>
-              Simpan
-            </Button>
-          </>
-        }
-      >
-        <div class="space-y-3">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Tipe">
-              <Select
-                value={type()}
-                onChange={(event) =>
-                  setType(event.currentTarget.value as "IN" | "OUT")
-                }
-              >
-                <option value="IN">Kas masuk</option>
-                <option value="OUT">Kas keluar</option>
-              </Select>
-            </Field>
-            <Field label="Kategori">
-              <Select
-                value={category()}
-                onChange={(event) => setCategory(event.currentTarget.value)}
-              >
-                <option>Penjualan</option>
-                <option>Pembayaran Piutang</option>
-                <option>Pembelian</option>
-                <option>Listrik & Air</option>
-                <option>Lainnya</option>
-              </Select>
-            </Field>
-            <Field label="Metode">
-              <Select
-                value={method()}
-                onChange={(event) =>
-                  setMethod(event.currentTarget.value as PaymentMethod)
-                }
-              >
-                <option value="TUNAI">Tunai</option>
-                <option value="TRANSFER">Transfer</option>
-                <option value="QRIS">QRIS</option>
-              </Select>
-            </Field>
-            <Field label="Nominal" required>
+        <Modal
+          open={modalOpen()}
+          onOpenChange={setModalOpen}
+          title="Catat Kas"
+          description="Entri manual akan tercatat sebagai source MANUAL."
+          footer={
+            <>
+              <Button onClick={() => setModalOpen(false)}>Batal</Button>
+              <Button variant="primary" onClick={() => void saveCash()}>
+                Simpan
+              </Button>
+            </>
+          }
+        >
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Tipe">
+                <Select
+                  value={type()}
+                  onChange={(event) =>
+                    setType(event.currentTarget.value as "IN" | "OUT")
+                  }
+                >
+                  <option value="IN">Kas masuk</option>
+                  <option value="OUT">Kas keluar</option>
+                </Select>
+              </Field>
+              <Field label="Kategori">
+                <Select
+                  value={category()}
+                  onChange={(event) => setCategory(event.currentTarget.value)}
+                >
+                  <option>Penjualan</option>
+                  <option>Pembayaran Piutang</option>
+                  <option>Pembelian</option>
+                  <option>Listrik & Air</option>
+                  <option>Lainnya</option>
+                </Select>
+              </Field>
+              <Field label="Metode">
+                <Select
+                  value={method()}
+                  onChange={(event) =>
+                    setMethod(event.currentTarget.value as PaymentMethod)
+                  }
+                >
+                  <option value="TUNAI">Tunai</option>
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="QRIS">QRIS</option>
+                </Select>
+              </Field>
+              <Field label="Nominal" required>
+                <Input
+                  type="number"
+                  value={amount()}
+                  onInput={(event) => setAmount(event.currentTarget.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Referensi">
               <Input
-                type="number"
-                value={amount()}
-                onInput={(event) => setAmount(event.currentTarget.value)}
+                value={reference()}
+                placeholder="Opsional"
+                onInput={(event) => setReference(event.currentTarget.value)}
               />
             </Field>
           </div>
-          <Field label="Referensi">
-            <Input
-              value={reference()}
-              placeholder="Opsional"
-              onInput={(event) => setReference(event.currentTarget.value)}
-            />
-          </Field>
-        </div>
-      </Modal>
+        </Modal>
+      </div>
     </>
   );
 }
