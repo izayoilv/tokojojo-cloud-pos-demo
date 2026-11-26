@@ -7,6 +7,7 @@ export * from "./finance.ts";
 export * from "./identity.ts";
 export * from "./pos.ts";
 export * from "./purchasing.ts";
+export * from "./settings.ts";
 export * from "./stock.ts";
 export * from "./suppliers.ts";
 export * from "./sync.ts";
