@@ -15,13 +15,14 @@
 Cloud POS demo for TokoJojo: a SolidJS admin dashboard, a Kotlin Android stock app, a
 Tauri + Rust POS, and an Express GraphQL API.
 
-**This repository is scaffolding only.** The core PostgreSQL schema, migrations,
-seed, and schema tests are in place; the GraphQL server and client features are
-the next implementation step.
+**This repository is pre-integration.** The core and Phase 2 PostgreSQL schema,
+migrations, seed, schema tests, and the shared GraphQL contract are in place. The
+Express/Yoga/Pothos server and client integration are the next implementation step.
 
 ## Stack
 
-- **API:** Node 26, pnpm, Express 5, GraphQL Yoga 6, Pothos, Drizzle, PostgreSQL 18+
+- **API:** Node 26, pnpm, Express 5, GraphQL Yoga 6, Pothos, Drizzle, PostgreSQL 18
+  (CI pin; PostgreSQL 19 is current stable but not adopted yet)
 - **Web:** SolidJS 1.9, Vite 8, TanStack Query, `graphql-request`, Kobalte, Tailwind CSS 4
 - **Android:** Kotlin 2.4, Compose, Apollo Kotlin, Metro, Room, ML Kit
 - **POS:** Tauri 2.12, Rust 1.100, SolidJS, SQLCipher SQLite
@@ -57,24 +58,24 @@ pnpm dev:pos
 repo-root `.env`. `pnpm db:seed` is idempotent and creates the development
 store, staff accounts, catalog, suppliers, and opening stock.
 
-The GraphQL API server is not implemented yet; the core PostgreSQL schema is.
-`pnpm dev:web` proxies `/graphql` to `http://localhost:3000`; data calls fail
-until the API exists.
+The GraphQL API server is not implemented yet; the core + Phase 2 schema and the
+shared contract are in place. `pnpm dev:web` proxies `/graphql` to
+`http://localhost:3000`; data calls fail until the API exists.
 
 ## Structure
 
-| Path                | Description                               |
-| ------------------- | ----------------------------------------- |
-| `apps/api/`         | Express + Yoga + Pothos + Drizzle API     |
-| `apps/web/`         | SolidJS admin dashboard                   |
-| `apps/pos/`         | Tauri + Rust POS                          |
-| `apps/android/`     | Kotlin Android stock app                  |
-| `packages/graphql/` | Shared schema and codegen                 |
-| `packages/ui/`      | Shared SolidJS components                 |
-| `packages/config/`  | Shared lint/format/TypeScript config      |
-| `infra/`            | Compose, Caddy, Cloudflare Tunnel, backup |
-| `load/`             | k6 capacity scenarios                     |
-| `scripts/`          | Development and operations helpers        |
+| Path                | Description                                          |
+| ------------------- | ---------------------------------------------------- |
+| `apps/api/`         | Express + Yoga + Pothos + Drizzle API                |
+| `apps/web/`         | SolidJS admin dashboard                              |
+| `apps/pos/`         | Tauri + Rust POS                                     |
+| `apps/android/`     | Kotlin Android stock app                             |
+| `packages/graphql/` | Shared schema, contract validator, future operations |
+| `packages/ui/`      | Shared SolidJS UI primitives, tokens, and fonts      |
+| `packages/config/`  | Future shared config; not in the workspace yet       |
+| `infra/`            | Compose, Caddy, Cloudflare Tunnel, backup            |
+| `load/`             | k6 capacity scenarios                                |
+| `scripts/`          | Development and operations helpers                   |
 
 ## Platform guides
 

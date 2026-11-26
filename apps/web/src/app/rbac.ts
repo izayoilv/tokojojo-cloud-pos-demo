@@ -227,3 +227,21 @@ export function initials(name: string): string {
 export function canManageSettings(role: Role): boolean {
   return role === "OWNER" || role === "ADMIN";
 }
+
+export function canReviewOpname(role: Role): boolean {
+  return role === "OWNER" || role === "ADMIN";
+}
+
+export function canViewSales(role: Role): boolean {
+  return canAccess(role, "PENJUALAN");
+}
+
+export function assignableRoles(role: Role): Role[] {
+  return role === "OWNER"
+    ? ["OWNER", "ADMIN", "CASHIER", "WAREHOUSE"]
+    : ["ADMIN", "CASHIER", "WAREHOUSE"];
+}
+
+export function canAssignRole(actor: Role, target: Role): boolean {
+  return actor === "OWNER" || target !== "OWNER";
+}

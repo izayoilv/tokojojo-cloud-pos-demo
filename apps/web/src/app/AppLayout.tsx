@@ -21,6 +21,8 @@ import {
   createSignal,
   For,
   on,
+  onCleanup,
+  onMount,
   Show,
 } from "solid-js";
 
@@ -59,6 +61,18 @@ export function AppLayout(props: { children?: JSX.Element }) {
   const [mobileOpen, setMobileOpen] = createSignal(false);
   const [collapsed, setCollapsed] = createSignal(false);
   const [search, setSearch] = createSignal("");
+  const [desktopNav, setDesktopNav] = createSignal(
+    typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 1024px)").matches,
+  );
+
+  onMount(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const update = () => setDesktopNav(query.matches);
+    update();
+    query.addEventListener("change", update);
+    onCleanup(() => query.removeEventListener("change", update));
+  });
 
   const user = () => auth.user();
   const roleInfo = () => (user() ? roleMeta[user()!.role] : roleMeta.ADMIN);
@@ -172,6 +186,8 @@ export function AppLayout(props: { children?: JSX.Element }) {
       </Show>
 
       <aside
+        inert={!desktopNav() && !mobileOpen()}
+        aria-hidden={!desktopNav() && !mobileOpen() ? "true" : undefined}
         class={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-line bg-surface transition-[width,transform] duration-200 lg:static lg:translate-x-0 ${
           mobileOpen() ? "translate-x-0" : "-translate-x-full"
         } ${collapsed() ? "w-16" : "w-[240px]"}`}
@@ -308,6 +324,7 @@ export function AppLayout(props: { children?: JSX.Element }) {
             <Search size={15} class="shrink-0 text-ink-muted" />
             <input
               class="min-w-0 flex-1 border-none bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
+              aria-label="Cari produk, SKU, barcode, invoice"
               placeholder="Cari produk, SKU, barcode, invoice..."
               value={search()}
               onInput={(event) => setSearch(event.currentTarget.value)}
@@ -322,7 +339,7 @@ export function AppLayout(props: { children?: JSX.Element }) {
               >
                 <Bell size={17} />
                 <Show when={notifications().length > 0}>
-                  <span class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-white">
+                  <span class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-extrabold text-on-danger">
                     {notifications().length}
                   </span>
                 </Show>

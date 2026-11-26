@@ -117,6 +117,7 @@ describe("app smoke", () => {
     await wait(300);
 
     expect(root.textContent).toContain("Akses ditolak");
+    expect(root.querySelectorAll("a button")).toHaveLength(0);
 
     window.history.pushState(null, "", "/pengaturan?tab=profil");
     window.dispatchEvent(new PopStateEvent("popstate"));
@@ -147,6 +148,160 @@ describe("app smoke", () => {
 
     expect(sidebar!.className).toContain("translate-x-0");
     expect(sidebar!.className).not.toContain("-translate-x-full");
+  });
+
+  it("hides sales panels from the warehouse dashboard", async () => {
+    const root = mount();
+    await login(root, "gudang");
+    await wait(300);
+
+    expect(root.textContent).toContain("Total SKU");
+    expect(root.textContent).toContain("Hutang supplier");
+    expect(root.textContent).not.toContain("Tren penjualan");
+    expect(root.textContent).not.toContain("Penjualan terbaru");
+
+    const salesLink = [...root.querySelectorAll("a")].find(
+      (link) => link.getAttribute("href") === "/penjualan",
+    );
+    expect(salesLink).toBeUndefined();
+    expect(root.querySelectorAll("a button")).toHaveLength(0);
+  });
+
+  it("does not show opname approval actions to warehouse", async () => {
+    const root = mount();
+    await login(root, "gudang");
+
+    window.history.pushState(null, "", "/gudang");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+
+    const opnameTab = [...root.querySelectorAll('[role="tab"]')].find((tab) =>
+      tab.textContent?.includes("Opname"),
+    );
+    expect(opnameTab).toBeDefined();
+    click(opnameTab!);
+    await wait(200);
+
+    const reviewButtons = [...root.querySelectorAll("button")].filter(
+      (button) =>
+        button.textContent?.trim() === "Setujui" ||
+        button.textContent?.trim() === "Tolak",
+    );
+    expect(reviewButtons).toHaveLength(0);
+  });
+
+  it("prevents an admin from selecting OWNER for a user", async () => {
+    const root = mount();
+    await login(root, "admin");
+
+    window.history.pushState(null, "", "/pengguna");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+
+    click(
+      [...root.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Tambah Pengguna"),
+      )!,
+    );
+    await wait(100);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    const roleSelect = dialog!.querySelector<HTMLSelectElement>("select");
+    expect(roleSelect).not.toBeNull();
+    const values = [...roleSelect!.options].map((option) => option.value);
+    expect(values).not.toContain("OWNER");
+  });
+
+  it("supports arrow-key navigation between tabs", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/gudang");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const mutasi = tabs.find((tab) => tab.textContent?.includes("Mutasi"));
+    const opname = tabs.find((tab) => tab.textContent?.includes("Opname"));
+    expect(mutasi).toBeDefined();
+    expect(opname).toBeDefined();
+
+    mutasi!.focus();
+    mutasi!.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    );
+    await wait(50);
+
+    expect(opname!.getAttribute("aria-selected")).toBe("true");
+    expect(opname!.getAttribute("aria-controls")).toBe("warehouse-panel");
+    expect(document.activeElement).toBe(opname);
+    expect(
+      root.querySelector('[role="tabpanel"]#warehouse-panel'),
+    ).not.toBeNull();
+  });
+
+  it("associates field labels and search inputs with controls", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/produk");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+
+    const search = root.querySelector<HTMLInputElement>('input[type="search"]');
+    expect(search).not.toBeNull();
+    expect(search!.getAttribute("aria-label")).toBeTruthy();
+
+    click(
+      [...root.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Tambah Produk"),
+      )!,
+    );
+    await wait(100);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    const label = [...dialog!.querySelectorAll("label")].find((item) =>
+      item.textContent?.includes("Nama produk"),
+    );
+    expect(label).toBeDefined();
+    expect(label!.getAttribute("for")).toBeTruthy();
+    expect(document.getElementById(label!.getAttribute("for")!)).not.toBeNull();
+  });
+
+  it("gives filter and settings controls accessible names", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/produk");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+
+    for (const label of ["Kategori", "Status", "Lokasi"]) {
+      expect(
+        root.querySelector(`select[aria-label="${label}"]`),
+      ).not.toBeNull();
+    }
+
+    window.history.pushState(null, "", "/pengaturan?tab=struk");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    expect(
+      root.querySelector('select[aria-label="Ukuran kertas"]'),
+    ).not.toBeNull();
+
+    window.history.pushState(null, "", "/pengaturan?tab=stok");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    expect(
+      root.querySelector('select[aria-label="Lokasi default"]'),
+    ).not.toBeNull();
+    expect(
+      root.querySelector('input[aria-label="Ambang stok menipis"]'),
+    ).not.toBeNull();
   });
 
   it("opens every owner route with mock data", async () => {

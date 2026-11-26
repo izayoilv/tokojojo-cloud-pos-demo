@@ -196,271 +196,331 @@ export function SettingsPage() {
             manage() ? tabs : tabs.filter((tab) => tab.value === "TAMPILAN")
           }
           label="Bagian pengaturan"
+          id="settings-tabs"
+          panelId="settings-panel"
           class="mb-3"
         />
 
-        <Show when={activeTab() === "PROFIL" && manage()}>
-          <Panel>
-            <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-              <Field label="Nama toko">
-                <Input
-                  value={storeForm().name}
-                  onInput={(event) =>
-                    setStoreForm((current) => ({
-                      ...current,
-                      name: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="Tagline">
-                <Input
-                  value={storeForm().tagline}
-                  onInput={(event) =>
-                    setStoreForm((current) => ({
-                      ...current,
-                      tagline: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="Alamat" class="sm:col-span-2">
-                <Input
-                  value={storeForm().address}
-                  onInput={(event) =>
-                    setStoreForm((current) => ({
-                      ...current,
-                      address: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="Kota">
-                <Input
-                  value={storeForm().city}
-                  onInput={(event) =>
-                    setStoreForm((current) => ({
-                      ...current,
-                      city: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="Telepon">
-                <Input
-                  value={storeForm().phone}
-                  onInput={(event) =>
-                    setStoreForm((current) => ({
-                      ...current,
-                      phone: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </Field>
-              <Field label="NPWP">
-                <Input
-                  class="font-mono"
-                  value={storeForm().taxId}
-                  onInput={(event) =>
-                    setStoreForm((current) => ({
-                      ...current,
-                      taxId: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </Field>
-            </div>
-            <div class="flex justify-end gap-2 border-t border-line px-4 py-3">
-              <Button onClick={() => void settingsQuery.refetch()}>
-                Batal
-              </Button>
-              <Button variant="primary" onClick={() => void saveStore()}>
-                Simpan perubahan
-              </Button>
-            </div>
-          </Panel>
-        </Show>
+        <div
+          role="tabpanel"
+          id="settings-panel"
+          aria-labelledby={`settings-tabs-tab-${activeTab()}`}
+        >
+          <Show when={activeTab() === "PROFIL" && manage()}>
+            <Panel>
+              <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+                <Field label="Nama toko">
+                  <Input
+                    value={storeForm().name}
+                    onInput={(event) =>
+                      setStoreForm((current) => ({
+                        ...current,
+                        name: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Tagline">
+                  <Input
+                    value={storeForm().tagline}
+                    onInput={(event) =>
+                      setStoreForm((current) => ({
+                        ...current,
+                        tagline: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Alamat" class="sm:col-span-2">
+                  <Input
+                    value={storeForm().address}
+                    onInput={(event) =>
+                      setStoreForm((current) => ({
+                        ...current,
+                        address: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Kota">
+                  <Input
+                    value={storeForm().city}
+                    onInput={(event) =>
+                      setStoreForm((current) => ({
+                        ...current,
+                        city: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="Telepon">
+                  <Input
+                    value={storeForm().phone}
+                    onInput={(event) =>
+                      setStoreForm((current) => ({
+                        ...current,
+                        phone: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
+                <Field label="NPWP">
+                  <Input
+                    class="font-mono"
+                    value={storeForm().taxId}
+                    onInput={(event) =>
+                      setStoreForm((current) => ({
+                        ...current,
+                        taxId: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
+              </div>
+              <div class="flex justify-end gap-2 border-t border-line px-4 py-3">
+                <Button onClick={() => void settingsQuery.refetch()}>
+                  Batal
+                </Button>
+                <Button variant="primary" onClick={() => void saveStore()}>
+                  Simpan perubahan
+                </Button>
+              </div>
+            </Panel>
+          </Show>
 
-        <Show when={activeTab() === "STRUK" && manage()}>
-          <Panel>
-            <SettingsRow
-              label="Ukuran kertas"
-              description="Lebar kertas printer struk."
-            >
-              <Select
-                value={receiptForm().paperSize}
-                onChange={(event) =>
-                  setReceiptForm((current) => ({
-                    ...current,
-                    paperSize: event.currentTarget.value as "58mm" | "80mm",
-                  }))
-                }
+          <Show when={activeTab() === "STRUK" && manage()}>
+            <Panel>
+              <SettingsRow
+                label="Ukuran kertas"
+                description="Lebar kertas printer struk."
               >
-                <option value="58mm">58mm</option>
-                <option value="80mm">80mm</option>
-              </Select>
-            </SettingsRow>
-            <SettingsRow
-              label="Tampilkan harga"
-              description="Cetak harga satuan di struk."
-            >
-              <Switch
-                label="Tampilkan harga"
-                checked={receiptForm().showPrice}
-                onChange={(checked) =>
-                  setReceiptForm((current) => ({
-                    ...current,
-                    showPrice: checked,
-                  }))
-                }
-              />
-            </SettingsRow>
-            <SettingsRow
-              label="Cetak otomatis"
-              description="Buka dialog cetak setelah pembayaran."
-            >
-              <Switch
-                label="Cetak otomatis"
-                checked={receiptForm().autoPrint}
-                onChange={(checked) =>
-                  setReceiptForm((current) => ({
-                    ...current,
-                    autoPrint: checked,
-                  }))
-                }
-              />
-            </SettingsRow>
-            <div class="border-t border-line p-4">
-              <Field label="Footer struk">
-                <Textarea
-                  value={receiptForm().footer}
-                  onInput={(event) =>
+                <Select
+                  aria-label="Ukuran kertas"
+                  value={receiptForm().paperSize}
+                  onChange={(event) =>
                     setReceiptForm((current) => ({
                       ...current,
-                      footer: event.currentTarget.value,
+                      paperSize: event.currentTarget.value as "58mm" | "80mm",
+                    }))
+                  }
+                >
+                  <option value="58mm">58mm</option>
+                  <option value="80mm">80mm</option>
+                </Select>
+              </SettingsRow>
+              <SettingsRow
+                label="Tampilkan harga"
+                description="Cetak harga satuan di struk."
+              >
+                <Switch
+                  label="Tampilkan harga"
+                  checked={receiptForm().showPrice}
+                  onChange={(checked) =>
+                    setReceiptForm((current) => ({
+                      ...current,
+                      showPrice: checked,
                     }))
                   }
                 />
-              </Field>
-            </div>
-            <div class="flex justify-end border-t border-line px-4 py-3">
-              <Button variant="primary" onClick={() => void saveReceipt()}>
-                Simpan perubahan
-              </Button>
-            </div>
-          </Panel>
-        </Show>
-
-        <Show when={activeTab() === "STOK" && manage()}>
-          <Panel>
-            <SettingsRow
-              label="Lokasi default"
-              description="Untuk penerimaan dan opname."
-            >
-              <Select
-                value={defaultLocation()}
-                onChange={(event) =>
-                  setDefaultLocation(
-                    event.currentTarget.value as "WH-BACK" | "STORE-FRONT",
-                  )
-                }
+              </SettingsRow>
+              <SettingsRow
+                label="Cetak otomatis"
+                description="Buka dialog cetak setelah pembayaran."
               >
-                <option value="WH-BACK">Gudang belakang</option>
-                <option value="STORE-FRONT">Area toko</option>
-              </Select>
-            </SettingsRow>
-            <SettingsRow
-              label="Ambang stok menipis"
-              description="Persentase di atas minimum."
-            >
-              <Input
-                type="number"
-                class="w-24"
-                value={lowStockPercent()}
-                onInput={(event) =>
-                  setLowStockPercent(Number(event.currentTarget.value))
-                }
-              />
-            </SettingsRow>
-            <div class="flex justify-end border-t border-line px-4 py-3">
-              <Button variant="primary" onClick={() => void saveStock()}>
-                Simpan perubahan
-              </Button>
-            </div>
-          </Panel>
-        </Show>
-
-        <Show when={activeTab() === "PERANGKAT" && manage()}>
-          <div class="space-y-3">
-            <Panel>
-              <div class="border-b border-line px-4 py-3">
-                <h3 class="text-sm font-bold text-ink">Perangkat</h3>
-                <p class="text-xs text-ink-muted">
-                  Setujui perangkat baru atau cabut akses.
-                </p>
+                <Switch
+                  label="Cetak otomatis"
+                  checked={receiptForm().autoPrint}
+                  onChange={(checked) =>
+                    setReceiptForm((current) => ({
+                      ...current,
+                      autoPrint: checked,
+                    }))
+                  }
+                />
+              </SettingsRow>
+              <div class="border-t border-line p-4">
+                <Field label="Footer struk">
+                  <Textarea
+                    value={receiptForm().footer}
+                    onInput={(event) =>
+                      setReceiptForm((current) => ({
+                        ...current,
+                        footer: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </Field>
               </div>
-              <Show
-                when={!devicesQuery.isPending}
-                fallback={<TableSkeleton rows={4} cols={4} />}
+              <div class="flex justify-end border-t border-line px-4 py-3">
+                <Button variant="primary" onClick={() => void saveReceipt()}>
+                  Simpan perubahan
+                </Button>
+              </div>
+            </Panel>
+          </Show>
+
+          <Show when={activeTab() === "STOK" && manage()}>
+            <Panel>
+              <SettingsRow
+                label="Lokasi default"
+                description="Untuk penerimaan dan opname."
               >
+                <Select
+                  aria-label="Lokasi default"
+                  value={defaultLocation()}
+                  onChange={(event) =>
+                    setDefaultLocation(
+                      event.currentTarget.value as "WH-BACK" | "STORE-FRONT",
+                    )
+                  }
+                >
+                  <option value="WH-BACK">Gudang belakang</option>
+                  <option value="STORE-FRONT">Area toko</option>
+                </Select>
+              </SettingsRow>
+              <SettingsRow
+                label="Ambang stok menipis"
+                description="Persentase di atas minimum."
+              >
+                <Input
+                  aria-label="Ambang stok menipis"
+                  type="number"
+                  class="w-24"
+                  value={lowStockPercent()}
+                  onInput={(event) =>
+                    setLowStockPercent(Number(event.currentTarget.value))
+                  }
+                />
+              </SettingsRow>
+              <div class="flex justify-end border-t border-line px-4 py-3">
+                <Button variant="primary" onClick={() => void saveStock()}>
+                  Simpan perubahan
+                </Button>
+              </div>
+            </Panel>
+          </Show>
+
+          <Show when={activeTab() === "PERANGKAT" && manage()}>
+            <div class="space-y-3">
+              <Panel>
+                <div class="border-b border-line px-4 py-3">
+                  <h3 class="text-sm font-bold text-ink">Perangkat</h3>
+                  <p class="text-xs text-ink-muted">
+                    Setujui perangkat baru atau cabut akses.
+                  </p>
+                </div>
+                <Show
+                  when={!devicesQuery.isPending}
+                  fallback={<TableSkeleton rows={4} cols={4} />}
+                >
+                  <TableWrap>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Th>Perangkat</Th>
+                          <Th>Platform</Th>
+                          <Th>Status</Th>
+                          <Th>Terakhir aktif</Th>
+                          <Th align="center">Aksi</Th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={devicesQuery.data ?? []}>
+                          {(device) => (
+                            <tr class="hover:bg-hover">
+                              <Td>
+                                <b class="text-ink">{device.name}</b>
+                              </Td>
+                              <Td>{device.platform}</Td>
+                              <Td>
+                                <Badge
+                                  tone={
+                                    device.status === "APPROVED"
+                                      ? "success"
+                                      : device.status === "PENDING"
+                                        ? "warning"
+                                        : "danger"
+                                  }
+                                >
+                                  {device.status}
+                                </Badge>
+                              </Td>
+                              <Td>{formatDateTime(device.lastSeen)}</Td>
+                              <Td align="center">
+                                <div class="flex justify-center gap-1">
+                                  <Show when={device.status !== "APPROVED"}>
+                                    <Button
+                                      size="sm"
+                                      variant="success"
+                                      onClick={() =>
+                                        void changeDevice(device.id, "APPROVED")
+                                      }
+                                    >
+                                      Setujui
+                                    </Button>
+                                  </Show>
+                                  <Show when={device.status !== "REVOKED"}>
+                                    <Button
+                                      size="sm"
+                                      variant="soft-danger"
+                                      onClick={() =>
+                                        void changeDevice(device.id, "REVOKED")
+                                      }
+                                    >
+                                      Cabut
+                                    </Button>
+                                  </Show>
+                                </div>
+                              </Td>
+                            </tr>
+                          )}
+                        </For>
+                      </tbody>
+                    </Table>
+                  </TableWrap>
+                </Show>
+              </Panel>
+
+              <Panel>
+                <div class="border-b border-line px-4 py-3">
+                  <h3 class="text-sm font-bold text-ink">Sesi Web</h3>
+                  <p class="text-xs text-ink-muted">
+                    Sesi aktif untuk akun web admin.
+                  </p>
+                </div>
                 <TableWrap>
                   <Table>
                     <thead>
                       <tr>
                         <Th>Perangkat</Th>
-                        <Th>Platform</Th>
-                        <Th>Status</Th>
+                        <Th>Dibuat</Th>
                         <Th>Terakhir aktif</Th>
                         <Th align="center">Aksi</Th>
                       </tr>
                     </thead>
                     <tbody>
-                      <For each={devicesQuery.data ?? []}>
-                        {(device) => (
+                      <For each={sessionsQuery.data ?? []}>
+                        {(session) => (
                           <tr class="hover:bg-hover">
                             <Td>
-                              <b class="text-ink">{device.name}</b>
+                              {session.device}
+                              <Show when={session.current}>
+                                <Badge tone="success" class="ml-2">
+                                  Sesi ini
+                                </Badge>
+                              </Show>
                             </Td>
-                            <Td>{device.platform}</Td>
-                            <Td>
-                              <Badge
-                                tone={
-                                  device.status === "APPROVED"
-                                    ? "success"
-                                    : device.status === "PENDING"
-                                      ? "warning"
-                                      : "danger"
-                                }
-                              >
-                                {device.status}
-                              </Badge>
-                            </Td>
-                            <Td>{formatDateTime(device.lastSeen)}</Td>
+                            <Td>{formatDateTime(session.created)}</Td>
+                            <Td>{formatDateTime(session.lastSeen)}</Td>
                             <Td align="center">
-                              <div class="flex justify-center gap-1">
-                                <Show when={device.status !== "APPROVED"}>
-                                  <Button
-                                    size="sm"
-                                    variant="success"
-                                    onClick={() =>
-                                      void changeDevice(device.id, "APPROVED")
-                                    }
-                                  >
-                                    Setujui
-                                  </Button>
-                                </Show>
-                                <Show when={device.status !== "REVOKED"}>
-                                  <Button
-                                    size="sm"
-                                    variant="soft-danger"
-                                    onClick={() =>
-                                      void changeDevice(device.id, "REVOKED")
-                                    }
-                                  >
-                                    Cabut
-                                  </Button>
-                                </Show>
-                              </div>
+                              <Button
+                                size="sm"
+                                disabled={session.current}
+                                variant="soft-danger"
+                                onClick={() => void revokeSession(session.id)}
+                              >
+                                Cabut
+                              </Button>
                             </Td>
                           </tr>
                         )}
@@ -468,128 +528,81 @@ export function SettingsPage() {
                     </tbody>
                   </Table>
                 </TableWrap>
-              </Show>
-            </Panel>
-
-            <Panel>
-              <div class="border-b border-line px-4 py-3">
-                <h3 class="text-sm font-bold text-ink">Sesi Web</h3>
-                <p class="text-xs text-ink-muted">
-                  Sesi aktif untuk akun web admin.
-                </p>
-              </div>
-              <TableWrap>
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Perangkat</Th>
-                      <Th>Dibuat</Th>
-                      <Th>Terakhir aktif</Th>
-                      <Th align="center">Aksi</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <For each={sessionsQuery.data ?? []}>
-                      {(session) => (
-                        <tr class="hover:bg-hover">
-                          <Td>
-                            {session.device}
-                            <Show when={session.current}>
-                              <Badge tone="success" class="ml-2">
-                                Sesi ini
-                              </Badge>
-                            </Show>
-                          </Td>
-                          <Td>{formatDateTime(session.created)}</Td>
-                          <Td>{formatDateTime(session.lastSeen)}</Td>
-                          <Td align="center">
-                            <Button
-                              size="sm"
-                              disabled={session.current}
-                              variant="soft-danger"
-                              onClick={() => void revokeSession(session.id)}
-                            >
-                              Cabut
-                            </Button>
-                          </Td>
-                        </tr>
-                      )}
-                    </For>
-                  </tbody>
-                </Table>
-              </TableWrap>
-            </Panel>
-          </div>
-        </Show>
-
-        <Show when={activeTab() === "TAMPILAN"}>
-          <Panel>
-            <SettingsRow
-              label="Tema"
-              description="Terang, gelap, atau mengikuti sistem."
-            >
-              <div class="flex gap-1">
-                <For
-                  each={
-                    [
-                      ["light", "Terang"],
-                      ["dark", "Gelap"],
-                      ["system", "Sistem"],
-                    ] as const
-                  }
-                >
-                  {([value, label]) => (
-                    <Button
-                      size="sm"
-                      variant={
-                        preferences.theme() === value ? "primary" : "secondary"
-                      }
-                      onClick={() => preferences.setTheme(value)}
-                    >
-                      {label}
-                    </Button>
-                  )}
-                </For>
-              </div>
-            </SettingsRow>
-            <SettingsRow label="Ukuran teks" description="Normal atau Besar.">
-              <div class="flex gap-1">
-                <For
-                  each={
-                    [
-                      ["normal", "Normal"],
-                      ["large", "Besar"],
-                    ] as const
-                  }
-                >
-                  {([value, label]) => (
-                    <Button
-                      size="sm"
-                      variant={
-                        preferences.textSize() === value
-                          ? "primary"
-                          : "secondary"
-                      }
-                      onClick={() => preferences.setTextSize(value)}
-                    >
-                      {label}
-                    </Button>
-                  )}
-                </For>
-              </div>
-            </SettingsRow>
-            <div class="flex justify-end border-t border-line px-4 py-3">
-              <Button
-                onClick={() => {
-                  preferences.setTheme("system");
-                  preferences.setTextSize("normal");
-                }}
-              >
-                Kembalikan default
-              </Button>
+              </Panel>
             </div>
-          </Panel>
-        </Show>
+          </Show>
+
+          <Show when={activeTab() === "TAMPILAN"}>
+            <Panel>
+              <SettingsRow
+                label="Tema"
+                description="Terang, gelap, atau mengikuti sistem."
+              >
+                <div class="flex gap-1">
+                  <For
+                    each={
+                      [
+                        ["light", "Terang"],
+                        ["dark", "Gelap"],
+                        ["system", "Sistem"],
+                      ] as const
+                    }
+                  >
+                    {([value, label]) => (
+                      <Button
+                        size="sm"
+                        variant={
+                          preferences.theme() === value
+                            ? "primary"
+                            : "secondary"
+                        }
+                        onClick={() => preferences.setTheme(value)}
+                      >
+                        {label}
+                      </Button>
+                    )}
+                  </For>
+                </div>
+              </SettingsRow>
+              <SettingsRow label="Ukuran teks" description="Normal atau Besar.">
+                <div class="flex gap-1">
+                  <For
+                    each={
+                      [
+                        ["normal", "Normal"],
+                        ["large", "Besar"],
+                      ] as const
+                    }
+                  >
+                    {([value, label]) => (
+                      <Button
+                        size="sm"
+                        variant={
+                          preferences.textSize() === value
+                            ? "primary"
+                            : "secondary"
+                        }
+                        onClick={() => preferences.setTextSize(value)}
+                      >
+                        {label}
+                      </Button>
+                    )}
+                  </For>
+                </div>
+              </SettingsRow>
+              <div class="flex justify-end border-t border-line px-4 py-3">
+                <Button
+                  onClick={() => {
+                    preferences.setTheme("system");
+                    preferences.setTextSize("normal");
+                  }}
+                >
+                  Kembalikan default
+                </Button>
+              </div>
+            </Panel>
+          </Show>
+        </div>
       </Show>
     </>
   );

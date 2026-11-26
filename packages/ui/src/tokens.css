@@ -79,10 +79,12 @@
   --tj-accent-soft: #fffbeb;
   --tj-success: #15803d;
   --tj-success-soft: #f0fdf4;
+  --tj-on-success: #ffffff;
   --tj-warning: #b45309;
   --tj-warning-soft: #fffbeb;
   --tj-danger: #b91c1c;
   --tj-danger-soft: #fef2f2;
+  --tj-on-danger: #ffffff;
   --tj-info: #1d4ed8;
   --tj-info-soft: #eff6ff;
   --tj-focus: #0f766e;
@@ -124,10 +126,12 @@
   --tj-accent-soft: #451a03;
   --tj-success: #4ade80;
   --tj-success-soft: #052e16;
+  --tj-on-success: #052e16;
   --tj-warning: #fbbf24;
   --tj-warning-soft: #451a03;
   --tj-danger: #f87171;
   --tj-danger-soft: #450a0a;
+  --tj-on-danger: #450a0a;
   --tj-info: #60a5fa;
   --tj-info-soft: #172554;
   --tj-focus: #2dd4bf;

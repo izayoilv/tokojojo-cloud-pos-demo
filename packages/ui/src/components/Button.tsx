@@ -11,8 +11,8 @@ const variants: Record<Variant, string> = {
   secondary:
     "border border-line-control bg-surface text-ink hover:bg-hover active:bg-subtle",
   ghost: "text-ink-secondary hover:bg-subtle hover:text-ink",
-  success: "bg-success text-white hover:opacity-90",
-  danger: "bg-danger text-white hover:opacity-90",
+  success: "bg-success text-on-success hover:opacity-90",
+  danger: "bg-danger text-on-danger hover:opacity-90",
   "soft-danger":
     "border border-danger/30 bg-danger-soft text-danger hover:bg-danger/10",
 };
