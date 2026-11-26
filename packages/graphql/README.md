@@ -104,6 +104,11 @@ Decisions made while writing the SDL, beyond the literal matrix:
 - `approveDevice`/`devices` close the Phase 2 contract gap (enrollment existed
   without an admin approval mutation). Approving a `PENDING` device activates
   its key; Android/POS never receive an offline token before approval.
+- `StoreSettings.lowStockGuidance` is store-wide guidance. Per-product thresholds
+  remain in `product_stock_thresholds`.
+- `OpenShiftInput.userId` and `currentShift(userId)` support multiple local POS
+  users. The device token identifies the terminal; the shift identifies the cashier.
+  `createSale` and `closeShift` derive the cashier from `shiftId`.
 - `submitOpname` finalizes a count for review. The core opname enum is
   `PENDING/APPROVED/REJECTED` (no draft state), so submit keeps `PENDING` and
   sets `submittedAt`. While `submittedAt` is set, the service locks item
