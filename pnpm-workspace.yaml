@@ -3,6 +3,7 @@ packages:
   - apps/web
   - apps/pos
   - packages/ui
+  - packages/graphql
 
 allowBuilds:
   esbuild: true

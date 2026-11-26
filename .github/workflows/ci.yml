@@ -34,6 +34,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust || steps.force.outputs.rust }}
       android: ${{ steps.filter.outputs.android || steps.force.outputs.android }}
       api: ${{ steps.filter.outputs.api || steps.force.outputs.api }}
+      graphql: ${{ steps.filter.outputs.graphql || steps.force.outputs.graphql }}
     steps:
       - uses: dorny/paths-filter@v4
         id: filter
@@ -95,6 +96,15 @@ jobs:
               - '!**/*.md'
               - '!**/*.mdx'
               - '!LICENSE'
+            graphql:
+              - 'packages/graphql/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci.yml'
+              - '!**/*.md'
+              - '!**/*.mdx'
+              - '!LICENSE'
       - name: Force all jobs on main/manual
         id: force
         if: github.event_name != 'pull_request'
@@ -104,6 +114,7 @@ jobs:
             echo "rust=true"
             echo "android=true"
             echo "api=true"
+            echo "graphql=true"
           } >> "$GITHUB_OUTPUT"
 
   web:
@@ -228,9 +239,29 @@ jobs:
       - run: pnpm --filter @tokojojo/api db:seed
       - run: pnpm --filter @tokojojo/api test
 
+  graphql:
+    name: graphql
+    needs: changes
+    if: needs.changes.outputs.graphql == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.21.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.13.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tokojojo/graphql check
+
   ci-gate:
     name: ci-gate
-    needs: [changes, web, rust, android, api]
+    needs: [changes, web, rust, android, api, graphql]
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 5
@@ -242,12 +273,14 @@ jobs:
           echo "rust=${{ needs.rust.result }}"
           echo "android=${{ needs.android.result }}"
           echo "api=${{ needs.api.result }}"
+          echo "graphql=${{ needs.graphql.result }}"
           for result in \
             "${{ needs.changes.result }}" \
             "${{ needs.web.result }}" \
             "${{ needs.rust.result }}" \
             "${{ needs.android.result }}" \
-            "${{ needs.api.result }}"; do
+            "${{ needs.api.result }}" \
+            "${{ needs.graphql.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
               exit 1
             fi

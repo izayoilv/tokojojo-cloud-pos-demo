@@ -36,6 +36,13 @@
       "when": 1795459561086,
       "tag": "0004_views_and_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795542039779,
+      "tag": "0005_phase2_auth_offline",
+      "breakpoints": true
     }
   ]
 }

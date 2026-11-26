@@ -3,7 +3,9 @@ import {
   boolean,
   check,
   index,
+  integer,
   pgTable,
+  smallint,
   text,
   timestamp,
   uuid,
@@ -20,6 +22,13 @@ export const users = pgTable(
     name: text("name").notNull(),
     username: text("username").notNull().unique(),
     passwordHash: text("password_hash").notNull(),
+    passwordPepperVersion: smallint("password_pepper_version")
+      .notNull()
+      .default(1),
+    passwordChangedAt: timestamp("password_changed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    credentialVersion: integer("credential_version").notNull().default(1),
     role: userRoleEnum("role").notNull(),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -32,6 +41,14 @@ export const users = pgTable(
   (table) => [
     check("users_name_not_blank", sql`btrim(${table.name}) <> ''`),
     check("users_username_not_blank", sql`btrim(${table.username}) <> ''`),
+    check(
+      "users_password_pepper_version_positive",
+      sql`${table.passwordPepperVersion} > 0`,
+    ),
+    check(
+      "users_credential_version_positive",
+      sql`${table.credentialVersion} > 0`,
+    ),
   ],
 );
 
