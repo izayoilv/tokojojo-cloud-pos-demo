@@ -270,6 +270,40 @@ describe("app smoke", () => {
     expect(document.getElementById(label!.getAttribute("for")!)).not.toBeNull();
   });
 
+  it("gives filter and settings controls accessible names", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/produk");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+
+    for (const label of ["Kategori", "Status", "Lokasi"]) {
+      expect(
+        root.querySelector(`select[aria-label="${label}"]`),
+      ).not.toBeNull();
+    }
+
+    window.history.pushState(null, "", "/pengaturan?tab=struk");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    expect(
+      root.querySelector('select[aria-label="Ukuran kertas"]'),
+    ).not.toBeNull();
+
+    window.history.pushState(null, "", "/pengaturan?tab=stok");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    expect(
+      root.querySelector('select[aria-label="Lokasi default"]'),
+    ).not.toBeNull();
+    expect(
+      root.querySelector('input[aria-label="Ambang stok menipis"]'),
+    ).not.toBeNull();
+  });
+
   it("opens every owner route with mock data", async () => {
     const root = mount();
     await login(root, "owner");

@@ -295,6 +295,7 @@ export function SettingsPage() {
                 description="Lebar kertas printer struk."
               >
                 <Select
+                  aria-label="Ukuran kertas"
                   value={receiptForm().paperSize}
                   onChange={(event) =>
                     setReceiptForm((current) => ({
@@ -365,6 +366,7 @@ export function SettingsPage() {
                 description="Untuk penerimaan dan opname."
               >
                 <Select
+                  aria-label="Lokasi default"
                   value={defaultLocation()}
                   onChange={(event) =>
                     setDefaultLocation(
@@ -381,6 +383,7 @@ export function SettingsPage() {
                 description="Persentase di atas minimum."
               >
                 <Input
+                  aria-label="Ambang stok menipis"
                   type="number"
                   class="w-24"
                   value={lowStockPercent()}

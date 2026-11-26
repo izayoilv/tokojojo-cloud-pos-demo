@@ -188,6 +188,7 @@ export function ProductsPage() {
                 Kategori
               </span>
               <Select
+                aria-label="Kategori"
                 value={category()}
                 onChange={(event) => {
                   setCategory(event.currentTarget.value);
@@ -204,6 +205,7 @@ export function ProductsPage() {
                 Status
               </span>
               <Select
+                aria-label="Status"
                 value={status()}
                 onChange={(event) => {
                   setStatus(event.currentTarget.value);
@@ -221,6 +223,7 @@ export function ProductsPage() {
                 Lokasi
               </span>
               <Select
+                aria-label="Lokasi"
                 value={locationFilter()}
                 onChange={(event) => {
                   setLocationFilter(event.currentTarget.value);
