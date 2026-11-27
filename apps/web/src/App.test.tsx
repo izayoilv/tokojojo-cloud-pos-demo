@@ -376,6 +376,91 @@ describe("app smoke", () => {
     expect(root.textContent).toContain("Retur sebagian");
   });
 
+  it("guards unsaved settings changes", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/pengaturan?tab=profil");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    const nameLabel = [...root.querySelectorAll("label")].find((label) =>
+      label.textContent?.includes("Nama toko"),
+    );
+    const nameInput = document.getElementById(
+      nameLabel!.getAttribute("for")!,
+    ) as HTMLInputElement;
+    nameInput.value = "Toko Baru";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const strukTab = () =>
+      [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+        (tab) => tab.textContent?.includes("Struk"),
+      );
+    click(strukTab()!);
+    await wait(100);
+
+    const discard = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(discard?.textContent).toContain("Buang perubahan?");
+    click(
+      [...discard!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Batal",
+      )!,
+    );
+    await wait(100);
+
+    expect(window.location.search).toContain("tab=profil");
+    expect(nameInput.value).toBe("Toko Baru");
+
+    click(strukTab()!);
+    await wait(100);
+    const confirm = document.querySelector<HTMLElement>('[role="dialog"]');
+    click(
+      [...confirm!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Tinggalkan",
+      )!,
+    );
+    await wait(300);
+
+    expect(window.location.search).toContain("tab=struk");
+    expect(root.textContent).toContain("Ukuran kertas");
+  });
+
+  it("guards unsaved settings changes on route navigation", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/pengaturan?tab=profil");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    const nameLabel = [...root.querySelectorAll("label")].find((label) =>
+      label.textContent?.includes("Nama toko"),
+    );
+    const nameInput = document.getElementById(
+      nameLabel!.getAttribute("for")!,
+    ) as HTMLInputElement;
+    nameInput.value = "Toko Sebelum Pindah";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const productLink = [...root.querySelectorAll("nav a")].find((link) =>
+      link.textContent?.includes("Produk"),
+    );
+    click(productLink!);
+    await wait(100);
+
+    const discard = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(discard?.textContent).toContain("Buang perubahan?");
+    click(
+      [...discard!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Tinggalkan",
+      )!,
+    );
+    await wait(300);
+
+    expect(window.location.pathname).toBe("/produk");
+  });
+
   it("resets the selected report when the category changes", async () => {
     const root = mount();
     await login(root, "owner");
