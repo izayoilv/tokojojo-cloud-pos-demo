@@ -1,7 +1,7 @@
 import { Dialog } from "@kobalte/core/dialog";
 import { X } from "lucide-solid";
 import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { createEffect, Show } from "solid-js";
 
 export function Modal(props: {
   open: boolean;
@@ -17,6 +17,12 @@ export function Modal(props: {
     md: "max-w-[640px]",
     lg: "max-w-[800px]",
   };
+
+  createEffect(() => {
+    if (!props.open && typeof document !== "undefined") {
+      document.body.style.pointerEvents = "";
+    }
+  });
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -67,6 +73,12 @@ export function Drawer(props: {
   children: JSX.Element;
   footer?: JSX.Element;
 }) {
+  createEffect(() => {
+    if (!props.open && typeof document !== "undefined") {
+      document.body.style.pointerEvents = "";
+    }
+  });
+
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <Dialog.Portal>

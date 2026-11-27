@@ -239,19 +239,37 @@ importers:
 
   apps/pos:
     dependencies:
+      '@kobalte/core':
+        specifier: 0.13.14
+        version: 0.13.14(solid-js@1.9.19)
       '@tauri-apps/api':
         specifier: 2.12.5
         version: 2.12.5
+      '@tokojojo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      lucide-solid:
+        specifier: 1.75.0
+        version: 1.75.0(solid-js@1.9.19)
       solid-js:
         specifier: 1.9.19
         version: 1.9.19
     devDependencies:
+      '@tailwindcss/vite':
+        specifier: 4.3.5
+        version: 4.3.5(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
       '@tauri-apps/cli':
         specifier: 2.12.5
         version: 2.12.5
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
+      happy-dom:
+        specifier: ^21.0.4
+        version: 21.0.4
+      tailwindcss:
+        specifier: 4.3.5
+        version: 4.3.5
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -261,6 +279,9 @@ importers:
       vite-plugin-solid:
         specifier: 2.11.16
         version: 2.11.16(solid-js@1.9.19)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.6)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   apps/web:
     dependencies:
