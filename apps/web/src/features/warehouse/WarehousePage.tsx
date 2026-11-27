@@ -1,3 +1,4 @@
+import { useLocation } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   Badge,
@@ -19,7 +20,7 @@ import {
   useToast,
 } from "@tokojojo/ui";
 import { Plus } from "lucide-solid";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 
 import { useAuth } from "../../app/auth";
 import { canReviewOpname } from "../../app/rbac";
@@ -37,7 +38,12 @@ export function WarehousePage() {
   const auth = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const [tab, setTab] = createSignal<WarehouseTab>("MUTASI");
+  const location = useLocation();
+  const requestedTab = (): WarehouseTab =>
+    location.query.tab === "opname" ? "OPNAME" : "MUTASI";
+  const [tab, setTab] = createSignal<WarehouseTab>(requestedTab());
+
+  createEffect(() => setTab(requestedTab()));
   const [createOpen, setCreateOpen] = createSignal(false);
   const [from, setFrom] = createSignal<LocationCode>("WH-BACK");
   const [to, setTo] = createSignal<LocationCode>("STORE-FRONT");
@@ -57,6 +63,10 @@ export function WarehousePage() {
   const [opnameError, setOpnameError] = createSignal("");
   const [saving, setSaving] = createSignal(false);
   const [decidingOpname, setDecidingOpname] = createSignal(false);
+  const [opnameDecision, setOpnameDecision] = createSignal<{
+    opname: { id: string; number: string };
+    status: "APPROVED" | "REJECTED";
+  } | null>(null);
 
   const transfersQuery = createQuery(() => ({
     queryKey: ["transfers"],
@@ -470,11 +480,10 @@ export function WarehousePage() {
                               aria-label={`Setujui opname ${opname.number}`}
                               loading={decidingOpname()}
                               onClick={() =>
-                                void decideOpname(
+                                setOpnameDecision({
                                   opname,
-                                  "APPROVED",
-                                  "Opname disetujui. Selisih diterapkan.",
-                                )
+                                  status: "APPROVED",
+                                })
                               }
                             >
                               Setujui
@@ -485,11 +494,10 @@ export function WarehousePage() {
                               aria-label={`Tolak opname ${opname.number}`}
                               loading={decidingOpname()}
                               onClick={() =>
-                                void decideOpname(
+                                setOpnameDecision({
                                   opname,
-                                  "REJECTED",
-                                  "Opname ditolak.",
-                                )
+                                  status: "REJECTED",
+                                })
                               }
                             >
                               Tolak
@@ -650,6 +658,53 @@ export function WarehousePage() {
                 {action().type === "complete"
                   ? "Stok akan dipindahkan dari lokasi asal ke lokasi tujuan."
                   : "Mutasi pending akan dibatalkan tanpa memindahkan stok."}
+              </p>
+            </Modal>
+          )}
+        </Show>
+
+        <Show when={opnameDecision()}>
+          {(decision) => (
+            <Modal
+              open
+              onOpenChange={(open) => !open && setOpnameDecision(null)}
+              title={
+                decision().status === "APPROVED"
+                  ? "Setujui opname ini?"
+                  : "Tolak opname ini?"
+              }
+              description={decision().opname.number}
+              footer={
+                <>
+                  <Button onClick={() => setOpnameDecision(null)}>Batal</Button>
+                  <Button
+                    variant={
+                      decision().status === "APPROVED"
+                        ? "success"
+                        : "soft-danger"
+                    }
+                    loading={decidingOpname()}
+                    onClick={() => {
+                      const next = decision();
+                      setOpnameDecision(null);
+                      void decideOpname(
+                        next.opname,
+                        next.status,
+                        next.status === "APPROVED"
+                          ? "Opname disetujui. Selisih diterapkan."
+                          : "Opname ditolak.",
+                      );
+                    }}
+                  >
+                    {decision().status === "APPROVED" ? "Setujui" : "Tolak"}
+                  </Button>
+                </>
+              }
+            >
+              <p class="text-sm text-ink-secondary">
+                {decision().status === "APPROVED"
+                  ? "Selisih akan diterapkan ke stok lokasi opname."
+                  : "Stok tidak berubah. Opname ditandai ditolak."}
               </p>
             </Modal>
           )}

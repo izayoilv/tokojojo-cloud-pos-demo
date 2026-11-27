@@ -1,3 +1,4 @@
+import { useLocation } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   Badge,
@@ -20,7 +21,7 @@ import {
   useToast,
 } from "@tokojojo/ui";
 import { Plus, Trash2 } from "lucide-solid";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 
 import { repository } from "../../data/repository";
 import type { PaymentMethod, Purchase, PurchaseItem } from "../../data/types";
@@ -49,7 +50,14 @@ type PurchasingTab = "PEMBELIAN" | "SUPPLIER" | "HUTANG";
 export function PurchasingPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const [tab, setTab] = createSignal<PurchasingTab>("PEMBELIAN");
+  const location = useLocation();
+  const requestedTab = (): PurchasingTab => {
+    const value = String(location.query.tab ?? "").toUpperCase();
+    return value === "SUPPLIER" || value === "HUTANG" ? value : "PEMBELIAN";
+  };
+  const [tab, setTab] = createSignal<PurchasingTab>(requestedTab());
+
+  createEffect(() => setTab(requestedTab()));
   const [search, setSearch] = createSignal("");
   const [modal, setModal] = createSignal<
     "purchase" | "supplier" | "payment" | null

@@ -448,6 +448,39 @@ describe("app smoke", () => {
     expect(revertedInput.value).toBe("TOKO JOJO");
   });
 
+  it("uses a sticky save bar for server settings", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/pengaturan?tab=profil");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    const save = () =>
+      [...root.querySelectorAll<HTMLButtonElement>("button")].find(
+        (button) => button.textContent?.trim() === "Simpan perubahan",
+      );
+    expect(save()).toBeDefined();
+    expect(save()!.disabled).toBe(true);
+
+    const nameLabel = [...root.querySelectorAll("label")].find((label) =>
+      label.textContent?.includes("Nama toko"),
+    );
+    const nameInput = document.getElementById(
+      nameLabel!.getAttribute("for")!,
+    ) as HTMLInputElement;
+    nameInput.value = "Toko Sticky";
+    nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await wait(30);
+
+    expect(save()!.disabled).toBe(false);
+    click(save()!);
+    await wait(500);
+
+    expect(save()!.disabled).toBe(true);
+    expect(root.textContent).toContain("Semua perubahan tersimpan");
+  });
+
   it("guards unsaved settings changes on route navigation", async () => {
     const root = mount();
     await login(root, "owner");
@@ -481,6 +514,41 @@ describe("app smoke", () => {
     await wait(300);
 
     expect(window.location.pathname).toBe("/produk");
+  });
+
+  it("confirms before deciding an opname", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/gudang");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    click(
+      [...root.querySelectorAll('[role="tab"]')].find((tab) =>
+        tab.textContent?.includes("Opname"),
+      )!,
+    );
+    await wait(100);
+
+    click(
+      [...root.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Setujui",
+      )!,
+    );
+    await wait(100);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog?.textContent).toContain("Setujui opname ini?");
+    expect(dialog?.textContent).toContain("Selisih akan diterapkan");
+
+    click(
+      [...dialog!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Batal",
+      )!,
+    );
+    await wait(100);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it("resets the selected report when the category changes", async () => {

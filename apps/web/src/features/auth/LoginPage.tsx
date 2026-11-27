@@ -128,19 +128,21 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <button
-            type="button"
-            class="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 text-xs font-semibold text-ink-muted hover:text-ink"
-            onClick={() => setShowDemo((value) => !value)}
-          >
-            <ShieldCheck size={14} />
-            {showDemo() ? "Sembunyikan akun demo" : "Akun demo"}
-          </button>
+          <Show when={import.meta.env.DEV}>
+            <button
+              type="button"
+              class="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 text-xs font-semibold text-ink-muted hover:text-ink"
+              onClick={() => setShowDemo((value) => !value)}
+            >
+              <ShieldCheck size={14} />
+              {showDemo() ? "Sembunyikan akun demo" : "Akun demo"}
+            </button>
+          </Show>
 
-          <Show when={showDemo()}>
+          <Show when={import.meta.env.DEV && showDemo()}>
             <div class="mt-3 rounded-[6px] border border-line bg-subtle p-3">
               <p class="mb-2 text-[11px] font-bold tracking-wide text-ink-muted uppercase">
-                Pilih peran demo
+                Hanya untuk demo · pilih peran
               </p>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <For each={users}>

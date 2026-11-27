@@ -53,7 +53,7 @@ export function buildNotifications(input: {
         tone: "info",
         title: `Mutasi pending: ${transfer.number}`,
         detail: `${transfer.itemCount} jenis barang · ${transfer.createdBy}.`,
-        href: "/gudang",
+        href: "/gudang?tab=mutasi",
       });
     }
 
@@ -64,7 +64,7 @@ export function buildNotifications(input: {
         tone: "warning",
         title: `Opname menunggu review: ${opname.number}`,
         detail: `${opname.items.length} produk · ${opname.createdBy}.`,
-        href: "/gudang",
+        href: "/gudang?tab=opname",
       });
     }
   }
@@ -78,7 +78,7 @@ export function buildNotifications(input: {
           tone: "danger",
           title: `Hutang jatuh tempo: ${payable.supplierName}`,
           detail: `${payable.invoice} · sisa ${formatRupiah(remaining)}.`,
-          href: "/pembelian",
+          href: "/pembelian?tab=hutang",
         });
       }
     }

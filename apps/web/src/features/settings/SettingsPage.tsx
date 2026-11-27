@@ -110,6 +110,8 @@ export function SettingsPage() {
   });
   const [pendingTab, setPendingTab] = createSignal<SettingsTab | null>(null);
   const [discardOpen, setDiscardOpen] = createSignal(false);
+  const [saving, setSaving] = createSignal(false);
+  const [saveError, setSaveError] = createSignal("");
   let leaveRetry: (() => void) | null = null;
 
   const dirty = createMemo(() => {
@@ -259,7 +261,7 @@ export function SettingsPage() {
     setDiscardOpen(false);
   };
 
-  const discardChanges = () => {
+  const resetServerForms = () => {
     const settings = settingsQuery.data;
 
     if (settings) {
@@ -287,6 +289,34 @@ export function SettingsPage() {
       setReceiptBaseline(receipt);
     }
 
+    setSaveError("");
+  };
+
+  const saveActive = async () => {
+    if (!dirty() || saving()) return;
+
+    setSaving(true);
+    setSaveError("");
+
+    try {
+      if (activeTab() === "PROFIL") {
+        await saveStore();
+      } else if (activeTab() === "STRUK") {
+        await saveReceipt();
+      } else if (activeTab() === "STOK") {
+        await saveStock();
+      }
+    } catch (caught) {
+      setSaveError(
+        caught instanceof Error ? caught.message : "Perubahan gagal disimpan.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const discardChanges = () => {
+    resetServerForms();
     setDiscardOpen(false);
 
     const tab = pendingTab();
@@ -413,14 +443,6 @@ export function SettingsPage() {
                   />
                 </Field>
               </div>
-              <div class="flex justify-end gap-2 border-t border-line px-4 py-3">
-                <Button onClick={() => void settingsQuery.refetch()}>
-                  Batal
-                </Button>
-                <Button variant="primary" onClick={() => void saveStore()}>
-                  Simpan perubahan
-                </Button>
-              </div>
             </Panel>
           </Show>
 
@@ -487,11 +509,6 @@ export function SettingsPage() {
                   />
                 </Field>
               </div>
-              <div class="flex justify-end border-t border-line px-4 py-3">
-                <Button variant="primary" onClick={() => void saveReceipt()}>
-                  Simpan perubahan
-                </Button>
-              </div>
             </Panel>
           </Show>
 
@@ -528,11 +545,6 @@ export function SettingsPage() {
                   }
                 />
               </SettingsRow>
-              <div class="flex justify-end border-t border-line px-4 py-3">
-                <Button variant="primary" onClick={() => void saveStock()}>
-                  Simpan perubahan
-                </Button>
-              </div>
             </Panel>
           </Show>
 
@@ -739,6 +751,39 @@ export function SettingsPage() {
             </Panel>
           </Show>
         </div>
+
+        <Show
+          when={manage() && ["PROFIL", "STRUK", "STOK"].includes(activeTab())}
+        >
+          <div class="sticky bottom-0 z-10 mt-3 flex flex-wrap items-center gap-3 rounded-[8px] border border-line bg-surface/95 px-4 py-3 shadow-dropdown backdrop-blur">
+            <span class="text-xs font-semibold text-ink-muted">
+              {dirty()
+                ? "Perubahan belum disimpan"
+                : "Semua perubahan tersimpan"}
+            </span>
+            <Show when={saveError()}>
+              <span role="alert" class="text-xs font-semibold text-danger">
+                {saveError()}
+              </span>
+            </Show>
+            <div class="ml-auto flex gap-2">
+              <Button
+                disabled={!dirty() || saving()}
+                onClick={resetServerForms}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                loading={saving()}
+                disabled={!dirty() || saving()}
+                onClick={() => void saveActive()}
+              >
+                Simpan perubahan
+              </Button>
+            </div>
+          </div>
+        </Show>
       </Show>
 
       <Modal

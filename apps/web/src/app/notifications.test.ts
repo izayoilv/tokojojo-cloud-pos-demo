@@ -130,24 +130,32 @@ describe("buildNotifications", () => {
     expect(owner.some((item) => item.title.includes("Mutasi pending"))).toBe(
       true,
     );
+    expect(
+      warehouse.find((item) => item.title.includes("Mutasi pending"))?.href,
+    ).toBe("/gudang?tab=mutasi");
+    expect(
+      warehouse.find((item) => item.title.includes("Opname menunggu"))?.href,
+    ).toBe("/gudang?tab=opname");
     expect(cashier.some((item) => item.title.includes("Mutasi pending"))).toBe(
       false,
     );
   });
 
   it("links purchases only when a payable is due soon and unpaid", () => {
-    const items = build("OWNER").filter((item) => item.href === "/pembelian");
+    const items = build("OWNER").filter((item) =>
+      item.href.startsWith("/pembelian"),
+    );
 
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toBe("Hutang jatuh tempo: PT Cepat");
   });
 
   it("hides payables from roles without PEMBELIAN access", () => {
-    expect(build("WAREHOUSE").some((item) => item.href === "/pembelian")).toBe(
-      true,
-    );
-    expect(build("CASHIER").some((item) => item.href === "/pembelian")).toBe(
-      false,
-    );
+    expect(
+      build("WAREHOUSE").some((item) => item.href.startsWith("/pembelian")),
+    ).toBe(true);
+    expect(
+      build("CASHIER").some((item) => item.href.startsWith("/pembelian")),
+    ).toBe(false);
   });
 });
