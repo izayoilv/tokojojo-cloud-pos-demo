@@ -15,6 +15,20 @@ export const demoUser: UserSession = {
   role: "CASHIER",
 };
 
+export const demoUsers: UserSession[] = [
+  demoUser,
+  {
+    username: "siti.rahmawati",
+    name: "Siti Rahmawati",
+    role: "ADMIN",
+  },
+  {
+    username: "ko.jojo",
+    name: "Ko Jojo Halim",
+    role: "OWNER",
+  },
+];
+
 const unit = (
   id: string,
   name: string,

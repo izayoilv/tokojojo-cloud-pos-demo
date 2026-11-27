@@ -23,23 +23,21 @@ export function ReceiptPreview(props: {
         <strong class="font-sans text-sm font-extrabold tracking-[0.04em]">
           TOKO JOJO
         </strong>
-        <span class="text-[0.65rem] text-ink-muted">
+        <span class="text-xs text-ink-muted">
           Komp. Ruko Niaga Mas Blok A No. 12
         </span>
-        <span class="text-[0.65rem] text-ink-muted">
-          Batam Centre · 0778-468899
-        </span>
+        <span class="text-xs text-ink-muted">Batam Centre · 0778-468899</span>
       </div>
 
       <Show when={props.sale.status !== "COMPLETED"}>
-        <div class="my-1.5 border-2 border-danger py-1 text-center text-[0.7rem] font-extrabold tracking-[0.08em] text-danger uppercase">
+        <div class="my-1.5 border-2 border-danger py-1 text-center text-xs font-extrabold tracking-[0.08em] text-danger uppercase">
           {props.sale.status === "VOIDED"
             ? "VOID · STRUK TIDAK SAH"
             : "RETUR SEBAGIAN"}
         </div>
       </Show>
 
-      <div class="flex flex-col gap-0.5 border-b border-dashed border-line py-2 text-[0.65rem] text-ink-muted">
+      <div class="flex flex-col gap-0.5 border-b border-dashed border-line py-2 text-xs text-ink-muted">
         <span>{props.sale.invoice}</span>
         <span>
           {formatDate(props.sale.time)} {formatTime(props.sale.time)} WIB
@@ -96,7 +94,7 @@ export function ReceiptPreview(props: {
                 <span class="tabular-nums">{formatRupiah(payment.amount)}</span>
               </div>
               <Show when={payment.reference}>
-                <div class="break-words text-[0.65rem] text-ink-muted">
+                <div class="break-words text-xs text-ink-muted">
                   Ref: {payment.reference}
                 </div>
               </Show>
@@ -119,7 +117,7 @@ export function ReceiptPreview(props: {
         </Show>
       </div>
 
-      <div class="mt-2 border-t border-dashed border-line pt-2 text-center text-[0.65rem] text-ink-muted">
+      <div class="mt-2 border-t border-dashed border-line pt-2 text-center text-xs text-ink-muted">
         Terima kasih · Barang yang sudah dibeli tidak dapat ditukar.
       </div>
     </div>

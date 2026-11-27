@@ -69,7 +69,7 @@ export function PaymentMethodSelector(props: {
               <strong class="text-xs font-bold">
                 {paymentMethodLabels[method]}
               </strong>
-              <span class="text-center text-[0.5625rem] leading-tight font-semibold text-ink-muted">
+              <span class="text-center text-xs leading-tight font-semibold text-ink-muted">
                 {enabled() ? paymentMethodHints[method] : "Tidak tersedia"}
               </span>
             </button>

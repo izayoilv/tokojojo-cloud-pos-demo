@@ -25,7 +25,7 @@ export function ReceiptScreen() {
         <CheckCircle2 size={20} />
         <div>
           <h1 class="text-sm font-extrabold text-ink">Pembayaran berhasil</h1>
-          <p class="text-[0.625rem] font-semibold text-ink-muted">
+          <p class="text-sm font-semibold text-ink-muted">
             Struk siap dicetak untuk pelanggan.
           </p>
         </div>
@@ -65,7 +65,7 @@ export function ReceiptScreen() {
 
           <div class="flex flex-wrap items-center justify-center gap-2">
             <div class="flex items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1">
-              <span class="text-[0.625rem] font-bold text-ink-secondary">
+              <span class="text-sm font-bold text-ink-secondary">
                 Ukuran kertas
               </span>
               {(["58mm", "80mm"] as const).map((size) => (
@@ -73,7 +73,7 @@ export function ReceiptScreen() {
                   type="button"
                   aria-pressed={pos.state.settings().paperSize === size}
                   onClick={() => setPaperSize(size)}
-                  class={`h-11 cursor-pointer rounded-full px-2.5 text-[0.625rem] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                  class={`h-11 cursor-pointer rounded-full px-2.5 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                     pos.state.settings().paperSize === size
                       ? "bg-primary text-on-primary"
                       : "text-ink-muted hover:bg-subtle hover:text-ink"
@@ -85,13 +85,13 @@ export function ReceiptScreen() {
             </div>
 
             <Show when={printNotice()}>
-              <p role="status" class="text-[0.625rem] font-bold text-success">
+              <p role="status" class="text-sm font-bold text-success">
                 {printNotice()}
               </p>
             </Show>
           </div>
 
-          <p class="text-center text-[0.625rem] font-semibold text-ink-muted">
+          <p class="text-center text-sm font-semibold text-ink-muted">
             Pratinjau {pos.state.settings().paperSize}. Auto-print{" "}
             {pos.state.settings().autoPrint ? "aktif" : "mati"} dan pengaturan
             printer ada di Pengaturan.

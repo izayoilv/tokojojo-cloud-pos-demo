@@ -108,13 +108,13 @@ export function PaymentScreen() {
     <div class="h-full overflow-y-auto bg-canvas px-4 py-3">
       <div class="mx-auto flex w-full max-w-[820px] flex-col gap-2.5">
         <div class="text-center">
-          <div class="text-[0.625rem] font-extrabold tracking-[0.16em] text-ink-muted uppercase">
+          <div class="text-sm font-extrabold tracking-[0.16em] text-ink-muted uppercase">
             Total tagihan
           </div>
           <div class="mt-0.5 font-mono text-[2.5rem] leading-none font-extrabold tracking-[-0.03em] text-ink tabular-nums">
             {formatRupiah(totals().total)}
           </div>
-          <div class="mt-1 text-[0.6875rem] font-semibold text-ink-muted">
+          <div class="mt-1 text-sm font-semibold text-ink-muted">
             {totals().itemCount} item · {pos.state.shift()?.id ?? "—"} ·{" "}
             {paymentMethodLabel(method())}
           </div>
@@ -177,16 +177,16 @@ export function PaymentScreen() {
                   class="mt-1.5"
                   style={{ height: "44px" }}
                 />
-                <p class="mt-1 text-[0.625rem] font-semibold text-ink-muted">
+                <p class="mt-1 text-sm font-semibold text-ink-muted">
                   Wajib diisi sebagai bukti pembayaran non-tunai.
                 </p>
                 <Show when={method() === "CAMPURAN"}>
-                  <p class="mt-1 text-[0.625rem] font-semibold text-ink-muted">
+                  <p class="mt-1 text-sm font-semibold text-ink-muted">
                     Demo mencatat campuran sebagai satu referensi pembayaran.
                   </p>
                 </Show>
                 <Show when={method() === "HUTANG"}>
-                  <p class="mt-1 text-[0.625rem] font-semibold text-ink-muted">
+                  <p class="mt-1 text-sm font-semibold text-ink-muted">
                     Hutang dicatat atas nama pelanggan dan ditinjau admin.
                   </p>
                 </Show>
@@ -233,7 +233,7 @@ export function PaymentScreen() {
               </div>
 
               <div class="text-right">
-                <div class="text-[0.625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase">
+                <div class="text-sm font-extrabold tracking-[0.08em] text-ink-muted uppercase">
                   {change() >= 0 ? "Kembalian" : "Kurang"}
                 </div>
                 <div
@@ -251,7 +251,7 @@ export function PaymentScreen() {
                 <button
                   type="button"
                   onClick={() => pos.actions.setCashReceived(amount)}
-                  class="h-11 min-w-11 cursor-pointer rounded-[5px] border border-line-control bg-surface px-2.5 font-mono text-[0.6875rem] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  class="h-11 min-w-11 cursor-pointer rounded-[5px] border border-line-control bg-surface px-2.5 font-mono text-sm font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   {formatRupiah(amount)}
                 </button>
@@ -278,7 +278,7 @@ export function PaymentScreen() {
             onClick={complete}
           >
             <CheckCircle2 size={17} /> Selesaikan &amp; Cetak Struk
-            <kbd class="ml-1 rounded-[3px] bg-on-primary/15 px-1 py-0.5 font-mono text-[0.5625rem]">
+            <kbd class="ml-1 rounded-[3px] bg-on-primary/15 px-1 py-0.5 font-mono text-xs">
               F2
             </kbd>
           </Button>
@@ -291,7 +291,7 @@ export function PaymentScreen() {
           </Button>
         </div>
 
-        <p class="text-center text-[0.625rem] font-semibold text-ink-muted">
+        <p class="text-center text-sm font-semibold text-ink-muted">
           {isCash()
             ? "Pembayaran tunai mengubah kas shift. Pastikan uang diterima sudah dihitung."
             : "Pembayaran non-tunai membutuhkan referensi dan tidak menambah kas fisik."}

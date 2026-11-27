@@ -114,10 +114,10 @@ export function CloseShiftScreen() {
                 }`}
               >
                 <div class="min-w-0 flex-1">
-                  <div class="text-[0.625rem] font-extrabold tracking-[0.12em] text-ink-muted uppercase">
+                  <div class="text-sm font-extrabold tracking-[0.12em] text-ink-muted uppercase">
                     Uang seharusnya
                   </div>
-                  <div class="text-[0.625rem] font-semibold text-ink-muted">
+                  <div class="text-sm font-semibold text-ink-muted">
                     Modal awal + penjualan tunai − refund
                   </div>
                 </div>
@@ -131,7 +131,7 @@ export function CloseShiftScreen() {
               </div>
 
               <Show when={expected() < 0}>
-                <div class="flex items-start gap-2 rounded-[6px] bg-danger-soft px-3 py-2 text-[0.6875rem] font-semibold text-danger">
+                <div class="flex items-start gap-2 rounded-[6px] bg-danger-soft px-3 py-2 text-sm font-semibold text-danger">
                   <TriangleAlert size={14} class="mt-0.5 shrink-0" />
                   Uang seharusnya negatif: refund tunai melebihi modal awal dan
                   penjualan tunai. Nilai tidak dibulatkan ke nol.
@@ -173,14 +173,14 @@ export function CloseShiftScreen() {
                       <button
                         type="button"
                         onClick={() => setActualText(String(amount))}
-                        class="h-11 min-w-11 cursor-pointer rounded-[5px] border border-line-control bg-surface px-2.5 font-mono text-[0.6875rem] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        class="h-11 min-w-11 cursor-pointer rounded-[5px] border border-line-control bg-surface px-2.5 font-mono text-sm font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                       >
                         {formatRupiah(amount)}
                       </button>
                     )}
                   </For>
                   <Show when={!hasActual()}>
-                    <span class="self-center text-[0.625rem] font-semibold text-ink-muted">
+                    <span class="self-center text-sm font-semibold text-ink-muted">
                       Masukkan uang aktual untuk menghitung selisih.
                     </span>
                   </Show>
@@ -189,7 +189,7 @@ export function CloseShiftScreen() {
                 <div class="mt-3 flex items-baseline justify-between gap-2 border-t border-line-strong pt-2">
                   <div>
                     <div class="text-xs font-extrabold text-ink">Selisih</div>
-                    <div class="text-[0.625rem] font-semibold text-ink-muted">
+                    <div class="text-sm font-semibold text-ink-muted">
                       Uang aktual − uang seharusnya
                     </div>
                   </div>
@@ -208,7 +208,7 @@ export function CloseShiftScreen() {
               </div>
 
               <Show when={pos.state.connection() !== "ONLINE"}>
-                <div class="flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-2 text-[0.6875rem] text-warning">
+                <div class="flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-2 text-sm text-warning">
                   <CloudOff size={14} class="mt-0.5 shrink-0" />
                   <p>
                     Tutup shift offline disimpan lokal pada build demo ini.
@@ -229,7 +229,7 @@ export function CloseShiftScreen() {
               <Show when={printNotice()}>
                 <p
                   role="status"
-                  class="rounded-[6px] bg-success-soft px-3 py-1.5 text-[0.6875rem] font-bold text-success"
+                  class="rounded-[6px] bg-success-soft px-3 py-1.5 text-sm font-bold text-success"
                 >
                   {printNotice()}
                 </p>
@@ -254,7 +254,7 @@ export function CloseShiftScreen() {
                 </Button>
               </div>
 
-              <p class="text-[0.625rem] font-semibold text-ink-muted">
+              <p class="text-sm font-semibold text-ink-muted">
                 Tutup shift mengakhiri sesi kasir. Pastikan uang fisik sudah
                 dihitung dan selisih sudah diperiksa.
               </p>
@@ -335,7 +335,7 @@ function Summary(props: {
 }) {
   return (
     <div class="rounded-[8px] border border-line bg-surface px-3 py-2">
-      <div class="flex items-center gap-1 text-[0.5625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase">
+      <div class="flex items-center gap-1 text-xs font-extrabold tracking-[0.08em] text-ink-muted uppercase">
         {props.icon}
         {props.label}
       </div>

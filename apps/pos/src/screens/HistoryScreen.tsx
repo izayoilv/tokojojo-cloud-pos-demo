@@ -109,6 +109,15 @@ export function HistoryScreen() {
     return null;
   };
 
+  const voidReason = () => {
+    const reason = actionReason();
+    if (reason) return reason;
+    if ((selected()?.payments.length ?? 0) > 0) {
+      return "Void hanya untuk transaksi tanpa pembayaran atau retur.";
+    }
+    return null;
+  };
+
   const selectedHasCash = () =>
     selected()?.payments.some((payment) => payment.method === "TUNAI") ?? false;
 
@@ -157,7 +166,7 @@ export function HistoryScreen() {
         <div class="shrink-0 border-b border-line bg-surface px-3 py-2">
           <div class="flex items-center gap-2">
             <h1 class="text-sm font-extrabold text-ink">Riwayat Transaksi</h1>
-            <span class="text-[0.625rem] font-semibold text-ink-muted">
+            <span class="text-sm font-semibold text-ink-muted">
               {filtered().length} dari {pos.state.sales().length}
             </span>
             <div class="ml-auto flex items-center gap-1">
@@ -165,7 +174,7 @@ export function HistoryScreen() {
                 <button
                   type="button"
                   onClick={() => pos.actions.go("HARD_LOCK")}
-                  class="h-11 cursor-pointer rounded-[4px] px-2 text-[0.625rem] font-bold text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  class="h-11 cursor-pointer rounded-[4px] px-2 text-sm font-bold text-danger hover:bg-danger-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                 >
                   Kembali ke layar terkunci
                 </button>
@@ -173,7 +182,7 @@ export function HistoryScreen() {
               <button
                 type="button"
                 onClick={resetFilters}
-                class="h-11 cursor-pointer rounded-[4px] px-2 text-[0.625rem] font-bold text-ink-secondary hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="h-11 cursor-pointer rounded-[4px] px-2 text-sm font-bold text-ink-secondary hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 Reset filter
               </button>
@@ -227,7 +236,7 @@ export function HistoryScreen() {
           </div>
 
           <Show when={pos.state.connection() !== "ONLINE"}>
-            <div class="mt-2 flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-1.5 text-[0.6875rem] text-warning">
+            <div class="mt-2 flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-1.5 text-sm text-warning">
               <CloudOff size={14} class="mt-0.5 shrink-0" />
               <p>
                 <span class="font-bold">Riwayat lokal</span> ·{" "}
@@ -240,7 +249,7 @@ export function HistoryScreen() {
           <Show when={pos.state.error()}>
             <p
               role="alert"
-              class="mt-2 rounded-[6px] bg-danger-soft px-3 py-1.5 text-[0.6875rem] font-bold text-danger"
+              class="mt-2 rounded-[6px] bg-danger-soft px-3 py-1.5 text-sm font-bold text-danger"
             >
               {pos.state.error()}
             </p>
@@ -248,7 +257,7 @@ export function HistoryScreen() {
         </div>
 
         <div
-          class={`${headerGrid} shrink-0 border-b border-line bg-subtle px-3 py-1.5 text-[0.5625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase`}
+          class={`${headerGrid} shrink-0 border-b border-line bg-subtle px-3 py-1.5 text-xs font-extrabold tracking-[0.08em] text-ink-muted uppercase`}
         >
           <span>Invoice</span>
           <span>Waktu</span>
@@ -287,21 +296,21 @@ export function HistoryScreen() {
                       : "bg-surface"
                   }`}
                 >
-                  <span class="truncate font-mono text-[0.6875rem] font-semibold text-ink">
+                  <span class="truncate font-mono text-sm font-semibold text-ink">
                     {sale.invoice}
                   </span>
                   <span class="min-w-0">
-                    <span class="block truncate text-[0.6875rem] font-semibold text-ink-secondary">
+                    <span class="block truncate text-sm font-semibold text-ink-secondary">
                       {formatDate(sale.time)}
                     </span>
-                    <span class="block text-[0.625rem] text-ink-muted">
+                    <span class="block text-sm text-ink-muted">
                       {formatTime(sale.time)} WIB
                     </span>
                   </span>
-                  <span class="truncate text-[0.6875rem] font-semibold text-ink-secondary">
+                  <span class="truncate text-sm font-semibold text-ink-secondary">
                     {sale.cashier}
                   </span>
-                  <span class="truncate text-[0.6875rem] text-ink-secondary">
+                  <span class="truncate text-sm text-ink-secondary">
                     {methodSummary(sale)}
                   </span>
                   <span class="text-right font-mono text-xs font-bold text-ink tabular-nums">
@@ -337,7 +346,7 @@ export function HistoryScreen() {
                     <div class="truncate font-mono text-xs font-bold text-ink">
                       {sale().invoice}
                     </div>
-                    <div class="text-[0.625rem] font-semibold text-ink-muted">
+                    <div class="text-sm font-semibold text-ink-muted">
                       {formatDateTime(sale().time)}
                     </div>
                   </div>
@@ -357,7 +366,7 @@ export function HistoryScreen() {
                   </button>
                 </div>
 
-                <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[0.625rem]">
+                <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                   <div>
                     <dt class="font-bold text-ink-muted uppercase">Kasir</dt>
                     <dd class="truncate font-semibold text-ink">
@@ -388,7 +397,7 @@ export function HistoryScreen() {
               </div>
 
               <div class="min-h-0 flex-1 overflow-y-auto p-3">
-                <div class="text-[0.5625rem] font-extrabold tracking-[0.1em] text-ink-muted uppercase">
+                <div class="text-xs font-extrabold tracking-[0.1em] text-ink-muted uppercase">
                   Item
                 </div>
                 <div class="mt-1">
@@ -399,7 +408,7 @@ export function HistoryScreen() {
                           <div class="truncate text-xs font-bold text-ink">
                             {item.name}
                           </div>
-                          <div class="text-[0.625rem] text-ink-muted">
+                          <div class="text-sm text-ink-muted">
                             {item.unitName} × {item.quantity} ·{" "}
                             {formatRupiah(item.unitPrice)}
                           </div>
@@ -414,14 +423,14 @@ export function HistoryScreen() {
                   </For>
                 </div>
 
-                <div class="mt-3 text-[0.5625rem] font-extrabold tracking-[0.1em] text-ink-muted uppercase">
+                <div class="mt-3 text-xs font-extrabold tracking-[0.1em] text-ink-muted uppercase">
                   Pembayaran
                 </div>
                 <div class="mt-1">
                   <For each={sale().payments}>
                     {(payment) => (
                       <div>
-                        <div class="flex justify-between gap-2 text-[0.6875rem]">
+                        <div class="flex justify-between gap-2 text-sm">
                           <span class="font-semibold text-ink-secondary">
                             {paymentMethodLabels[payment.method]}
                           </span>
@@ -430,7 +439,7 @@ export function HistoryScreen() {
                           </span>
                         </div>
                         <Show when={payment.reference}>
-                          <div class="truncate text-[0.625rem] text-ink-muted">
+                          <div class="truncate text-sm text-ink-muted">
                             Ref: {payment.reference}
                           </div>
                         </Show>
@@ -438,7 +447,7 @@ export function HistoryScreen() {
                     )}
                   </For>
                   <Show when={sale().change > 0}>
-                    <div class="mt-1 flex justify-between gap-2 border-t border-line pt-1 text-[0.6875rem]">
+                    <div class="mt-1 flex justify-between gap-2 border-t border-line pt-1 text-sm">
                       <span class="font-semibold text-ink-secondary">
                         Kembalian
                       </span>
@@ -458,24 +467,24 @@ export function HistoryScreen() {
 
                 <Show when={sale().refundedAmount}>
                   {(amount) => (
-                    <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-danger">
+                    <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-sm font-semibold text-danger">
                       Refund tercatat {formatRupiah(amount())}.
                     </p>
                   )}
                 </Show>
                 <Show when={sale().status === "PARTIAL_RETURN"}>
-                  <p class="mt-2 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-warning">
+                  <p class="mt-2 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-sm font-semibold text-warning">
                     Retur sebagian dicatat. Rincian item retur tersedia pada
                     integrasi server.
                   </p>
                 </Show>
                 <Show when={sale().status === "VOIDED"}>
-                  <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-danger">
+                  <p class="mt-2 rounded-[6px] bg-danger-soft px-2.5 py-1.5 text-sm font-semibold text-danger">
                     Transaksi void. Audit void tersimpan pada log.
                   </p>
                 </Show>
                 <Show when={sale().flaggedForReview}>
-                  <p class="mt-2 rounded-[6px] bg-info-soft px-2.5 py-1.5 text-[0.625rem] font-semibold text-info">
+                  <p class="mt-2 rounded-[6px] bg-info-soft px-2.5 py-1.5 text-sm font-semibold text-info">
                     Masa tenggang: transaksi ditandai untuk ditinjau.
                   </p>
                 </Show>
@@ -506,7 +515,8 @@ export function HistoryScreen() {
                     variant="soft-danger"
                     size="lg"
                     data-action="void"
-                    disabled={actionReason() !== null}
+                    disabled={voidReason() !== null}
+                    title={voidReason() ?? "Void transaksi"}
                     onClick={() => {
                       setConfirmError(null);
                       setConfirmAction("VOID");
@@ -518,7 +528,7 @@ export function HistoryScreen() {
 
                 <Show when={actionReason()}>
                   {(reason) => (
-                    <div class="mt-2 flex items-start gap-1.5 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-[0.625rem] text-warning">
+                    <div class="mt-2 flex items-start gap-1.5 rounded-[6px] bg-warning-soft px-2.5 py-1.5 text-sm text-warning">
                       <ShieldAlert size={13} class="mt-0.5 shrink-0" />
                       <div class="flex-1">
                         <p class="font-semibold">{reason()}</p>
@@ -537,7 +547,7 @@ export function HistoryScreen() {
                                 "Izin demo OWNER aktif. Retur/void sekarang tersedia.",
                               );
                             }}
-                            class="mt-1 inline-flex h-11 cursor-pointer items-center text-[0.625rem] font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                            class="mt-1 inline-flex h-11 cursor-pointer items-center text-sm font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                           >
                             Aktifkan izin demo OWNER
                           </button>
@@ -550,7 +560,7 @@ export function HistoryScreen() {
                 <Show when={notice()}>
                   <p
                     role="status"
-                    class="mt-2 text-center text-[0.625rem] font-bold text-success"
+                    class="mt-2 text-center text-sm font-bold text-success"
                   >
                     {notice()}
                   </p>
@@ -628,7 +638,7 @@ export function HistoryScreen() {
 
         <Show when={confirmAction() === "VOID" && selected()}>
           {(sale) => (
-            <div class="mt-3 rounded-[6px] bg-subtle px-3 py-2 text-[0.6875rem] leading-relaxed text-ink-secondary">
+            <div class="mt-3 rounded-[6px] bg-subtle px-3 py-2 text-sm leading-relaxed text-ink-secondary">
               <p>
                 {selectedHasCash()
                   ? `Void tunai mengembalikan ${formatRupiah(sale().total)} dan mengurangi uang seharusnya pada shift aktif.`
@@ -653,7 +663,7 @@ export function HistoryScreen() {
             <div class="mt-3">
               <label
                 for="refund-amount"
-                class="text-[0.6875rem] font-bold text-ink-secondary"
+                class="text-sm font-bold text-ink-secondary"
               >
                 Jumlah refund
               </label>
@@ -679,7 +689,7 @@ export function HistoryScreen() {
                   style={{ height: "44px" }}
                 />
               </div>
-              <p class="mt-1 text-[0.625rem] font-semibold text-ink-muted">
+              <p class="mt-1 text-sm font-semibold text-ink-muted">
                 Maksimal {formatRupiah(sale().total)}.{" "}
                 {selectedHasCash()
                   ? "Refund tunai mengurangi uang seharusnya saat tutup shift."
@@ -690,7 +700,7 @@ export function HistoryScreen() {
                   selectedHasCash() && sale().shiftId !== pos.state.shift()?.id
                 }
               >
-                <p class="mt-1 text-[0.625rem] font-bold text-warning">
+                <p class="mt-1 text-sm font-bold text-warning">
                   Transaksi dari shift lain; refund tunai dibebankan ke shift
                   aktif.
                 </p>

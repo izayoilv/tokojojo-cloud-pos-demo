@@ -155,7 +155,7 @@ export function SettingsScreen() {
                 onChange={(value) => preferences.setTextSize(value as TextSize)}
               />
             </div>
-            <p class="mt-2 rounded-[6px] bg-subtle px-2.5 py-1.5 text-[0.6875rem] font-semibold text-ink-secondary">
+            <p class="mt-2 rounded-[6px] bg-subtle px-2.5 py-1.5 text-sm font-semibold text-ink-secondary">
               Pratinjau teks{" "}
               {preferences.textSize() === "large" ? "Besar" : "Normal"} · Total
               Rp 166.500
@@ -182,8 +182,8 @@ export function SettingsScreen() {
             />
             <div class="mt-3 flex items-center gap-3 rounded-[6px] border border-line px-2.5 py-2">
               <div class="min-w-0 flex-1">
-                <div class="text-xs font-bold text-ink">Auto-print struk</div>
-                <div class="text-[0.625rem] font-semibold text-ink-muted">
+                <div class="text-sm font-bold text-ink">Auto-print struk</div>
+                <div class="text-sm font-semibold text-ink-muted">
                   Cetak otomatis setelah pembayaran selesai.
                 </div>
               </div>
@@ -214,17 +214,17 @@ export function SettingsScreen() {
               <For each={shortcuts}>
                 {([key, label]) => (
                   <div class="flex items-center gap-2">
-                    <kbd class="min-w-9 rounded-[3px] border border-line bg-subtle px-1 py-0.5 text-center font-mono text-[0.625rem] font-bold text-ink-secondary">
+                    <kbd class="min-w-9 rounded-[3px] border border-line bg-subtle px-1 py-0.5 text-center font-mono text-sm font-bold text-ink-secondary">
                       {key}
                     </kbd>
-                    <span class="text-[0.6875rem] font-semibold text-ink-secondary">
+                    <span class="text-sm font-semibold text-ink-secondary">
                       {label}
                     </span>
                   </div>
                 )}
               </For>
             </div>
-            <p class="mt-2 text-[0.625rem] font-semibold text-ink-muted">
+            <p class="mt-2 text-sm font-semibold text-ink-muted">
               Pintasan diabaikan saat mengetik di kolom input, kecuali Esc.
             </p>
           </Section>
@@ -237,10 +237,8 @@ export function SettingsScreen() {
             <div class="flex items-center gap-3 rounded-[6px] border border-line px-2.5 py-2">
               <KeyRound size={16} class="shrink-0 text-primary" />
               <div class="min-w-0 flex-1">
-                <div class="text-xs font-bold text-ink">PIN lokal</div>
-                <div class="font-mono text-[0.6875rem] text-ink-muted">
-                  ••••
-                </div>
+                <div class="text-sm font-bold text-ink">PIN lokal</div>
+                <div class="font-mono text-sm text-ink-muted">••••</div>
               </div>
               <Button variant="secondary" size="lg" onClick={openPinModal}>
                 Ubah PIN
@@ -266,7 +264,7 @@ export function SettingsScreen() {
                 </For>
               </Select>
             </div>
-            <p class="mt-2 text-[0.625rem] font-semibold text-ink-muted">
+            <p class="mt-2 text-sm font-semibold text-ink-muted">
               PIN lokal hanya membuka sesi perangkat, bukan kredensial server.
             </p>
           </Section>
@@ -276,7 +274,7 @@ export function SettingsScreen() {
             icon={<Wifi size={17} />}
             description="Diagnostik tanpa menampilkan token."
           >
-            <div class="space-y-1.5 text-[0.6875rem]">
+            <div class="space-y-1.5 text-sm">
               <Row label="Perangkat" value={pos.state.device().name} mono />
               <Row label="Platform" value={pos.state.device().platform} />
               <div class="flex items-center justify-between gap-3">
@@ -311,7 +309,7 @@ export function SettingsScreen() {
             icon={<Info size={17} />}
             description="Versi dan batasan build demo."
           >
-            <div class="space-y-1 text-[0.6875rem] text-ink-secondary">
+            <div class="space-y-1 text-sm text-ink-secondary">
               <p class="font-bold text-ink">TokoJoJo POS · UI mock v0.1.0</p>
               <p>Tauri 2.12 · SolidJS · Vite · Tailwind CSS</p>
               <p>
@@ -363,9 +361,9 @@ export function SettingsScreen() {
             onInput={setConfirmPin}
           />
           <Show when={pinError()}>
-            <p class="text-xs font-bold text-danger">{pinError()}</p>
+            <p class="text-sm font-bold text-danger">{pinError()}</p>
           </Show>
-          <p class="text-[0.625rem] font-semibold text-ink-muted">
+          <p class="text-sm font-semibold text-ink-muted">
             Demo: PIN awal 4321. Perubahan berlaku sampai aplikasi dimuat ulang.
           </p>
         </div>
@@ -385,8 +383,8 @@ function Section(props: {
       <div class="flex items-center gap-2 border-b border-line px-3 py-2">
         <span class="text-primary">{props.icon}</span>
         <div class="min-w-0">
-          <h2 class="text-xs font-extrabold text-ink">{props.title}</h2>
-          <p class="text-[0.625rem] font-semibold text-ink-muted">
+          <h2 class="text-sm font-extrabold text-ink">{props.title}</h2>
+          <p class="text-sm font-semibold text-ink-muted">
             {props.description}
           </p>
         </div>
@@ -398,7 +396,7 @@ function Section(props: {
 
 function FieldLabel(props: { text: string }) {
   return (
-    <div class="mb-1 text-[0.625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase">
+    <div class="mb-1 text-sm font-extrabold tracking-[0.08em] text-ink-muted uppercase">
       {props.text}
     </div>
   );
@@ -417,7 +415,7 @@ function Segment(props: {
             type="button"
             aria-pressed={props.value === option.value}
             onClick={() => props.onChange(option.value)}
-            class={`h-11 flex-1 cursor-pointer rounded-[4px] text-[0.6875rem] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+            class={`h-11 flex-1 cursor-pointer rounded-[4px] text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
               props.value === option.value
                 ? "bg-surface text-primary shadow-sm"
                 : "text-ink-muted hover:text-ink"
@@ -436,7 +434,7 @@ function Row(props: { label: string; value: string; mono?: boolean }) {
     <div class="flex items-center justify-between gap-3">
       <span class="text-ink-muted">{props.label}</span>
       <span
-        class={`truncate font-semibold text-ink ${props.mono ? "font-mono text-[0.625rem]" : ""}`}
+        class={`truncate font-semibold text-ink ${props.mono ? "font-mono text-sm" : ""}`}
       >
         {props.value}
       </span>
@@ -452,10 +450,7 @@ function PinField(props: {
 }) {
   return (
     <div>
-      <label
-        for={props.id}
-        class="text-[0.6875rem] font-bold text-ink-secondary"
-      >
+      <label for={props.id} class="text-sm font-bold text-ink-secondary">
         {props.label}
       </label>
       <Input

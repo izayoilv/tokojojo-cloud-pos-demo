@@ -35,7 +35,7 @@ const states: Record<PosConnection, StateMeta> = {
   },
   GRACE: {
     label: "Masa tenggang",
-    tone: "bg-accent-soft text-accent",
+    tone: "bg-warning-soft text-warning",
     icon: Clock3,
     description: "Tunai saja, ditandai",
   },
@@ -80,7 +80,7 @@ export function StateChipMenu() {
         <DropdownMenu.Content class="z-[300] w-[270px] overflow-hidden rounded-[8px] border border-line bg-surface shadow-dropdown outline-none">
           <div class="border-b border-line px-3 py-2">
             <div class="text-xs font-bold text-ink">Simulasi status</div>
-            <div class="text-[0.625rem] font-semibold text-ink-muted">
+            <div class="text-sm font-semibold text-ink-muted">
               Hanya untuk demo UI
             </div>
           </div>
@@ -91,7 +91,7 @@ export function StateChipMenu() {
                 class="flex cursor-pointer items-center gap-2 border-b border-line px-3 py-2 outline-none last:border-0 hover:bg-hover"
               >
                 <StateChip connection={state} />
-                <span class="truncate text-[0.6875rem] text-ink-muted">
+                <span class="truncate text-sm text-ink-muted">
                   {states[state].description}
                 </span>
                 <span class="ml-auto text-primary">

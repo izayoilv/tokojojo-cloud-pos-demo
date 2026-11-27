@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { products } from "../data/mock";
+import { demoUsers, products } from "../data/mock";
 import { createPosStore } from "./store";
 
 const unlockedStore = () => {
@@ -27,6 +27,41 @@ describe("device enrollment", () => {
     store.actions.setDeviceStatus("REVOKED");
     expect(store.state.screen()).toBe("ENROLLMENT");
     expect(store.state.deviceStatus()).toBe("REVOKED");
+  });
+
+  it("expires the PIN lockout after five minutes", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-27T10:00:00+07:00"));
+
+    try {
+      const store = createPosStore();
+      store.actions.approveDevice();
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        store.actions.unlockPin("1111");
+      }
+
+      expect(store.state.pinLockedUntil()).not.toBeNull();
+      expect(store.state.screen()).toBe("LOCK");
+
+      vi.advanceTimersByTime(5 * 60_000 + 1_000);
+      store.actions.unlockPin("4321");
+
+      expect(store.state.pinError()).toBeNull();
+      expect(store.state.screen()).toBe("OPEN_SHIFT");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("switches the demo user before unlocking", () => {
+    const store = createPosStore();
+    store.actions.approveDevice();
+    store.actions.selectUser(demoUsers[2]!);
+    store.actions.unlockPin("4321");
+
+    expect(store.state.session()?.role).toBe("OWNER");
+    expect(store.state.session()?.name).toBe("Ko Jojo Halim");
   });
 });
 
@@ -214,6 +249,16 @@ describe("payment and offline behavior", () => {
     expect(debt.state.receipt()?.customer).toBe("Warung Bu Sari");
   });
 
+  it("records grace shifts as offline", () => {
+    const store = createPosStore();
+    store.actions.approveDevice();
+    store.actions.unlockPin("4321");
+    store.actions.setConnection("GRACE");
+    store.actions.openShift(100000);
+
+    expect(store.state.shift()?.source).toBe("OFFLINE");
+  });
+
   it("flags grace sales in the sync queue", () => {
     const store = unlockedStore();
     const flaggedBefore = store.state.queue().flagged;
@@ -289,7 +334,7 @@ describe("sales history actions", () => {
     ).toBe("COMPLETED");
   });
 
-  it("accounts for voided cash sales when closing the shift", () => {
+  it("rejects voiding a paid sale", () => {
     const store = unlockedStore();
     store.actions.selectPaymentMethod("TUNAI");
     store.actions.setCashReceived(200000);
@@ -299,14 +344,11 @@ describe("sales history actions", () => {
     store.actions.setSessionRole("OWNER");
     store.actions.voidSale(sale.id);
 
-    expect(store.state.shift()?.refunds).toBe(166500);
-
-    store.actions.closeShift(490000);
-
-    const closed = store.state.shift()!;
-    expect(closed.expectedCash).toBe(500000);
-    expect(closed.actualCash).toBe(490000);
-    expect(closed.difference).toBe(-10000);
+    expect(store.state.error()).toContain("tanpa pembayaran");
+    expect(
+      store.state.sales().find((item) => item.id === sale.id)?.status,
+    ).toBe("COMPLETED");
+    expect(store.state.shift()?.refunds).toBe(0);
   });
 
   it("charges cross-shift cash refunds to the active shift", () => {
@@ -374,7 +416,7 @@ describe("sales history actions", () => {
     expect(closed.difference).toBe(0);
   });
 
-  it("requires admin or owner and updates completed sales online", () => {
+  it("requires admin or owner and rejects paid voids", () => {
     const store = unlockedStore();
     const completed = store.state
       .sales()
@@ -390,9 +432,10 @@ describe("sales history actions", () => {
 
     store.actions.setSessionRole("OWNER");
     store.actions.voidSale(first.id);
+    expect(store.state.error()).toContain("tanpa pembayaran");
     expect(
       store.state.sales().find((sale) => sale.id === first.id)?.status,
-    ).toBe("VOIDED");
+    ).toBe("COMPLETED");
 
     store.actions.returnSale(second.id);
     expect(
@@ -460,13 +503,31 @@ describe("connection states", () => {
     expect(store.state.screen()).toBe("HARD_LOCK");
 
     store.actions.setConnection("ONLINE");
+    expect(store.state.screen()).toBe("LOCK");
+
+    store.actions.unlockPin("4321");
     expect(store.state.screen()).toBe("SELL");
   });
 
-  it("returns to sell after online recovery", () => {
+  it("requires PIN re-authentication after online recovery", () => {
     const store = unlockedStore();
     store.actions.setConnection("LOCKED");
     store.actions.setConnection("ONLINE");
+
+    expect(store.state.screen()).toBe("LOCK");
+
+    store.actions.unlockPin("4321");
     expect(store.state.screen()).toBe("SELL");
+  });
+
+  it("does not leave hard lock for grace or offline states", () => {
+    const store = unlockedStore();
+    store.actions.setConnection("LOCKED");
+    store.actions.setConnection("OFFLINE");
+    expect(store.state.screen()).toBe("HARD_LOCK");
+
+    store.actions.setConnection("LOCKED");
+    store.actions.setConnection("GRACE");
+    expect(store.state.screen()).toBe("HARD_LOCK");
   });
 });

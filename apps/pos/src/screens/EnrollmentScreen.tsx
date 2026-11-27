@@ -69,7 +69,7 @@ export function EnrollmentScreen() {
           </span>
           <div class="min-w-0">
             <div class="text-sm font-extrabold text-ink">TokoJoJo POS</div>
-            <div class="text-[0.625rem] font-bold tracking-[0.08em] text-ink-muted uppercase">
+            <div class="text-sm font-bold tracking-[0.08em] text-ink-muted uppercase">
               Aktivasi perangkat
             </div>
           </div>
@@ -179,7 +179,7 @@ export function EnrollmentScreen() {
           </div>
 
           <div class="mt-4 rounded-[8px] border border-dashed border-line-strong bg-subtle/60 px-3 py-2.5">
-            <div class="mb-2 text-[0.625rem] font-extrabold tracking-[0.12em] text-ink-muted uppercase">
+            <div class="mb-2 text-sm font-extrabold tracking-[0.12em] text-ink-muted uppercase">
               Kontrol demo
             </div>
             <div class="flex flex-wrap gap-1.5">
@@ -188,7 +188,7 @@ export function EnrollmentScreen() {
                   type="button"
                   aria-pressed={status() === value}
                   onClick={() => pos.actions.setDeviceStatus(value)}
-                  class={`inline-flex h-11 cursor-pointer items-center rounded-[5px] border px-3 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                  class={`inline-flex h-11 cursor-pointer items-center rounded-[5px] border px-3 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                     status() === value
                       ? "border-primary bg-primary-soft text-primary"
                       : "border-line-control bg-surface text-ink-secondary hover:bg-hover"
@@ -198,7 +198,7 @@ export function EnrollmentScreen() {
                 </button>
               ))}
             </div>
-            <p class="mt-2 text-[0.625rem] font-semibold text-ink-muted">
+            <p class="mt-2 text-sm font-semibold text-ink-muted">
               Persetujuan admin disimulasikan untuk demo UI.
             </p>
           </div>

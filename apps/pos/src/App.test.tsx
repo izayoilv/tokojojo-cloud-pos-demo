@@ -277,7 +277,7 @@ describe("app shell", () => {
     expect(root.textContent).toContain("Pilih transaksi");
   });
 
-  it("voids a sale with demo owner permission", () => {
+  it("disables void for paid sales with a reason", () => {
     const { root, store } = mount();
     openSell(root);
     click(findButton(root, "Riwayat")!);
@@ -295,26 +295,32 @@ describe("app shell", () => {
       '[data-action="void"]',
     );
     expect(voidButton).not.toBeNull();
-    expect(voidButton!.disabled).toBe(false);
-    click(voidButton!);
-    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
-    expect(dialog).not.toBeNull();
-    expect(dialog!.textContent).toContain("Void tunai mengembalikan Rp 31.000");
-    expect(dialog!.textContent).toContain("shift lain");
-
-    const confirm = findButton(root, "Void", dialog!);
-    expect(confirm).toBeDefined();
-    click(confirm!);
-
+    expect(voidButton!.disabled).toBe(true);
+    expect(voidButton!.title).toContain("tanpa pembayaran");
     expect(
       store.state.sales().find((sale) => sale.id === "SALE-001")?.status,
-    ).toBe("VOIDED");
-    expect(root.textContent).toContain(
-      "Transaksi void. Audit void tersimpan pada log.",
-    );
+    ).toBe("COMPLETED");
+  });
 
-    click(findButton(root, "Cetak")!);
-    expect(document.body.textContent).toContain("VOID · STRUK TIDAK SAH");
+  it("restores shortcuts after closing a product unit dialog", async () => {
+    const { root, store } = mount();
+    openSell(root);
+
+    click(findButton(root, "Indomie Goreng Spesial")!);
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    click(findButton(root, "Dus", dialog!)!);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.body.style.pointerEvents).not.toBe("none");
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F3", bubbles: true }),
+    );
+    expect(document.activeElement).toBe(
+      root.querySelector('input[aria-label="Cari produk"]'),
+    );
+    expect(store.state.screen()).toBe("SELL");
   });
 
   it("explains non-cash returns without a cash-drawer effect", () => {
@@ -432,6 +438,9 @@ describe("app shell", () => {
 
     click(findButton(root, "Coba online")!);
     expect(store.state.connection()).toBe("ONLINE");
+    expect(store.state.screen()).toBe("LOCK");
+
+    pressPin(root, "4321");
     expect(store.state.screen()).toBe("SELL");
   });
 

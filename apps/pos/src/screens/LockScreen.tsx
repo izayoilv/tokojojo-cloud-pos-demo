@@ -4,23 +4,29 @@ import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 import { usePos } from "../app/PosProvider";
 import { PinPad } from "../components/PinPad";
-import { demoUser } from "../data/mock";
+import { demoUsers } from "../data/mock";
+import type { UserSession } from "../data/types";
 
-const initials = demoUser.name
-  .split(" ")
-  .map((part) => part[0])
-  .join("")
-  .slice(0, 2)
-  .toUpperCase();
+const initials = (user: UserSession) =>
+  user.name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
 export function LockScreen() {
   const pos = usePos();
   const [pin, setPin] = createSignal("");
   const [passwordMode, setPasswordMode] = createSignal(false);
   const [password, setPassword] = createSignal("");
-  const [userNote, setUserNote] = createSignal<string | null>(null);
+  const [userPickerOpen, setUserPickerOpen] = createSignal(false);
+  const [now, setNow] = createSignal(Date.now());
 
-  const lockedOut = () => pos.state.pinAttempts() >= 5;
+  const selectedUser = () => pos.state.selectedUser();
+  const remainingMs = () =>
+    Math.max(0, (pos.state.pinLockedUntil() ?? 0) - now());
+  const lockedOut = () => remainingMs() > 0 || pos.state.pinAttempts() >= 10;
   const shiftActive = () => pos.state.shift()?.status === "OPEN";
 
   const submitPin = (value: string) => {
@@ -38,6 +44,9 @@ export function LockScreen() {
   };
 
   onMount(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    onCleanup(() => window.clearInterval(timer));
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement) return;
       if (event.key === "Escape") {
@@ -63,7 +72,7 @@ export function LockScreen() {
     <div class="flex h-full items-start justify-center overflow-y-auto bg-canvas p-4">
       <div class="my-auto w-full max-w-[400px] rounded-[12px] border border-line bg-surface p-4 shadow-modal">
         <div class="flex items-center gap-2.5 border-b border-line pb-3">
-          <span class="relative flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-primary text-[0.625rem] font-extrabold text-on-primary">
+          <span class="relative flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-primary text-sm font-extrabold text-on-primary">
             TJ
             <span class="absolute -top-1 -right-1 size-2 rounded-[2px] bg-accent" />
           </span>
@@ -71,7 +80,7 @@ export function LockScreen() {
             <div class="text-xs font-extrabold tracking-[0.06em] text-ink">
               TOKO JOJO
             </div>
-            <div class="text-[0.625rem] font-semibold text-ink-muted">
+            <div class="text-sm font-semibold text-ink-muted">
               POS Terminal · Kasir
             </div>
           </div>
@@ -79,16 +88,16 @@ export function LockScreen() {
 
         <div class="mt-3 flex items-center gap-2.5 rounded-[8px] bg-subtle p-2.5">
           <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
-            {initials}
+            {initials(selectedUser())}
           </span>
           <div class="min-w-0">
             <div class="truncate text-sm font-bold text-ink">
-              {demoUser.name}
+              {selectedUser().name}
             </div>
-            <div class="text-[0.625rem] font-semibold tracking-[0.04em] text-ink-muted uppercase">
-              {demoUser.role === "CASHIER"
+            <div class="text-sm font-semibold tracking-[0.04em] text-ink-muted uppercase">
+              {selectedUser().role === "CASHIER"
                 ? "Kasir"
-                : demoUser.role === "ADMIN"
+                : selectedUser().role === "ADMIN"
                   ? "Admin"
                   : "Owner"}{" "}
               · {shiftActive() ? "Shift aktif" : "Belum ada shift"}
@@ -122,7 +131,17 @@ export function LockScreen() {
         </div>
 
         <div class="mt-1.5 min-h-5 text-center" role="alert">
-          <Show when={pos.state.pinError() && pin().length === 0}>
+          <Show when={remainingMs() > 0}>
+            <span class="text-xs font-bold text-danger">
+              Coba lagi dalam {Math.floor(Math.ceil(remainingMs() / 1000) / 60)}
+              :{String(Math.ceil(remainingMs() / 1000) % 60).padStart(2, "0")}
+            </span>
+          </Show>
+          <Show
+            when={
+              remainingMs() === 0 && pos.state.pinError() && pin().length === 0
+            }
+          >
             <span class="text-xs font-bold text-danger">
               {pos.state.pinError()}
             </span>
@@ -172,7 +191,7 @@ export function LockScreen() {
               setPin("");
               setPassword("");
             }}
-            class="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-[4px] px-2 text-xs font-bold text-primary hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            class="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-[4px] px-2 text-sm font-bold text-primary hover:bg-primary-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             <KeyRound size={13} />
             {passwordMode() ? "Kembali ke PIN" : "Masuk dengan kata sandi"}
@@ -180,30 +199,56 @@ export function LockScreen() {
 
           <button
             type="button"
-            onClick={() => {
-              setPin("");
-              setUserNote("Demo hanya menyediakan satu kasir.");
-            }}
-            class="h-11 cursor-pointer rounded-[4px] px-2 text-xs font-semibold text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            aria-expanded={userPickerOpen()}
+            onClick={() => setUserPickerOpen((value) => !value)}
+            class="h-11 cursor-pointer rounded-[4px] px-2 text-sm font-semibold text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
-            Ganti pengguna
+            {userPickerOpen() ? "Tutup pilihan pengguna" : "Ganti pengguna"}
           </button>
 
-          <Show when={userNote()}>
-            <p class="text-[0.625rem] font-semibold text-ink-muted">
-              {userNote()}
-            </p>
+          <Show when={userPickerOpen()}>
+            <div class="w-full space-y-1 rounded-[6px] border border-line bg-subtle p-2">
+              <For each={demoUsers}>
+                {(user) => (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pos.actions.selectUser(user);
+                      setUserPickerOpen(false);
+                      setPin("");
+                      setPassword("");
+                      setPasswordMode(false);
+                    }}
+                    class={`flex w-full cursor-pointer items-center gap-2 rounded-[4px] px-2 py-1.5 text-left text-sm transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                      selectedUser().username === user.username
+                        ? "bg-surface font-bold text-ink"
+                        : "text-ink-secondary"
+                    }`}
+                  >
+                    <span class="flex size-6 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">
+                      {initials(user)}
+                    </span>
+                    <span class="min-w-0">
+                      <span class="block truncate">{user.name}</span>
+                      <span class="block text-sm text-ink-muted uppercase">
+                        {user.role}
+                      </span>
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
           </Show>
         </div>
 
         <div class="mt-2 flex items-start gap-1.5 border-t border-line pt-2.5">
           <ShieldCheck size={13} class="mt-0.5 shrink-0 text-ink-muted" />
-          <p class="text-[0.625rem] leading-relaxed text-ink-muted">
+          <p class="text-sm leading-relaxed text-ink-muted">
             PIN lokal hanya membuka sesi perangkat, bukan kredensial server.
           </p>
         </div>
 
-        <p class="mt-1.5 text-center text-[0.625rem] font-semibold text-ink-muted">
+        <p class="mt-1.5 text-center text-sm font-semibold text-ink-muted">
           Demo: PIN awal 4321 · Kata sandi tokojojo
         </p>
       </div>

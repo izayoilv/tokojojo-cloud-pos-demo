@@ -13,7 +13,7 @@ export function useShortcuts(handlers: ShortcutHandlers) {
       const handler = handlers[key];
       if (!handler) return;
 
-      if (document.querySelector('[role="dialog"]')) return;
+      if (document.querySelector('[role="dialog"]:not([data-closed])')) return;
 
       event.preventDefault();
       handler(event);

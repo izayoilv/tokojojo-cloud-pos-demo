@@ -65,6 +65,8 @@ export function createPosStore() {
   const [session, setSession] = createSignal<UserSession | null>(null);
   const [pinError, setPinError] = createSignal<string | null>(null);
   const [pinAttempts, setPinAttempts] = createSignal(0);
+  const [pinLockedUntil, setPinLockedUntil] = createSignal<number | null>(null);
+  const [selectedUser, setSelectedUser] = createSignal<UserSession>(demoUser);
   const [shift, setShift] = createSignal<Shift | null>(null);
   const [cart, setCart] = createSignal<CartLine[]>([]);
   const [heldCarts, setHeldCarts] = createSignal<HeldCart[]>(
@@ -101,9 +103,10 @@ export function createPosStore() {
   const currentTotals = () => cartTotals(cart());
 
   const beginSession = () => {
-    setSession({ ...demoUser });
+    setSession({ ...selectedUser() });
     setPinError(null);
     setPinAttempts(0);
+    setPinLockedUntil(null);
     setError(null);
     setScreen(
       connection() === "LOCKED"
@@ -153,8 +156,23 @@ export function createPosStore() {
       return;
     }
 
-    if (pinAttempts() >= 5) {
-      setPinError("Terlalu banyak percobaan. Coba lagi dalam 5 menit.");
+    const lockedUntil = pinLockedUntil();
+
+    if (lockedUntil && Date.now() < lockedUntil) {
+      const seconds = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setPinError(
+        `Terlalu banyak percobaan. Coba lagi dalam ${Math.ceil(seconds / 60)} menit.`,
+      );
+      return;
+    }
+
+    if (lockedUntil) {
+      setPinLockedUntil(null);
+      setPinAttempts(0);
+    }
+
+    if (pinAttempts() >= 10) {
+      setPinError("Batas PIN tercapai. Gunakan kata sandi admin.");
       return;
     }
 
@@ -167,11 +185,15 @@ export function createPosStore() {
 
     const attempts = pinAttempts() + 1;
     setPinAttempts(attempts);
-    setPinError(
-      attempts >= 5
-        ? "Terlalu banyak percobaan. Coba lagi dalam 5 menit."
-        : "PIN salah",
-    );
+
+    if (attempts >= 10) {
+      setPinError("Batas PIN tercapai. Gunakan kata sandi admin.");
+    } else if (attempts >= 5) {
+      setPinLockedUntil(Date.now() + 5 * 60_000);
+      setPinError("Terlalu banyak percobaan. Coba lagi dalam 5 menit.");
+    } else {
+      setPinError("PIN salah");
+    }
   };
 
   const unlockWithPassword = (password: string) => {
@@ -186,6 +208,14 @@ export function createPosStore() {
     }
 
     setPinError("Kata sandi salah");
+  };
+
+  const selectUser = (user: UserSession) => {
+    setSelectedUser({ ...user });
+    setPinAttempts(0);
+    setPinLockedUntil(null);
+    setPinError(null);
+    setError(null);
   };
 
   const lock = () => {
@@ -229,7 +259,10 @@ export function createPosStore() {
       userName: user.name,
       openedAt: nowIso(),
       openingCash: Math.round(openingCash),
-      source: connection() === "OFFLINE" ? "OFFLINE" : "ONLINE",
+      source:
+        connection() === "OFFLINE" || connection() === "GRACE"
+          ? "OFFLINE"
+          : "ONLINE",
       status: "OPEN",
       cashSales: 0,
       refunds: 0,
@@ -624,10 +657,10 @@ export function createPosStore() {
       if (current === "LOCKED") {
         if (device().status !== "ACTIVE") {
           setScreen("ENROLLMENT");
-        } else if (!session()) {
+        } else if (next === "ONLINE") {
           setScreen("LOCK");
         } else {
-          setScreen(shift()?.status === "OPEN" ? "SELL" : "OPEN_SHIFT");
+          setScreen("HARD_LOCK");
         }
       }
     });
@@ -714,6 +747,11 @@ export function createPosStore() {
     const target = saleActionTarget(saleId);
     if (!target) return;
 
+    if (target.payments.length > 0 || (target.refundedAmount ?? 0) > 0) {
+      setError("Void hanya untuk transaksi tanpa pembayaran atau retur.");
+      return;
+    }
+
     if (target.payments.some((payment) => payment.method === "TUNAI")) {
       setShift((current) =>
         current
@@ -749,8 +787,10 @@ export function createPosStore() {
       deviceStatus,
       connection,
       session,
+      selectedUser,
       pinError,
       pinAttempts,
+      pinLockedUntil,
       shift,
       cart,
       heldCarts,
@@ -772,6 +812,7 @@ export function createPosStore() {
       setDeviceStatus,
       unlockPin,
       unlockWithPassword,
+      selectUser,
       lock,
       openShift,
       closeShift,

@@ -84,7 +84,7 @@ export function SyncScreen() {
         </div>
 
         <div class="flex flex-wrap items-center gap-1.5">
-          <span class="mr-1 text-[0.5625rem] font-extrabold tracking-[0.12em] text-ink-muted uppercase">
+          <span class="mr-1 text-xs font-extrabold tracking-[0.12em] text-ink-muted uppercase">
             Simulasi status
           </span>
           <For each={connections}>
@@ -94,7 +94,7 @@ export function SyncScreen() {
                 data-connection={option.value}
                 aria-pressed={pos.state.connection() === option.value}
                 onClick={() => pos.actions.setConnection(option.value)}
-                class={`flex h-11 cursor-pointer items-center gap-1 rounded-[5px] border px-2 text-[0.625rem] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                class={`flex h-11 cursor-pointer items-center gap-1 rounded-[5px] border px-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                   pos.state.connection() === option.value
                     ? "border-primary bg-primary-soft text-primary"
                     : "border-line-control bg-surface text-ink-secondary hover:bg-hover"
@@ -134,7 +134,7 @@ export function SyncScreen() {
               <div class="text-xs font-extrabold text-ink">
                 Antrean transaksi offline
               </div>
-              <p class="mt-0.5 text-[0.6875rem] text-ink-muted">
+              <p class="mt-0.5 text-sm text-ink-muted">
                 {queue().pending > 0
                   ? `${queue().pending} transaksi siap dikirim ke server.`
                   : "Tidak ada transaksi menunggu. Sinkronisasi terakhir " +
@@ -152,7 +152,7 @@ export function SyncScreen() {
             </Button>
           </div>
           <Show when={!canSync()}>
-            <div class="mt-2 flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-1.5 text-[0.6875rem] text-warning">
+            <div class="mt-2 flex items-start gap-2 rounded-[6px] bg-warning-soft px-3 py-1.5 text-sm text-warning">
               <CloudOff size={14} class="mt-0.5 shrink-0" />
               <p>
                 Sinkronisasi membutuhkan koneksi online.{" "}
@@ -163,15 +163,12 @@ export function SyncScreen() {
             </div>
           </Show>
           <Show when={notice()}>
-            <p
-              role="status"
-              class="mt-2 text-[0.6875rem] font-bold text-success"
-            >
+            <p role="status" class="mt-2 text-sm font-bold text-success">
               {notice()}
             </p>
           </Show>
           <Show when={pos.state.error()}>
-            <p role="alert" class="mt-2 text-[0.6875rem] font-bold text-danger">
+            <p role="alert" class="mt-2 text-sm font-bold text-danger">
               {pos.state.error()}
             </p>
           </Show>
@@ -180,10 +177,10 @@ export function SyncScreen() {
         <div class="rounded-[10px] border border-line bg-surface">
           <div class="flex items-center gap-2 border-b border-line px-3 py-2">
             <div class="text-xs font-extrabold text-ink">Karantina</div>
-            <span class="rounded-full bg-danger-soft px-1.5 py-0.5 text-[0.625rem] font-bold text-danger">
+            <span class="rounded-full bg-danger-soft px-1.5 py-0.5 text-sm font-bold text-danger">
               {queue().quarantine.length}
             </span>
-            <span class="ml-auto text-[0.625rem] font-semibold text-ink-muted">
+            <span class="ml-auto text-sm font-semibold text-ink-muted">
               Butuh tinjauan admin
             </span>
           </div>
@@ -200,14 +197,14 @@ export function SyncScreen() {
                 <div class="flex items-start gap-2 border-b border-line px-3 py-2 last:border-0">
                   <ShieldAlert size={15} class="mt-0.5 shrink-0 text-danger" />
                   <div class="min-w-0 flex-1">
-                    <div class="truncate font-mono text-[0.6875rem] font-bold text-ink">
+                    <div class="truncate font-mono text-sm font-bold text-ink">
                       {item.id}
                     </div>
-                    <div class="text-[0.625rem] font-semibold text-ink-muted">
+                    <div class="text-sm font-semibold text-ink-muted">
                       {item.reason}
                     </div>
                   </div>
-                  <span class="shrink-0 rounded-full bg-danger-soft px-1.5 py-0.5 text-[0.5625rem] font-bold text-danger">
+                  <span class="shrink-0 rounded-full bg-danger-soft px-1.5 py-0.5 text-xs font-bold text-danger">
                     Karantina
                   </span>
                 </div>
@@ -223,7 +220,7 @@ export function SyncScreen() {
 function Stat(props: { label: string; value: number; tone: ResultTone }) {
   return (
     <div class="rounded-[8px] border border-line bg-surface px-3 py-2">
-      <div class="text-[0.5625rem] font-extrabold tracking-[0.08em] text-ink-muted uppercase">
+      <div class="text-xs font-extrabold tracking-[0.08em] text-ink-muted uppercase">
         {props.label}
       </div>
       <div

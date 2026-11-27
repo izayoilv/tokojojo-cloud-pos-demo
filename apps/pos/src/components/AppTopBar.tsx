@@ -3,7 +3,7 @@ import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
 import { usePos } from "../app/PosProvider";
 import { formatClock, formatDate, formatTime } from "../lib/format";
-import { StateChipMenu } from "./StateChip";
+import { StateChip, StateChipMenu } from "./StateChip";
 
 export function AppTopBar() {
   const pos = usePos();
@@ -39,7 +39,7 @@ export function AppTopBar() {
           <div class="truncate text-sm leading-tight font-bold text-ink">
             Toko <span class="font-extrabold">Jojo</span>
           </div>
-          <div class="truncate text-[0.625rem] font-bold tracking-[0.08em] text-ink-muted uppercase">
+          <div class="truncate text-sm font-bold tracking-[0.08em] text-ink-muted uppercase">
             POS · Batam Centre
           </div>
         </div>
@@ -59,7 +59,7 @@ export function AppTopBar() {
         {(session) => (
           <div class="flex min-w-0 items-center gap-4">
             <div class="min-w-0">
-              <div class="text-[0.625rem] font-bold tracking-[0.08em] text-ink-muted uppercase">
+              <div class="text-sm font-bold tracking-[0.08em] text-ink-muted uppercase">
                 {roleLabel()}
               </div>
               <div class="truncate text-xs font-bold text-ink">
@@ -67,7 +67,7 @@ export function AppTopBar() {
               </div>
             </div>
             <div class="hidden min-w-0 lg:block">
-              <div class="text-[0.625rem] font-bold tracking-[0.08em] text-ink-muted uppercase">
+              <div class="text-sm font-bold tracking-[0.08em] text-ink-muted uppercase">
                 Shift
               </div>
               <div class="truncate text-xs font-semibold text-ink-secondary">
@@ -86,7 +86,7 @@ export function AppTopBar() {
                 aria-label="Tutup shift"
                 title="Tutup shift"
                 onClick={() => pos.actions.go("CLOSE_SHIFT")}
-                class="flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-[5px] border border-line-control bg-surface px-2 text-[0.625rem] font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="flex h-11 shrink-0 cursor-pointer items-center gap-1 rounded-[5px] border border-line-control bg-surface px-2 text-sm font-bold text-ink-secondary transition-colors hover:bg-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 <LogOut size={13} />
                 <span class="hidden xl:inline">Tutup shift</span>
@@ -97,13 +97,18 @@ export function AppTopBar() {
       </Show>
 
       <div class="ml-auto flex shrink-0 items-center gap-3">
-        <StateChipMenu />
+        <Show
+          when={pos.state.connection() !== "LOCKED"}
+          fallback={<StateChip connection="LOCKED" />}
+        >
+          <StateChipMenu />
+        </Show>
 
         <div class="text-right leading-tight">
           <div class="font-mono text-sm font-bold text-ink tabular-nums">
             {formatClock(now())}
           </div>
-          <div class="hidden text-[0.625rem] font-semibold text-ink-muted xl:block">
+          <div class="hidden text-sm font-semibold text-ink-muted xl:block">
             {formatDate(now())} · WIB
           </div>
         </div>
