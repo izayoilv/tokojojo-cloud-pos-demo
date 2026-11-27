@@ -309,6 +309,71 @@ describe("repository opnames", () => {
   });
 });
 
+describe("repository sales", () => {
+  it("records a partial return and its refund", async () => {
+    const sale = (await repository.listSales()).find(
+      (item) => item.status === "COMPLETED",
+    )!;
+    const item = sale.items[0]!;
+    const updated = await repository.returnSale(
+      sale.id,
+      [{ productId: item.productId, quantity: 1 }],
+      "Barang rusak",
+    );
+
+    expect(updated.items[0]?.returned).toBe(1);
+    expect(updated.status).toBe("PARTIAL_RETURN");
+
+    const movement = (await repository.listMovements())[0];
+    expect(movement?.type).toBe("RETURN");
+    expect(movement?.reference).toBe(sale.number);
+
+    const flow = (await repository.listCashFlows())[0];
+    expect(flow?.type).toBe("OUT");
+    expect(flow?.reference).toBe(sale.number);
+    expect(flow?.amount).toBe(item.price - item.discount);
+  });
+
+  it("rejects a return above the remaining quantity", async () => {
+    const sale = (await repository.listSales()).find(
+      (item) => item.status === "COMPLETED",
+    )!;
+    const item = sale.items[0]!;
+
+    await expect(
+      repository.returnSale(
+        sale.id,
+        [{ productId: item.productId, quantity: item.quantity + 1 }],
+        "Rusak",
+      ),
+    ).rejects.toThrow("melebihi jumlah yang tersisa");
+  });
+
+  it("voids a sale and records reversal movements", async () => {
+    const sale = (await repository.listSales()).find(
+      (item) => item.status === "COMPLETED",
+    )!;
+    const updated = await repository.voidSale(sale.id, "Salah input transaksi");
+
+    expect(updated.status).toBe("VOIDED");
+    const movements = (await repository.listMovements()).filter(
+      (movement) => movement.reference === sale.number,
+    );
+    expect(movements[0]?.type).toBe("SALE_VOID");
+    expect((await repository.listCashFlows())[0]?.type).toBe("OUT");
+  });
+
+  it("rejects voiding an already voided sale", async () => {
+    const sale = (await repository.listSales()).find(
+      (item) => item.status === "VOIDED",
+    )!;
+
+    await expect(repository.voidSale(sale.id, "Ulang")).rejects.toThrow(
+      "sudah dibatalkan",
+    );
+  });
+});
+
 describe("repository reads", () => {
   it("exposes sales, transfers, and store settings", async () => {
     const [sales, transfers, settings] = await Promise.all([

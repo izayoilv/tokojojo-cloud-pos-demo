@@ -324,6 +324,58 @@ describe("app smoke", () => {
     expect(root.textContent).toContain("Menunggu review");
   });
 
+  it("returns an item from a completed sale", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/penjualan");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    click(
+      [...root.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Detail",
+      )!,
+    );
+    await wait(100);
+
+    click(
+      [...document.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Retur",
+      )!,
+    );
+    await wait(100);
+
+    const dialogs = [
+      ...document.querySelectorAll<HTMLElement>('[role="dialog"]'),
+    ];
+    const modal = dialogs.find((dialog) =>
+      dialog.textContent?.includes("Retur penjualan"),
+    );
+    expect(modal).toBeDefined();
+
+    const quantity = modal!.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    );
+    expect(quantity).not.toBeNull();
+    quantity!.value = "1";
+    quantity!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    const reason = modal!.querySelector<HTMLTextAreaElement>("textarea");
+    expect(reason).not.toBeNull();
+    reason!.value = "Barang rusak";
+    reason!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    click(
+      [...modal!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Simpan retur",
+      )!,
+    );
+    await wait(500);
+
+    expect(root.textContent).toContain("Retur sebagian");
+  });
+
   it("resets the selected report when the category changes", async () => {
     const root = mount();
     await login(root, "owner");

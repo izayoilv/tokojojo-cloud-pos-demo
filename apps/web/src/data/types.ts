@@ -51,7 +51,7 @@ export type SaleItem = {
   returned: number;
 };
 
-export type SaleStatus = "COMPLETED" | "PARTIAL_RETURN";
+export type SaleStatus = "COMPLETED" | "PARTIAL_RETURN" | "RETURNED" | "VOIDED";
 export type PaymentMethod =
   "TUNAI" | "QRIS" | "DEBIT" | "TRANSFER" | "HUTANG" | "CAMPURAN";
 

@@ -66,6 +66,7 @@ let localReceiptSettings = clone(receiptSettings);
 let localPurchases = clone(purchases);
 let localPayables = clone(payables);
 let localMovements = clone(stockMovements);
+let localSales = clone(sales);
 
 const nextId = (prefix: string, values: Array<{ id: string }>) =>
   `${prefix}-${String(values.length + 1).padStart(3, "0")}`;
@@ -120,7 +121,191 @@ export const repository = {
 
   async listSales(): Promise<Sale[]> {
     await delay();
-    return clone(sales);
+    return clone(localSales);
+  },
+
+  async returnSale(
+    id: string,
+    returns: Array<{ productId: string; quantity: number }>,
+    reason: string,
+  ): Promise<Sale> {
+    await delay();
+    const sale = localSales.find((item) => item.id === id);
+
+    if (!sale) {
+      throw new Error("Transaksi tidak ditemukan.");
+    }
+
+    if (sale.status === "VOIDED" || sale.status === "RETURNED") {
+      throw new Error("Transaksi ini tidak dapat diretur.");
+    }
+
+    if (!reason.trim()) {
+      throw new Error("Alasan retur wajib diisi.");
+    }
+
+    if (returns.length === 0) {
+      throw new Error("Pilih minimal satu barang untuk diretur.");
+    }
+
+    let refund = 0;
+    const nextItems = sale.items.map((item) => {
+      const request = returns.find(
+        (entry) => entry.productId === item.productId,
+      );
+
+      if (!request) return item;
+
+      const remaining = item.quantity - item.returned;
+
+      if (
+        !Number.isInteger(request.quantity) ||
+        request.quantity <= 0 ||
+        request.quantity > remaining
+      ) {
+        throw new Error(
+          `Jumlah retur ${item.name} melebihi jumlah yang tersisa.`,
+        );
+      }
+
+      refund += request.quantity * (item.price - item.discount);
+
+      return { ...item, returned: item.returned + request.quantity };
+    });
+    const fullyReturned = nextItems.every(
+      (item) => item.returned >= item.quantity,
+    );
+    const updated: Sale = {
+      ...sale,
+      items: nextItems,
+      status: fullyReturned ? "RETURNED" : "PARTIAL_RETURN",
+    };
+    const now = new Date().toISOString();
+    const movementStart = localMovements.length;
+
+    localMovements = [
+      ...returns.map((request, index): StockMovement => {
+        const item = nextItems.find(
+          (entry) => entry.productId === request.productId,
+        )!;
+
+        return {
+          id: `MOV-${String(movementStart + index + 1).padStart(3, "0")}`,
+          time: now,
+          productId: item.productId,
+          productName: item.name,
+          location: "STORE-FRONT",
+          type: "RETURN",
+          quantity: request.quantity,
+          reference: sale.number,
+          note: reason.trim(),
+          createdBy: "Ko Jojo Halim",
+        };
+      }),
+      ...localMovements,
+    ];
+    localProducts = localProducts.map((product) => {
+      const request = returns.find((entry) => entry.productId === product.id);
+
+      return request
+        ? { ...product, storeStock: product.storeStock + request.quantity }
+        : product;
+    });
+    localCashFlows = [
+      {
+        id: nextId("CF", localCashFlows),
+        time: now,
+        type: "OUT",
+        category: "Retur penjualan",
+        method: sale.method,
+        amount: refund,
+        reference: sale.number,
+        source: "AUTO",
+        createdBy: "Ko Jojo Halim",
+      },
+      ...localCashFlows,
+    ];
+    localSales = localSales.map((item) => (item.id === id ? updated : item));
+
+    return clone(updated);
+  },
+
+  async voidSale(id: string, reason: string): Promise<Sale> {
+    await delay();
+    const sale = localSales.find((item) => item.id === id);
+
+    if (!sale) {
+      throw new Error("Transaksi tidak ditemukan.");
+    }
+
+    if (sale.status === "VOIDED") {
+      throw new Error("Transaksi sudah dibatalkan.");
+    }
+
+    if (!reason.trim()) {
+      throw new Error("Alasan void wajib diisi.");
+    }
+
+    const quantityByProduct = sale.items
+      .map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity - item.returned,
+        item,
+      }))
+      .filter((entry) => entry.quantity > 0);
+    const refund = quantityByProduct.reduce(
+      (sum, entry) =>
+        sum + entry.quantity * (entry.item.price - entry.item.discount),
+      0,
+    );
+    const now = new Date().toISOString();
+    const movementStart = localMovements.length;
+    const updated: Sale = { ...sale, status: "VOIDED" };
+
+    localSales = localSales.map((item) => (item.id === id ? updated : item));
+    localMovements = [
+      ...quantityByProduct.map((entry, index): StockMovement => ({
+        id: `MOV-${String(movementStart + index + 1).padStart(3, "0")}`,
+        time: now,
+        productId: entry.productId,
+        productName: entry.item.name,
+        location: "STORE-FRONT",
+        type: "SALE_VOID",
+        quantity: entry.quantity,
+        reference: sale.number,
+        note: reason.trim(),
+        createdBy: "Ko Jojo Halim",
+      })),
+      ...localMovements,
+    ];
+    localProducts = localProducts.map((product) => {
+      const entry = quantityByProduct.find(
+        (item) => item.productId === product.id,
+      );
+
+      return entry
+        ? { ...product, storeStock: product.storeStock + entry.quantity }
+        : product;
+    });
+
+    if (refund > 0) {
+      localCashFlows = [
+        {
+          id: nextId("CF", localCashFlows),
+          time: now,
+          type: "OUT",
+          category: "Void penjualan",
+          method: sale.method,
+          amount: refund,
+          reference: sale.number,
+          source: "AUTO",
+          createdBy: "Ko Jojo Halim",
+        },
+        ...localCashFlows,
+      ];
+    }
+
+    return clone(updated);
   },
 
   async listUsers(): Promise<User[]> {
