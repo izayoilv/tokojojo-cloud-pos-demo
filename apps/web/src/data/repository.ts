@@ -293,6 +293,15 @@ export const repository = {
       throw new Error("Transaksi sudah dibatalkan.");
     }
 
+    if (
+      sale.status !== "COMPLETED" ||
+      sale.items.some((item) => item.returned > 0)
+    ) {
+      throw new Error(
+        "Void hanya untuk transaksi tanpa pembayaran atau retur.",
+      );
+    }
+
     if (!reason.trim()) {
       throw new Error("Alasan void wajib diisi.");
     }

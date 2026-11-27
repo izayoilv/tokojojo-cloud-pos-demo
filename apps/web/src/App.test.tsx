@@ -631,6 +631,27 @@ describe("app smoke", () => {
 
     expect(root.textContent).toContain("Tampilan");
     expect(root.textContent).toContain("Kembalikan default");
+
+    window.history.pushState(null, "", "/penjualan");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(400);
+    click(
+      [...root.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Detail",
+      )!,
+    );
+    await wait(100);
+
+    expect(
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === "Retur",
+      ),
+    ).toBe(false);
+    expect(
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === "Void",
+      ),
+    ).toBe(false);
   });
 
   it("opens the off-canvas sidebar from the mobile menu toggle", async () => {

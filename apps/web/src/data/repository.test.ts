@@ -575,6 +575,16 @@ describe("repository sales", () => {
     expect((await repository.listCashFlows())[0]?.type).toBe("OUT");
   });
 
+  it("rejects voiding a sale after a return", async () => {
+    const sale = (await repository.listSales()).find(
+      (item) => item.status === "PARTIAL_RETURN",
+    )!;
+
+    await expect(repository.voidSale(sale.id, "Ulang")).rejects.toThrow(
+      "tanpa pembayaran atau retur",
+    );
+  });
+
   it("rejects voiding an already voided sale", async () => {
     const sale = (await repository.listSales()).find(
       (item) => item.status === "VOIDED",

@@ -174,7 +174,7 @@ export function DashboardPage() {
         (transfer) => transfer.completed ?? transfer.created,
       ),
       ...(opnamesQuery.data ?? []).map((opname) => opname.created),
-    ].sort();
+    ].sort((a, b) => Date.parse(a) - Date.parse(b));
     const latest = times.at(-1);
 
     return latest ? formatDateTime(latest) : "Belum ada data";

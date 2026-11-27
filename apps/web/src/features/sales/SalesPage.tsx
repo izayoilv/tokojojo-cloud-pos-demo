@@ -24,6 +24,7 @@ import { Printer, RefreshCcw, ShieldAlert } from "lucide-solid";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { useAuth } from "../../app/auth";
+import { canReverseSales } from "../../app/rbac";
 import { repository } from "../../data/repository";
 import type { Sale } from "../../data/types";
 import { saleTotals } from "../../lib/calc";
@@ -97,7 +98,7 @@ export function SalesPage() {
   });
 
   const canVoid = () =>
-    auth.user()?.role === "OWNER" || auth.user()?.role === "ADMIN";
+    auth.user() ? canReverseSales(auth.user()!.role) : false;
 
   const invalidateSales = async () => {
     await Promise.all([
@@ -333,8 +334,9 @@ export function SalesPage() {
             </Button>
             <Show
               when={
-                selected()?.status === "COMPLETED" ||
-                selected()?.status === "PARTIAL_RETURN"
+                canVoid() &&
+                (selected()?.status === "COMPLETED" ||
+                  selected()?.status === "PARTIAL_RETURN")
               }
             >
               <Button
@@ -347,13 +349,7 @@ export function SalesPage() {
                 <RefreshCcw size={14} /> Retur
               </Button>
             </Show>
-            <Show
-              when={
-                canVoid() &&
-                selected()?.status !== "VOIDED" &&
-                selected()?.status !== "RETURNED"
-              }
-            >
+            <Show when={canVoid() && selected()?.status === "COMPLETED"}>
               <Button size="sm" variant="soft-danger" onClick={openVoid}>
                 <ShieldAlert size={14} /> Void
               </Button>

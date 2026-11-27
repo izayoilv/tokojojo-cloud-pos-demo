@@ -54,7 +54,7 @@ scaffolded yet, so data calls will fail until it exists.
 - Use Kobalte primitives and Tailwind; avoid a second component system.
 - Money is displayed with `Intl.NumberFormat` from decimal strings.
 - Do not calculate prices or stock on the client as the source of truth.
-- ACL/roles UI is intentionally deferred; the backend remains authoritative.
+- Role-aware navigation and actions are implemented in the UI; the backend remains authoritative for authorization.
 
 ## Before PR
 

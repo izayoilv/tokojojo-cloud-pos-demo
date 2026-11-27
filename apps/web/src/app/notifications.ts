@@ -2,7 +2,7 @@ import type { Opname, Payable, Product, Role, Transfer } from "../data/types";
 import { stockStatus } from "../lib/calc";
 import { isDueSoon } from "../lib/date";
 import { formatRupiah } from "../lib/format";
-import { canAccess } from "./rbac";
+import { canAccess, canReviewOpname } from "./rbac";
 
 export type NotificationTone = "danger" | "warning" | "info";
 
@@ -56,7 +56,9 @@ export function buildNotifications(input: {
         href: "/gudang?tab=mutasi",
       });
     }
+  }
 
+  if (input.role && canReviewOpname(input.role)) {
     for (const opname of input.opnames.filter(
       (item) => item.status === "PENDING_REVIEW",
     )) {

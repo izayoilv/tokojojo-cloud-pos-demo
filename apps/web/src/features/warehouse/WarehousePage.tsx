@@ -1,4 +1,4 @@
-import { useLocation } from "@solidjs/router";
+import { useLocation, useNavigate } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   Badge,
@@ -39,6 +39,7 @@ export function WarehousePage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const requestedTab = (): WarehouseTab =>
     location.query.tab === "opname" ? "OPNAME" : "MUTASI";
   const [tab, setTab] = createSignal<WarehouseTab>(requestedTab());
@@ -104,7 +105,18 @@ export function WarehousePage() {
   const availableStock = () => {
     const product = selectedProduct();
     if (!product) return 0;
-    return from() === "WH-BACK" ? product.warehouseStock : product.storeStock;
+    const reserved = (transfersQuery.data ?? [])
+      .filter(
+        (transfer) => transfer.status === "PENDING" && transfer.from === from(),
+      )
+      .flatMap((transfer) => transfer.items ?? [])
+      .filter((item) => item.productId === productId())
+      .reduce((sum, item) => sum + item.quantity, 0);
+
+    return (
+      (from() === "WH-BACK" ? product.warehouseStock : product.storeStock) -
+      reserved
+    );
   };
 
   const createTransfer = async () => {
@@ -295,7 +307,10 @@ export function WarehousePage() {
 
       <Tabs
         value={tab()}
-        onChange={setTab}
+        onChange={(next) => {
+          setTab(next);
+          navigate(`/gudang?tab=${next.toLowerCase()}`);
+        }}
         items={[
           {
             value: "MUTASI",
@@ -370,7 +385,7 @@ export function WarehousePage() {
                         <For each={transfersQuery.data ?? []}>
                           {(transfer) => (
                             <tr class="hover:bg-hover">
-                              <Td class="font-mono text-[11px]">
+                              <Td class="font-mono text-xs">
                                 {transfer.number}
                               </Td>
                               <Td>{transfer.from}</Td>
@@ -801,7 +816,7 @@ export function WarehousePage() {
                       >
                         ×
                       </Button>
-                      <span class="text-[11px] text-ink-muted sm:col-span-3">
+                      <span class="text-xs text-ink-muted sm:col-span-3">
                         Stok sistem: {systemQty(row.productId)}
                       </span>
                     </div>

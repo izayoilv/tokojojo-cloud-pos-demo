@@ -126,6 +126,9 @@ describe("buildNotifications", () => {
     ).toBe(true);
     expect(
       warehouse.some((item) => item.title.includes("Opname menunggu review")),
+    ).toBe(false);
+    expect(
+      owner.some((item) => item.title.includes("Opname menunggu review")),
     ).toBe(true);
     expect(owner.some((item) => item.title.includes("Mutasi pending"))).toBe(
       true,
@@ -134,7 +137,7 @@ describe("buildNotifications", () => {
       warehouse.find((item) => item.title.includes("Mutasi pending"))?.href,
     ).toBe("/gudang?tab=mutasi");
     expect(
-      warehouse.find((item) => item.title.includes("Opname menunggu"))?.href,
+      owner.find((item) => item.title.includes("Opname menunggu"))?.href,
     ).toBe("/gudang?tab=opname");
     expect(cashier.some((item) => item.title.includes("Mutasi pending"))).toBe(
       false,

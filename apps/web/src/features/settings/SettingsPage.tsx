@@ -158,23 +158,29 @@ export function SettingsPage() {
   const settingsQuery = createQuery(() => ({
     queryKey: ["settings"],
     queryFn: () => repository.getSettings(),
+    enabled: manage(),
+    refetchOnReconnect: false,
   }));
   const receiptQuery = createQuery(() => ({
     queryKey: ["receiptSettings"],
     queryFn: () => repository.getReceiptSettings(),
+    enabled: manage(),
+    refetchOnReconnect: false,
   }));
   const devicesQuery = createQuery(() => ({
     queryKey: ["devices"],
     queryFn: () => repository.listDevices(),
+    enabled: manage(),
   }));
   const sessionsQuery = createQuery(() => ({
     queryKey: ["sessions"],
     queryFn: () => repository.listSessions(),
+    enabled: manage(),
   }));
 
   createEffect(() => {
     const settings = settingsQuery.data;
-    if (settings) {
+    if (settings && !dirty()) {
       const next = {
         name: settings.name,
         tagline: settings.tagline,
@@ -196,7 +202,7 @@ export function SettingsPage() {
 
   createEffect(() => {
     const receipt = receiptQuery.data;
-    if (receipt) {
+    if (receipt && !dirty()) {
       setReceiptForm(receipt);
       setReceiptBaseline(receipt);
     }
@@ -538,11 +544,18 @@ export function SettingsPage() {
                 <Input
                   aria-label="Ambang stok menipis"
                   type="number"
+                  min="0"
+                  max="100"
                   class="w-24"
                   value={lowStockPercent()}
-                  onInput={(event) =>
-                    setLowStockPercent(Number(event.currentTarget.value))
-                  }
+                  onInput={(event) => {
+                    const value = Number(event.currentTarget.value);
+                    setLowStockPercent(
+                      Number.isFinite(value)
+                        ? Math.min(100, Math.max(0, Math.round(value)))
+                        : 0,
+                    );
+                  }}
                 />
               </SettingsRow>
             </Panel>

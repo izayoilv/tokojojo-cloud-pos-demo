@@ -300,7 +300,7 @@ export function AppLayout(props: { children?: JSX.Element }) {
                           <DropdownMenu.Item
                             as={A}
                             href={item.href}
-                            class="flex cursor-pointer gap-2.5 border-b border-line px-4 py-2.5 text-sm text-ink outline-none last:border-0 hover:bg-hover"
+                            class="flex cursor-pointer gap-2.5 border-b border-line px-4 py-2.5 text-sm text-ink outline-none last:border-0 hover:bg-hover focus-visible:bg-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
                           >
                             <span
                               class={`mt-1.5 size-2 shrink-0 rounded-full ${toneDot[item.tone]}`}

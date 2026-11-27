@@ -4,6 +4,7 @@ import {
   assignableRoles,
   canAccess,
   canAssignRole,
+  canReverseSales,
   canReviewOpname,
   canViewSales,
 } from "./rbac";
@@ -14,6 +15,15 @@ describe("stock opname review", () => {
     expect(canReviewOpname("ADMIN")).toBe(true);
     expect(canReviewOpname("CASHIER")).toBe(false);
     expect(canReviewOpname("WAREHOUSE")).toBe(false);
+  });
+});
+
+describe("sales reversal", () => {
+  it("limits returns and voids to OWNER and ADMIN", () => {
+    expect(canReverseSales("OWNER")).toBe(true);
+    expect(canReverseSales("ADMIN")).toBe(true);
+    expect(canReverseSales("CASHIER")).toBe(false);
+    expect(canReverseSales("WAREHOUSE")).toBe(false);
   });
 });
 

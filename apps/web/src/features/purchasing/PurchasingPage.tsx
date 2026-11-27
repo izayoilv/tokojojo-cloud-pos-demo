@@ -1,4 +1,4 @@
-import { useLocation } from "@solidjs/router";
+import { useLocation, useNavigate } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   Badge,
@@ -51,6 +51,7 @@ export function PurchasingPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const requestedTab = (): PurchasingTab => {
     const value = String(location.query.tab ?? "").toUpperCase();
     return value === "SUPPLIER" || value === "HUTANG" ? value : "PEMBELIAN";
@@ -314,7 +315,10 @@ export function PurchasingPage() {
 
       <Tabs
         value={tab()}
-        onChange={setTab}
+        onChange={(next) => {
+          setTab(next);
+          navigate(`/pembelian?tab=${next.toLowerCase()}`);
+        }}
         items={[
           { value: "PEMBELIAN", label: "Pembelian", count: purchases().length },
           { value: "SUPPLIER", label: "Supplier", count: suppliers().length },

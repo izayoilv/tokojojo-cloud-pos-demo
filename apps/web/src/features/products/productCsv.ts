@@ -1,4 +1,5 @@
 import type { Product } from "../../data/types";
+import { baseUnit } from "../../lib/calc";
 import { escapeCsvCell } from "../../lib/csv";
 
 const headers = [
@@ -23,7 +24,7 @@ export function productsToCsv(products: Product[]): string {
       product.barcode,
       product.category,
       product.brand,
-      product.unit,
+      baseUnit(product).name,
       product.cost,
       product.price,
       product.warehouseStock,
