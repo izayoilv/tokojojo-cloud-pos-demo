@@ -71,6 +71,7 @@ export function PurchasingPage() {
     createSignal<PaymentMethod>("TUNAI");
   const [paymentError, setPaymentError] = createSignal("");
   const [cancelTarget, setCancelTarget] = createSignal<Purchase | null>(null);
+  const [saving, setSaving] = createSignal(false);
 
   const purchasesQuery = createQuery(() => ({
     queryKey: ["purchases"],
@@ -206,6 +207,7 @@ export function PurchasingPage() {
     );
 
   const savePurchase = async () => {
+    if (saving()) return;
     const error = validatePurchaseDraft(purchaseDraft());
 
     if (error) {
@@ -213,6 +215,7 @@ export function PurchasingPage() {
       return;
     }
 
+    setSaving(true);
     try {
       await repository.createPurchase(purchaseDraft());
       await invalidatePurchasing();
@@ -222,6 +225,8 @@ export function PurchasingPage() {
       setPurchaseError(
         caught instanceof Error ? caught.message : "Pembelian gagal disimpan.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -236,8 +241,9 @@ export function PurchasingPage() {
   const savePayment = async () => {
     const target = paymentTarget();
 
-    if (!target) return;
+    if (!target || saving()) return;
 
+    setSaving(true);
     try {
       await repository.payPurchase(
         target.id,
@@ -251,19 +257,27 @@ export function PurchasingPage() {
       setPaymentError(
         caught instanceof Error ? caught.message : "Pembayaran gagal disimpan.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
   const cancelPurchase = async () => {
     const target = cancelTarget();
 
-    if (!target) return;
+    if (!target || saving()) return;
 
+    setSaving(true);
     try {
       await repository.cancelPurchase(target.id);
       await invalidatePurchasing();
       setCancelTarget(null);
-      toast.notify("Pembelian dibatalkan dan stok dikembalikan.", "warning");
+      toast.notify(
+        target.status === "RECEIVED"
+          ? "Pembelian dibatalkan dan stok dikembalikan."
+          : "Pembelian dibatalkan.",
+        "warning",
+      );
     } catch (caught) {
       toast.notify(
         caught instanceof Error
@@ -271,6 +285,8 @@ export function PurchasingPage() {
           : "Pembelian gagal dibatalkan.",
         "danger",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -412,7 +428,10 @@ export function PurchasingPage() {
                               <Td align="center">
                                 <div class="flex justify-center gap-1">
                                   <Show
-                                    when={purchase.total - purchase.paid > 0}
+                                    when={
+                                      purchase.status !== "CANCELLED" &&
+                                      purchase.total - purchase.paid > 0
+                                    }
                                     fallback={
                                       <span class="self-center text-xs text-success">
                                         Lunas
@@ -421,6 +440,7 @@ export function PurchasingPage() {
                                   >
                                     <Button
                                       size="sm"
+                                      aria-label={`Bayar ${purchase.invoice}`}
                                       onClick={() => openPayment(purchase)}
                                     >
                                       Bayar
@@ -435,6 +455,7 @@ export function PurchasingPage() {
                                     <Button
                                       size="sm"
                                       variant="soft-danger"
+                                      aria-label={`Batalkan ${purchase.invoice}`}
                                       onClick={() => setCancelTarget(purchase)}
                                     >
                                       Batalkan
@@ -578,7 +599,11 @@ export function PurchasingPage() {
             footer={
               <>
                 <Button onClick={() => setModal(null)}>Batal</Button>
-                <Button variant="primary" onClick={() => void savePurchase()}>
+                <Button
+                  variant="primary"
+                  loading={saving()}
+                  onClick={() => void savePurchase()}
+                >
                   Simpan pembelian
                 </Button>
               </>
@@ -596,7 +621,7 @@ export function PurchasingPage() {
                   }
                 >
                   <option value="">Pilih supplier...</option>
-                  <For each={suppliers()}>
+                  <For each={suppliersQuery.data ?? []}>
                     {(supplier) => (
                       <option value={supplier.name}>{supplier.name}</option>
                     )}
@@ -702,7 +727,7 @@ export function PurchasingPage() {
                 <b>{formatRupiah(purchaseTotal())}</b>
               </div>
               <Show when={purchaseError()}>
-                <p class="text-xs font-semibold text-danger">
+                <p role="alert" class="text-xs font-semibold text-danger">
                   {purchaseError()}
                 </p>
               </Show>
@@ -723,7 +748,11 @@ export function PurchasingPage() {
             footer={
               <>
                 <Button onClick={() => setModal(null)}>Batal</Button>
-                <Button variant="success" onClick={() => void savePayment()}>
+                <Button
+                  variant="success"
+                  loading={saving()}
+                  onClick={() => void savePayment()}
+                >
                   Simpan pembayaran
                 </Button>
               </>
@@ -754,7 +783,7 @@ export function PurchasingPage() {
                 </Select>
               </Field>
               <Show when={paymentError()}>
-                <p class="text-xs font-semibold text-danger">
+                <p role="alert" class="text-xs font-semibold text-danger">
                   {paymentError()}
                 </p>
               </Show>
@@ -774,6 +803,7 @@ export function PurchasingPage() {
                   <Button onClick={() => setCancelTarget(null)}>Tidak</Button>
                   <Button
                     variant="soft-danger"
+                    loading={saving()}
                     onClick={() => void cancelPurchase()}
                   >
                     Batalkan

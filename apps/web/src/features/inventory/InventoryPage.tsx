@@ -85,16 +85,18 @@ export function InventoryPage() {
         title="Persediaan"
         subtitle="Stok berasal dari ledger; koreksi hanya melalui opname atau penyesuaian."
         actions={
-          <Select
-            value={location()}
-            onChange={(event) => setLocation(event.currentTarget.value)}
-            aria-label="Filter lokasi"
-            class="w-44"
-          >
-            <option value="SEMUA">Semua lokasi</option>
-            <option value="WH-BACK">Gudang belakang</option>
-            <option value="STORE-FRONT">Area toko</option>
-          </Select>
+          <Show when={tab() === "MUTASI"}>
+            <Select
+              value={location()}
+              onChange={(event) => setLocation(event.currentTarget.value)}
+              aria-label="Filter lokasi"
+              class="w-44"
+            >
+              <option value="SEMUA">Semua lokasi</option>
+              <option value="WH-BACK">Gudang belakang</option>
+              <option value="STORE-FRONT">Area toko</option>
+            </Select>
+          </Show>
         }
       />
 

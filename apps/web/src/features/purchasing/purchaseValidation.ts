@@ -26,7 +26,12 @@ export function validatePurchaseDraft(draft: PurchaseDraft): string | null {
 
   if (
     draft.items.some(
-      (item) => !item.productId || item.quantity <= 0 || item.unitCost < 0,
+      (item) =>
+        !item.productId ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity <= 0 ||
+        !Number.isInteger(item.unitCost) ||
+        item.unitCost <= 0,
     )
   ) {
     return "Lengkapi produk, jumlah, dan harga.";

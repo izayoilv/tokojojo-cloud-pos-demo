@@ -5,6 +5,7 @@ import {
   dailySalesSeries,
   inventoryValue,
   lowStockProducts,
+  recordsCashRefund,
   recordsInRange,
   salesInRange,
   salesKpis,
@@ -66,13 +67,31 @@ const sale = (overrides: Partial<Sale> = {}): Sale => ({
 });
 
 describe("saleTotals", () => {
-  it("applies discounts and excludes returned quantities from cost", () => {
+  it("excludes returned quantities from revenue, discount, and cost", () => {
     expect(saleTotals(sale())).toEqual({
-      subtotal: 259500,
+      subtotal: 222000,
       discount: 1000,
-      grandTotal: 258500,
+      grandTotal: 221000,
       cogs: 194400,
     });
+  });
+
+  it("reports zero totals for a voided sale", () => {
+    expect(saleTotals(sale({ status: "VOIDED" }))).toEqual({
+      subtotal: 0,
+      discount: 0,
+      grandTotal: 0,
+      cogs: 0,
+    });
+  });
+});
+
+describe("recordsCashRefund", () => {
+  it("only records cash refunds for paid methods", () => {
+    expect(recordsCashRefund("TUNAI")).toBe(true);
+    expect(recordsCashRefund("QRIS")).toBe(true);
+    expect(recordsCashRefund("HUTANG")).toBe(false);
+    expect(recordsCashRefund("CAMPURAN")).toBe(false);
   });
 });
 
@@ -115,10 +134,10 @@ describe("lowStockProducts", () => {
 describe("salesKpis", () => {
   it("aggregates revenue, cost, profit, and margin", () => {
     const result = salesKpis([sale(), sale({ id: "SALE-2", items: [] })]);
-    expect(result.revenue).toBe(258500);
+    expect(result.revenue).toBe(221000);
     expect(result.cogs).toBe(194400);
-    expect(result.grossProfit).toBe(64100);
-    expect(result.margin).toBeCloseTo(24.8, 1);
+    expect(result.grossProfit).toBe(26600);
+    expect(result.margin).toBeCloseTo(12.0, 1);
   });
 
   it("returns zeros for no sales", () => {
@@ -164,6 +183,13 @@ describe("salesInRange", () => {
     expect(salesInRange(dated, "ALL")).toHaveLength(4);
     expect(salesInRange([], "ALL")).toEqual([]);
   });
+
+  it("keeps voided sales out of revenue summaries", () => {
+    const voided = sale({ id: "VOID", status: "VOIDED" });
+    const completed = sale({ id: "OK" });
+
+    expect(salesKpis([completed, voided])).toEqual(salesKpis([completed]));
+  });
 });
 
 describe("recordsInRange", () => {
@@ -208,8 +234,8 @@ describe("dailySalesSeries", () => {
       "2025-05-13",
       "2025-05-14",
     ]);
-    expect(series[1]?.revenue).toBe(517000);
-    expect(series[1]?.grossProfit).toBe(128200);
+    expect(series[1]?.revenue).toBe(442000);
+    expect(series[1]?.grossProfit).toBe(53200);
   });
 
   it("returns an empty series for no sales", () => {

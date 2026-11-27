@@ -50,4 +50,24 @@ describe("validatePurchaseDraft", () => {
       }),
     ).toBe("Lengkapi produk, jumlah, dan harga.");
   });
+
+  it("rejects fractional and non-finite amounts", () => {
+    for (const quantity of [1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(
+        validatePurchaseDraft({
+          ...valid,
+          items: [{ ...valid.items[0]!, quantity }],
+        }),
+      ).toBe("Lengkapi produk, jumlah, dan harga.");
+    }
+
+    for (const unitCost of [1.5, Number.NaN, -1]) {
+      expect(
+        validatePurchaseDraft({
+          ...valid,
+          items: [{ ...valid.items[0]!, unitCost }],
+        }),
+      ).toBe("Lengkapi produk, jumlah, dan harga.");
+    }
+  });
 });

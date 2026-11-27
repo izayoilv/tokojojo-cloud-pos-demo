@@ -72,6 +72,7 @@ export function SalesPage() {
   const [voidOpen, setVoidOpen] = createSignal(false);
   const [voidReason, setVoidReason] = createSignal("");
   const [voidError, setVoidError] = createSignal("");
+  const [saving, setSaving] = createSignal(false);
 
   const salesQuery = createQuery(() => ({
     queryKey: ["sales"],
@@ -145,7 +146,7 @@ export function SalesPage() {
 
   const submitReturn = async () => {
     const sale = selected();
-    if (!sale) return;
+    if (!sale || saving()) return;
 
     const returns = sale.items
       .map((item) => ({
@@ -159,6 +160,7 @@ export function SalesPage() {
       return;
     }
 
+    setSaving(true);
     try {
       await repository.returnSale(sale.id, returns, returnReason());
       await invalidateSales();
@@ -169,6 +171,8 @@ export function SalesPage() {
       setReturnError(
         caught instanceof Error ? caught.message : "Retur gagal disimpan.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -180,8 +184,9 @@ export function SalesPage() {
 
   const submitVoid = async () => {
     const sale = selected();
-    if (!sale) return;
+    if (!sale || saving()) return;
 
+    setSaving(true);
     try {
       await repository.voidSale(sale.id, voidReason());
       await invalidateSales();
@@ -192,6 +197,8 @@ export function SalesPage() {
       setVoidError(
         caught instanceof Error ? caught.message : "Void gagal disimpan.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -309,7 +316,7 @@ export function SalesPage() {
       </Panel>
 
       <Drawer
-        open={selected() !== null}
+        open={selected() !== null && !returnOpen() && !voidOpen()}
         onOpenChange={(open) => !open && setSelected(null)}
         title={`Invoice ${selected()?.number ?? ""}`}
         description={`${selected()?.cashier ?? ""} · ${selected() ? formatDateTime(selected()!.time) : ""}`}
@@ -444,7 +451,11 @@ export function SalesPage() {
             footer={
               <>
                 <Button onClick={() => setReturnOpen(false)}>Batal</Button>
-                <Button variant="primary" onClick={() => void submitReturn()}>
+                <Button
+                  variant="primary"
+                  loading={saving()}
+                  onClick={() => void submitReturn()}
+                >
                   Simpan retur
                 </Button>
               </>
@@ -498,7 +509,9 @@ export function SalesPage() {
                 <b>{formatRupiah(returnPreview())}</b>
               </div>
               <Show when={returnError()}>
-                <p class="text-xs font-semibold text-danger">{returnError()}</p>
+                <p role="alert" class="text-xs font-semibold text-danger">
+                  {returnError()}
+                </p>
               </Show>
             </div>
           </Modal>
@@ -518,7 +531,11 @@ export function SalesPage() {
             footer={
               <>
                 <Button onClick={() => setVoidOpen(false)}>Batal</Button>
-                <Button variant="soft-danger" onClick={() => void submitVoid()}>
+                <Button
+                  variant="soft-danger"
+                  loading={saving()}
+                  onClick={() => void submitVoid()}
+                >
                   Void transaksi
                 </Button>
               </>
@@ -537,7 +554,9 @@ export function SalesPage() {
                 />
               </Field>
               <Show when={voidError()}>
-                <p class="text-xs font-semibold text-danger">{voidError()}</p>
+                <p role="alert" class="text-xs font-semibold text-danger">
+                  {voidError()}
+                </p>
               </Show>
             </div>
           </Modal>

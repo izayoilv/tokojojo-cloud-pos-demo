@@ -536,12 +536,20 @@ export function DashboardPage() {
                                   tone={
                                     sale.status === "COMPLETED"
                                       ? "success"
-                                      : "warning"
+                                      : sale.status === "VOIDED"
+                                        ? "danger"
+                                        : sale.status === "RETURNED"
+                                          ? "neutral"
+                                          : "warning"
                                   }
                                 >
                                   {sale.status === "COMPLETED"
                                     ? "Selesai"
-                                    : "Sebagian"}
+                                    : sale.status === "PARTIAL_RETURN"
+                                      ? "Retur sebagian"
+                                      : sale.status === "RETURNED"
+                                        ? "Dikembalikan"
+                                        : "Void"}
                                 </Badge>
                               </Td>
                             </tr>
@@ -617,7 +625,7 @@ export function DashboardPage() {
             </div>
 
             <div class="text-right text-xs text-ink-muted">
-              Data terakhir: 24 Nov 2026, 14:30 WIB
+              Data terakhir: {lastUpdated()}
             </div>
           </div>
         </Show>

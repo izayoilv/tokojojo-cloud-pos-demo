@@ -1,5 +1,6 @@
 import type {
   LocationCode,
+  PaymentMethod,
   Product,
   ProductUnit,
   Sale,
@@ -26,13 +27,17 @@ export type StockValuationSlice = {
 };
 
 export function saleTotals(sale: Sale): SaleTotals {
+  if (sale.status === "VOIDED") {
+    return { subtotal: 0, discount: 0, grandTotal: 0, cogs: 0 };
+  }
+
   let subtotal = 0;
   let discount = 0;
   let cogs = 0;
 
   for (const item of sale.items) {
     const sold = Math.max(0, item.quantity - item.returned);
-    subtotal += item.quantity * item.price;
+    subtotal += sold * item.price;
     discount += sold * item.discount;
     cogs += sold * item.cost;
   }
@@ -43,6 +48,10 @@ export function saleTotals(sale: Sale): SaleTotals {
     grandTotal: subtotal - discount,
     cogs,
   };
+}
+
+export function recordsCashRefund(method: PaymentMethod): boolean {
+  return method !== "HUTANG" && method !== "CAMPURAN";
 }
 
 export function totalStock(product: Product): number {

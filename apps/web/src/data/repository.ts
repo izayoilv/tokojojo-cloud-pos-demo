@@ -1,3 +1,4 @@
+import { recordsCashRefund } from "../lib/calc";
 import {
   demoPassword,
   payables,
@@ -68,8 +69,44 @@ let localPayables = clone(payables);
 let localMovements = clone(stockMovements);
 let localSales = clone(sales);
 
-const nextId = (prefix: string, values: Array<{ id: string }>) =>
-  `${prefix}-${String(values.length + 1).padStart(3, "0")}`;
+const nextId = (prefix: string, values: Array<{ id: string }>) => {
+  const highest = values.reduce((max, value) => {
+    const suffix = Number(/(\d+)$/.exec(value.id)?.[1] ?? 0);
+    return Number.isFinite(suffix) ? Math.max(max, suffix) : max;
+  }, 0);
+
+  return `${prefix}-${String(highest + 1).padStart(3, "0")}`;
+};
+
+function syncSupplierPayable(supplierName: string): void {
+  const name = supplierName.trim();
+  const outstanding = localPayables
+    .filter((item) => item.supplierName === name)
+    .reduce((sum, item) => sum + Math.max(0, item.total - item.paid), 0);
+  const existing = localSuppliers.find((supplier) => supplier.name === name);
+
+  if (existing) {
+    localSuppliers = localSuppliers.map((supplier) =>
+      supplier.name === name ? { ...supplier, payable: outstanding } : supplier,
+    );
+    return;
+  }
+
+  localSuppliers = [
+    ...localSuppliers,
+    {
+      id: nextId("SUP", localSuppliers),
+      code: `SUP-${String(localSuppliers.length + 1).padStart(2, "0")}`,
+      name,
+      contact: "",
+      phone: "",
+      address: "",
+      termDays: 14,
+      payable: outstanding,
+      active: true,
+    },
+  ];
+}
 
 export const repository = {
   async login(username: string, password: string): Promise<User> {
@@ -211,20 +248,22 @@ export const repository = {
         ? { ...product, storeStock: product.storeStock + request.quantity }
         : product;
     });
-    localCashFlows = [
-      {
-        id: nextId("CF", localCashFlows),
-        time: now,
-        type: "OUT",
-        category: "Retur penjualan",
-        method: sale.method,
-        amount: refund,
-        reference: sale.number,
-        source: "AUTO",
-        createdBy: "Ko Jojo Halim",
-      },
-      ...localCashFlows,
-    ];
+    if (refund > 0 && recordsCashRefund(sale.method)) {
+      localCashFlows = [
+        {
+          id: nextId("CF", localCashFlows),
+          time: now,
+          type: "OUT",
+          category: "Retur penjualan",
+          method: sale.method,
+          amount: refund,
+          reference: sale.number,
+          source: "AUTO",
+          createdBy: "Ko Jojo Halim",
+        },
+        ...localCashFlows,
+      ];
+    }
     localSales = localSales.map((item) => (item.id === id ? updated : item));
 
     return clone(updated);
@@ -288,7 +327,7 @@ export const repository = {
         : product;
     });
 
-    if (refund > 0) {
+    if (refund > 0 && recordsCashRefund(sale.method)) {
       localCashFlows = [
         {
           id: nextId("CF", localCashFlows),
@@ -426,7 +465,15 @@ export const repository = {
       throw new Error("Tambahkan minimal satu barang.");
     }
 
-    if (input.items.some((item) => item.quantity <= 0 || item.unitCost < 0)) {
+    if (
+      input.items.some(
+        (item) =>
+          !Number.isInteger(item.quantity) ||
+          item.quantity <= 0 ||
+          !Number.isInteger(item.unitCost) ||
+          item.unitCost <= 0,
+      )
+    ) {
       throw new Error("Jumlah dan harga barang harus valid.");
     }
 
@@ -489,6 +536,7 @@ export const repository = {
       },
       ...localPayables,
     ];
+    syncSupplierPayable(purchase.supplierName);
 
     return clone(purchase);
   },
@@ -556,6 +604,7 @@ export const repository = {
           },
           ...localPayables,
         ];
+    syncSupplierPayable(purchase.supplierName);
     localCashFlows = [
       {
         id: nextId("CF", localCashFlows),
@@ -591,6 +640,18 @@ export const repository = {
     }
 
     if (purchase.status === "RECEIVED") {
+      for (const item of purchase.items ?? []) {
+        const product = localProducts.find(
+          (entry) => entry.id === item.productId,
+        );
+
+        if (!product || product.warehouseStock < item.quantity) {
+          throw new Error(
+            "Stok gudang tidak cukup untuk membatalkan pembelian.",
+          );
+        }
+      }
+
       localProducts = localProducts.map((product) => {
         const item = purchase.items?.find(
           (entry) => entry.productId === product.id,
@@ -599,10 +660,7 @@ export const repository = {
         return item
           ? {
               ...product,
-              warehouseStock: Math.max(
-                0,
-                product.warehouseStock - item.quantity,
-              ),
+              warehouseStock: product.warehouseStock - item.quantity,
             }
           : product;
       });
@@ -615,7 +673,7 @@ export const repository = {
           productName: item.productName,
           location: "WH-BACK",
           type: "PURCHASE_CANCEL",
-          quantity: item.quantity,
+          quantity: -item.quantity,
           reference: purchase.invoice,
           note: "Pembatalan pembelian",
           createdBy: "Ko Jojo Halim",
@@ -627,6 +685,7 @@ export const repository = {
     localPayables = localPayables.filter(
       (item) => item.invoice !== purchase.invoice,
     );
+    syncSupplierPayable(purchase.supplierName);
     const updated: Purchase = { ...purchase, status: "CANCELLED" };
     localPurchases = localPurchases.map((item) =>
       item.id === id ? updated : item,
@@ -660,7 +719,14 @@ export const repository = {
       throw new Error("Tambahkan minimal satu barang.");
     }
 
+    const seen = new Set<string>();
+
     for (const item of items) {
+      if (seen.has(item.productId)) {
+        throw new Error("Produk tidak boleh duplikat dalam satu mutasi.");
+      }
+      seen.add(item.productId);
+
       if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
         throw new Error("Jumlah harus berupa angka bulat lebih dari nol.");
       }
@@ -673,8 +739,16 @@ export const repository = {
         throw new Error("Produk tidak ditemukan.");
       }
 
+      const reserved = localTransfers
+        .filter(
+          (transfer) => transfer.status === "PENDING" && transfer.from === from,
+        )
+        .flatMap((transfer) => transfer.items ?? [])
+        .filter((entry) => entry.productId === item.productId)
+        .reduce((sum, entry) => sum + entry.quantity, 0);
       const available =
-        from === "WH-BACK" ? product.warehouseStock : product.storeStock;
+        (from === "WH-BACK" ? product.warehouseStock : product.storeStock) -
+        reserved;
 
       if (item.quantity > available) {
         throw new Error(
@@ -706,13 +780,44 @@ export const repository = {
     await delay();
     const transfer = localTransfers.find((item) => item.id === id);
 
-    if (!transfer || transfer.status !== "PENDING") {
-      return;
+    if (!transfer) {
+      throw new Error("Mutasi tidak ditemukan.");
+    }
+
+    if (transfer.status !== "PENDING") {
+      throw new Error("Hanya mutasi pending yang dapat diselesaikan.");
     }
 
     const now = new Date().toISOString();
     const movementStart = localMovements.length;
     const items = transfer.items ?? [];
+
+    if (items.length === 0) {
+      throw new Error("Mutasi tidak memiliki barang.");
+    }
+
+    for (const item of items) {
+      const product = localProducts.find(
+        (entry) => entry.id === item.productId,
+      );
+
+      if (!product) {
+        throw new Error("Produk tidak ditemukan.");
+      }
+
+      const available =
+        transfer.from === "WH-BACK"
+          ? product.warehouseStock
+          : product.storeStock;
+
+      if (item.quantity > available) {
+        throw new Error(
+          transfer.from === "WH-BACK"
+            ? "Stok gudang tidak cukup."
+            : "Stok toko tidak cukup.",
+        );
+      }
+    }
 
     localProducts = localProducts.map((product) => {
       const item = items.find((entry) => entry.productId === product.id);
@@ -723,11 +828,11 @@ export const repository = {
         ...product,
         warehouseStock:
           transfer.from === "WH-BACK"
-            ? Math.max(0, product.warehouseStock - item.quantity)
+            ? product.warehouseStock - item.quantity
             : product.warehouseStock,
         storeStock:
           transfer.from === "STORE-FRONT"
-            ? Math.max(0, product.storeStock - item.quantity)
+            ? product.storeStock - item.quantity
             : product.storeStock,
       };
     });
@@ -757,7 +862,7 @@ export const repository = {
         productName: item.productName,
         location: transfer.from,
         type: "TRANSFER_OUT",
-        quantity: item.quantity,
+        quantity: -item.quantity,
         reference: transfer.number,
         note: "Mutasi keluar",
         createdBy: "Ko Jojo Halim",
@@ -791,6 +896,16 @@ export const repository = {
 
   async cancelTransfer(id: string): Promise<void> {
     await delay();
+    const transfer = localTransfers.find((item) => item.id === id);
+
+    if (!transfer) {
+      throw new Error("Mutasi tidak ditemukan.");
+    }
+
+    if (transfer.status !== "PENDING") {
+      throw new Error("Hanya mutasi pending yang dapat dibatalkan.");
+    }
+
     localTransfers = localTransfers.map((item) =>
       item.id === id ? { ...item, status: "CANCELLED" } : item,
     );
@@ -863,10 +978,14 @@ export const repository = {
     const opname = localOpnames.find((item) => item.id === id);
 
     if (!opname) {
-      return;
+      throw new Error("Opname tidak ditemukan.");
     }
 
-    if (opname.status !== "APPROVED" && status === "APPROVED") {
+    if (opname.status !== "PENDING_REVIEW") {
+      throw new Error("Status opname tidak dapat diubah.");
+    }
+
+    if (status === "APPROVED") {
       const movementStart = localMovements.length;
       const movements: StockMovement[] = [];
 
@@ -878,6 +997,17 @@ export const repository = {
         if (!item) return product;
 
         const difference = item.physicalQty - item.systemQty;
+        const current =
+          opname.location === "WH-BACK"
+            ? product.warehouseStock
+            : product.storeStock;
+        const next = current + difference;
+
+        if (next < 0) {
+          throw new Error(
+            `Stok ${product.name} tidak cukup untuk menerapkan selisih opname.`,
+          );
+        }
 
         if (difference !== 0) {
           movements.push({
@@ -895,8 +1025,8 @@ export const repository = {
         }
 
         return opname.location === "WH-BACK"
-          ? { ...product, warehouseStock: item.physicalQty }
-          : { ...product, storeStock: item.physicalQty };
+          ? { ...product, warehouseStock: next }
+          : { ...product, storeStock: next };
       });
       localMovements = [...movements, ...localMovements];
     }

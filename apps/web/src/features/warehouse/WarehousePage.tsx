@@ -55,6 +55,7 @@ export function WarehousePage() {
     Array<{ productId: string; physicalQty: number }>
   >([{ productId: "", physicalQty: 0 }]);
   const [opnameError, setOpnameError] = createSignal("");
+  const [saving, setSaving] = createSignal(false);
 
   const transfersQuery = createQuery(() => ({
     queryKey: ["transfers"],
@@ -96,6 +97,7 @@ export function WarehousePage() {
   };
 
   const createTransfer = async () => {
+    if (saving()) return;
     const product = selectedProduct();
     const quantity = Number(qty());
     const error = validateTransferDraft({
@@ -120,6 +122,7 @@ export function WarehousePage() {
       quantity,
     };
 
+    setSaving(true);
     try {
       await mutate(
         () => repository.createTransfer(from(), to(), [item]),
@@ -130,6 +133,8 @@ export function WarehousePage() {
       setCreateError(
         caught instanceof Error ? caught.message : "Mutasi gagal dibuat.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -140,27 +145,37 @@ export function WarehousePage() {
 
   const confirmTransferAction = async () => {
     const action = transferAction();
-    if (!action) return;
+    if (!action || saving()) return;
 
-    await mutate(
-      () =>
+    setSaving(true);
+    try {
+      await mutate(
+        () =>
+          action.type === "complete"
+            ? repository.completeTransfer(action.transfer.id)
+            : repository.cancelTransfer(action.transfer.id),
         action.type === "complete"
-          ? repository.completeTransfer(action.transfer.id)
-          : repository.cancelTransfer(action.transfer.id),
-      action.type === "complete"
-        ? "Mutasi selesai. Stok sudah dipindahkan."
-        : "Mutasi dibatalkan.",
-    );
-    setTransferAction(null);
+          ? "Mutasi selesai. Stok sudah dipindahkan."
+          : "Mutasi dibatalkan.",
+      );
+      setTransferAction(null);
+    } catch (caught) {
+      toast.notify(
+        caught instanceof Error ? caught.message : "Mutasi gagal diproses.",
+        "danger",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const systemQty = (id: string) => {
+  const stockAt = (location: LocationCode, id: string) => {
     const product = (productsQuery.data ?? []).find((item) => item.id === id);
     if (!product) return 0;
-    return opnameLocation() === "WH-BACK"
-      ? product.warehouseStock
-      : product.storeStock;
+    return location === "WH-BACK" ? product.warehouseStock : product.storeStock;
   };
+
+  const systemQty = (id: string) => stockAt(opnameLocation(), id);
 
   const updateOpnameRow = (
     index: number,
@@ -191,6 +206,7 @@ export function WarehousePage() {
   };
 
   const saveOpname = async () => {
+    if (saving()) return;
     const error = validateOpnameDraft({
       location: opnameLocation(),
       items: opnameRows(),
@@ -201,6 +217,7 @@ export function WarehousePage() {
       return;
     }
 
+    setSaving(true);
     try {
       await mutate(
         () =>
@@ -215,6 +232,8 @@ export function WarehousePage() {
       setOpnameError(
         caught instanceof Error ? caught.message : "Opname gagal dibuat.",
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -573,7 +592,9 @@ export function WarehousePage() {
               Stok tersedia di lokasi asal: <b>{availableStock()}</b>
             </p>
             <Show when={createError()}>
-              <p class="text-xs font-semibold text-danger">{createError()}</p>
+              <p role="alert" class="text-xs font-semibold text-danger">
+                {createError()}
+              </p>
             </Show>
           </div>
         </Modal>
@@ -634,9 +655,20 @@ export function WarehousePage() {
               <Field label="Lokasi">
                 <Select
                   value={opnameLocation()}
-                  onChange={(event) =>
-                    setOpnameLocation(event.currentTarget.value as LocationCode)
-                  }
+                  onChange={(event) => {
+                    const next = event.currentTarget.value as LocationCode;
+                    setOpnameLocation(next);
+                    setOpnameRows((current) =>
+                      current.map((row) =>
+                        row.productId
+                          ? {
+                              ...row,
+                              physicalQty: stockAt(next, row.productId),
+                            }
+                          : row,
+                      ),
+                    );
+                  }}
                 >
                   <option value="STORE-FRONT">Area toko</option>
                   <option value="WH-BACK">Gudang belakang</option>
@@ -657,11 +689,13 @@ export function WarehousePage() {
                       <Select
                         aria-label="Produk opname"
                         value={row.productId}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const id = event.currentTarget.value;
                           updateOpnameRow(index(), {
-                            productId: event.currentTarget.value,
-                          })
-                        }
+                            productId: id,
+                            physicalQty: stockAt(opnameLocation(), id),
+                          });
+                        }}
                       >
                         <option value="">Pilih produk...</option>
                         <For each={productsQuery.data ?? []}>
@@ -698,7 +732,9 @@ export function WarehousePage() {
                 </For>
               </div>
               <Show when={opnameError()}>
-                <p class="text-xs font-semibold text-danger">{opnameError()}</p>
+                <p role="alert" class="text-xs font-semibold text-danger">
+                  {opnameError()}
+                </p>
               </Show>
             </div>
           </Modal>

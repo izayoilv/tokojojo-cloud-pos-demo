@@ -312,6 +312,14 @@ describe("app smoke", () => {
     const selects = dialog!.querySelectorAll<HTMLSelectElement>("select");
     selects[1]!.value = "PRD-002";
     selects[1]!.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(30);
+
+    const systemStock = dialog!.textContent?.match(/Stok sistem: (\d+)/)?.[1];
+    const physical = dialog!.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    );
+    expect(systemStock).toBeDefined();
+    expect(physical?.value).toBe(systemStock);
 
     click(
       [...dialog!.querySelectorAll("button")].find(
@@ -424,6 +432,20 @@ describe("app smoke", () => {
 
     expect(window.location.search).toContain("tab=struk");
     expect(root.textContent).toContain("Ukuran kertas");
+
+    const profilTab = [
+      ...root.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    ].find((tab) => tab.textContent?.includes("Profil Toko"));
+    click(profilTab!);
+    await wait(300);
+
+    const revertedLabel = [...root.querySelectorAll("label")].find((label) =>
+      label.textContent?.includes("Nama toko"),
+    );
+    const revertedInput = document.getElementById(
+      revertedLabel!.getAttribute("for")!,
+    ) as HTMLInputElement;
+    expect(revertedInput.value).toBe("TOKO JOJO");
   });
 
   it("guards unsaved settings changes on route navigation", async () => {

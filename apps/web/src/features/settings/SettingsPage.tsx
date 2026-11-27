@@ -260,12 +260,33 @@ export function SettingsPage() {
   };
 
   const discardChanges = () => {
-    setStoreBaseline(storeForm());
-    setReceiptBaseline(receiptForm());
-    setStockBaseline({
-      lowStockPercent: lowStockPercent(),
-      defaultLocation: defaultLocation(),
-    });
+    const settings = settingsQuery.data;
+
+    if (settings) {
+      const next = {
+        name: settings.name,
+        tagline: settings.tagline,
+        address: settings.address,
+        city: settings.city,
+        phone: settings.phone,
+        taxId: settings.taxId,
+      };
+      setStoreForm(next);
+      setStoreBaseline(next);
+      setLowStockPercent(settings.lowStockPercent);
+      setDefaultLocation(settings.defaultLocation);
+      setStockBaseline({
+        lowStockPercent: settings.lowStockPercent,
+        defaultLocation: settings.defaultLocation,
+      });
+    }
+
+    const receipt = receiptQuery.data;
+    if (receipt) {
+      setReceiptForm(receipt);
+      setReceiptBaseline(receipt);
+    }
+
     setDiscardOpen(false);
 
     const tab = pendingTab();

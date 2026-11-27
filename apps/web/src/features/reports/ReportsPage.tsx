@@ -107,7 +107,9 @@ export function ReportsPage() {
       reports()[0]!,
   );
   const filteredSales = createMemo(() =>
-    salesInRange(salesQuery.data ?? [], range()),
+    salesInRange(salesQuery.data ?? [], range()).filter(
+      (sale) => sale.status !== "VOIDED",
+    ),
   );
   const filteredMovements = createMemo(() =>
     recordsInRange(
@@ -372,6 +374,7 @@ export function ReportsPage() {
                 void payablesQuery.refetch();
                 void movementsQuery.refetch();
                 void cashFlowsQuery.refetch();
+                void settingsQuery.refetch();
               }}
             />
           </Panel>
