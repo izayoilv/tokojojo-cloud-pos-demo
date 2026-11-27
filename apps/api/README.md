@@ -5,8 +5,14 @@ Express GraphQL API for TokoJojo.
 ## Status
 
 The core PostgreSQL schema, Phase 2 auth/device/offline schema, migrations, seed,
-and schema tests are implemented. The GraphQL server, auth middleware, and offline
-sync flows are **not implemented yet**.
+and schema tests are implemented. The Express/Yoga/Pothos foundation, `/healthz`,
+request context, error mapping, schema export guard, web auth, native PASETO
+auth/refresh, device enrollment/approval/revocation, nonce proof, key rotation,
+device/session management, auth audit, catalog, stock receiving/adjustment/
+transfer/opname, purchasing/payables, POS shifts, sales, returns, voids, cash flow,
+offline tokens/grace, `upgradeOfflineSession`, `syncOfflineBatch`, `syncStatus`,
+reports, audit, user administration, settings, audit retention, and the Pothos
+schema contract gate are implemented. All SDL operations now have a resolver.
 
 | Area                                 | State                                            |
 | ------------------------------------ | ------------------------------------------------ |
@@ -16,20 +22,25 @@ sync flows are **not implemented yet**.
 | GraphQL contract                     | Implemented in `packages/graphql/schema.graphql` |
 | Views + append-only ledger guard     | Implemented                                      |
 | Development seed                     | Implemented                                      |
-| GraphQL / Pothos server              | Next step                                        |
-| Auth, sessions, device/offline flows | Pending — service/API work                       |
+| GraphQL / Pothos server              | Implemented (full SDL contract)                  |
+| Web auth: login/logout/me            | Implemented                                      |
+| Native auth, devices, key rotation   | Implemented                                      |
+| Catalog, stock, purchasing           | Implemented                                      |
+| Sales, shifts, returns, voids        | Implemented                                      |
+| Reports, users, audit, settings      | Implemented                                      |
+| Offline token/upgrade/sync           | Implemented                                      |
 
 ## Stack
 
-| Layer     | Choice                                         |
-| --------- | ---------------------------------------------- |
-| Runtime   | Node 26 + pnpm                                 |
-| HTTP      | Express 5 (planned)                            |
-| GraphQL   | GraphQL Yoga 6 (planned)                       |
-| Schema    | Pothos 4.x (planned)                           |
-| ORM       | Drizzle 0.45.x                                 |
-| Database  | PostgreSQL 18+                                 |
-| Passwords | Argon2id (seed accounts only; auth is Phase 2) |
+| Layer     | Choice                                        |
+| --------- | --------------------------------------------- |
+| Runtime   | Node 26 + pnpm                                |
+| HTTP      | Express 5                                     |
+| GraphQL   | GraphQL Yoga 6                                |
+| Schema    | Pothos 4.x                                    |
+| ORM       | Drizzle 0.45.x                                |
+| Database  | PostgreSQL 18+                                |
+| Passwords | Argon2id + versioned server pepper (web auth) |
 
 PostgreSQL is the only service in `compose.dev.yaml` right now.
 
@@ -49,15 +60,29 @@ Defaults come from `.env.example`: database `tokojojo`, user `tokojojo`,
 password `tokojojo_dev`, exposed only on `127.0.0.1:5432`. Every command reads
 `DATABASE_URL`; export it if you do not use the repo-root `.env`.
 
-| Command                                 | Purpose                                 |
-| --------------------------------------- | --------------------------------------- |
-| `pnpm db:generate`                      | Generate a Drizzle migration            |
-| `pnpm db:check`                         | Check migration consistency             |
-| `pnpm db:migrate`                       | Apply pending migrations                |
-| `pnpm db:seed`                          | Seed the development store (idempotent) |
-| `pnpm db:studio`                        | Open Drizzle Studio                     |
-| `pnpm --filter @tokojojo/api test`      | Run schema tests against `DATABASE_URL` |
-| `pnpm --filter @tokojojo/graphql check` | Validate the shared GraphQL contract    |
+Web and native auth read the versioned server pepper from `PASSWORD_PEPPER` and
+`PASSWORD_PEPPER_VERSION`; keep old values as `PASSWORD_PEPPER_V<n>` during a
+rotation. Production refuses to start without a pepper. The development fallback
+in `.env.example` is not a production secret.
+
+PASETO v4.public access tokens use `PASETO_ACTIVE_PRIVATE_KEY` (base64url raw
+32-byte Ed25519 seed), `PASETO_ACTIVE_PUBLIC_KEY`, and `PASETO_ACTIVE_KID`.
+Keep a previous public key as `PASETO_PREVIOUS_PUBLIC_KEY` /
+`PASETO_PREVIOUS_KID` during signing-key rotation. Signing keys stay in
+podman secrets/environment, never PostgreSQL. Development uses an ephemeral key
+when none is configured; production refuses to start without one.
+
+| Command                                     | Purpose                                          |
+| ------------------------------------------- | ------------------------------------------------ |
+| `pnpm db:generate`                          | Generate a Drizzle migration                     |
+| `pnpm db:check`                             | Check migration consistency                      |
+| `pnpm db:migrate`                           | Apply pending migrations                         |
+| `pnpm db:seed`                              | Seed the development store (idempotent)          |
+| `pnpm db:studio`                            | Open Drizzle Studio                              |
+| `pnpm --filter @tokojojo/api test`          | Run schema tests against `DATABASE_URL`          |
+| `pnpm --filter @tokojojo/api schema:check`  | Fail if Pothos drifts from the contract          |
+| `pnpm --filter @tokojojo/api schema:export` | Print the Pothos schema (or pass `--out <file>`) |
+| `pnpm --filter @tokojojo/graphql check`     | Validate the shared GraphQL contract             |
 
 The API package exposes the same scripts through
 `pnpm --filter @tokojojo/api <command>`.
@@ -159,21 +184,14 @@ fields, offline shift/sale fields, and `stock_opnames.submitted_at`.
 `0006_store_settings_auth_nonces.sql` adds store/receipt settings and the
 single-use auth nonce table.
 
-Still pending:
-
-- GraphQL resolvers and the Pothos schema matching `packages/graphql/schema.graphql`
-- Login/refresh/enrollment/approval/offline-token issuance flows
-- Session rotation/reuse detection, CSRF/cookie middleware, pepper rotation
-- Native nonce endpoint and device-signature verification
-- Store/receipt settings resolvers and audit events
-- Offline sync engine, conflict/retry handling, and batch signature enforcement
-- Audit event writers and retention jobs
-- ACL UI beyond the role enum
+Issue #7 API slices are complete. Client integration is tracked separately
+(#8 POS, #12 Web, #13 Android); ACL UI beyond the server role enum is also client
+work.
 
 ## Contract implementation notes
 
-The API server is not implemented yet. These rules are fixed for the server and
-client implementations.
+The API foundation and web auth are implemented. These rules apply to every
+server and client implementation.
 
 ### Roles and permissions
 
@@ -201,7 +219,8 @@ Android write scope is receive/adjust plus transfer/opname. Android never receiv
   `sessions.csrf_token_hash` and checks the request origin.
 - Web login sends `X-Client-Platform: WEB`.
 - GraphQL auth failures return HTTP 200 with `extensions.code`:
-  `UNAUTHENTICATED`, `FORBIDDEN`, `DEVICE_PENDING`, or `DEVICE_REVOKED`.
+  `UNAUTHENTICATED`, `USER_DISABLED`, `FORBIDDEN`, `RATE_LIMITED`, or
+  `VALIDATION_FAILED`; device codes arrive with the native/device slice.
 
 ### Native authentication
 
@@ -270,6 +289,21 @@ a bad signature returns `INVALID_SIGNATURE`. Retired keys are accepted only unti
 Ed25519 public keys are base64url-encoded raw 32 bytes, no padding. Per-order
 signatures use `v1:<keyId>:<base64url signature>`.
 
+### Offline tokens, grace, and sync
+
+Only an ACTIVE TAURI device receives an offline token; Android and web never do.
+The token is PASETO v4.public with `typ=offline`, `sub`, `device_id`,
+`device_key_id`, `scope`, `iat`, `exp`, `grace_until`, `jti`, and `kid`. Validity is
+7 days plus a 7-day grace window. Only the `jti` and metadata are stored; the raw
+token is never persisted or logged.
+
+`login` and `upgradeOfflineSession` issue a new token and mark the previous active
+one `rotated_at`. An expired token inside grace upgrades to an access/refresh
+session without issuing another offline token; past `grace_until`, the user must
+log in again. Sync resolves the offline token that covered each order's
+`clientCreatedAt`, so orders made during grace stay `source=GRACE` even if they sync
+after a re-auth. Grace orders are flagged and audited.
+
 ### Batch integrity
 
 The batch canonical object is `SyncOfflineBatchInput` without `batchHash`. It uses
@@ -304,7 +338,51 @@ the defaults; POS may override `paperSize` and `autoPrint` locally. `showPrice` 
 scanner feedback, biometrics, printer selection) are device-only.
 
 `storeSettings` and `receiptSettings` are readable by authenticated roles;
-`updateStoreSettings` and `updateReceiptSettings` require OWNER/ADMIN.
+`updateStoreSettings` and `updateReceiptSettings` require OWNER/ADMIN. Receipt
+`showPrice` and `footerText` are persisted server-side and are not client
+preferences.
+
+### Reports
+
+Report ranges accept `YYYY-MM-DD` dates or ISO-8601 timestamps. Date-only `from`
+is inclusive from 00:00:00Z and date-only `to` is inclusive through 23:59:59.999Z.
+Sales day buckets use `Asia/Jakarta` and are returned as `YYYY-MM-DD`.
+
+- `dashboardSummary` is available to every role with `dashboard:read`
+  (OWNER/ADMIN/CASHIER/WAREHOUSE). It aggregates completed sales only and uses
+  `v_stock_balances` for stock counts.
+- `salesReport`, `inventoryReport`, and `financeReport` require `reports:read`
+  (OWNER/ADMIN). Sales reports exclude `VOIDED` sales; finance uses
+  `v_sale_balances` and `v_purchase_balances`, which exclude `VOIDED` sales and
+  `CANCELLED` purchases.
+- Inventory reconciles opening stock plus received, sold, and adjusted movements
+  from the append-only `stock_movements` ledger.
+
+### Administration, audit, and retention
+
+- `users`, `user`, `createUser`, `updateUser`, `setUserActive`, and
+  `resetUserPassword` require a web session with `users:manage`.
+- ADMIN cannot create, modify, deactivate, or reset an OWNER, and cannot grant the
+  OWNER role. OWNER can manage every account.
+- `resetUserPassword` returns a one-time temporary password, bumps the credential
+  version, and revokes that user's active web sessions.
+- `auditEvents` requires `audit:read` and supports event, actor, device, entity,
+  and date filters plus pagination/sort. `metadata` is JSON text and never contains
+  password, token, nonce, or signature material.
+- Audit rows carry `retention_until = created_at + 180 days`. The server runs an
+  audit retention job daily and exports `purgeExpiredAuditEvents()` for tests.
+
+### Hardening and contract gate
+
+- GraphQL requests are limited by depth (default 15) and complexity (default
+  1000), configurable with `GRAPHQL_MAX_DEPTH` / `GRAPHQL_MAX_COMPLEXITY`.
+- Introspection and GraphiQL are disabled in production; unknown/internal errors
+  are masked, while documented `extensions.code` errors pass through.
+- Request/error logs contain request metadata only, never bodies, headers, tokens,
+  passwords, nonces, or signatures.
+- Login, refresh, nonce, upgrade, and sync use in-process rate limiters.
+- `pending-operations.ts` is empty. `schema:check` compares Pothos and the contract
+  structurally and by normalized `printSchema`, so CI fails on any SDL drift.
 
 ## Rules
 

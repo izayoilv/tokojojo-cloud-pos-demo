@@ -217,6 +217,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://tokojojo:tokojojo_dev@127.0.0.1:5432/tokojojo
+      PASSWORD_PEPPER: ci-development-pepper-not-for-production
+      PASSWORD_PEPPER_VERSION: "1"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -234,6 +236,8 @@ jobs:
       - run: pnpm --filter @tokojojo/api lint
       - run: pnpm exec prettier --check apps/api
       - run: pnpm --filter @tokojojo/api db:check
+      - name: Contract gate (Pothos printSchema)
+        run: pnpm --filter @tokojojo/api schema:check
       - run: pnpm --filter @tokojojo/api db:migrate
       - run: pnpm --filter @tokojojo/api db:seed
       - run: pnpm --filter @tokojojo/api db:seed
@@ -257,6 +261,8 @@ jobs:
           node-version: 26.13.1
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Contract gate (Pothos printSchema)
+        run: pnpm --filter @tokojojo/api schema:check
       - run: pnpm --filter @tokojojo/graphql check
 
   ci-gate:
