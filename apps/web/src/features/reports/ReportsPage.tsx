@@ -149,7 +149,7 @@ export function ReportsPage() {
           const sold = Math.max(0, item.quantity - item.returned);
           const current = buckets.get(item.name) ?? { qty: 0, revenue: 0 };
           current.qty += sold;
-          current.revenue += sold * item.price;
+          current.revenue += sold * (item.price - item.discount);
           buckets.set(item.name, current);
         }
       }

@@ -544,7 +544,7 @@ export function SalesPage() {
             <div class="space-y-3">
               <p class="text-sm text-ink-secondary">
                 Void membatalkan transaksi, mengembalikan stok, dan mencatat
-                pengeluaran. Tindakan ini masuk ke audit.
+                pengeluaran. Tindakan ini tidak dapat dibatalkan.
               </p>
               <Field label="Alasan void" required>
                 <Textarea

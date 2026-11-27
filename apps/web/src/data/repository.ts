@@ -185,6 +185,18 @@ export const repository = {
       throw new Error("Pilih minimal satu barang untuk diretur.");
     }
 
+    if (
+      new Set(returns.map((item) => item.productId)).size !== returns.length
+    ) {
+      throw new Error("Produk retur tidak boleh duplikat.");
+    }
+
+    for (const request of returns) {
+      if (!sale.items.some((item) => item.productId === request.productId)) {
+        throw new Error("Produk retur tidak ada pada transaksi ini.");
+      }
+    }
+
     let refund = 0;
     const nextItems = sale.items.map((item) => {
       const request = returns.find(
@@ -475,6 +487,19 @@ export const repository = {
       )
     ) {
       throw new Error("Jumlah dan harga barang harus valid.");
+    }
+
+    if (
+      new Set(input.items.map((item) => item.productId)).size !==
+      input.items.length
+    ) {
+      throw new Error("Produk tidak boleh duplikat dalam satu pembelian.");
+    }
+
+    for (const item of input.items) {
+      if (!localProducts.some((product) => product.id === item.productId)) {
+        throw new Error("Produk tidak ditemukan.");
+      }
     }
 
     const total = input.items.reduce(

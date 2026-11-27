@@ -168,6 +168,7 @@ export function PurchasingPage() {
       queryClient.invalidateQueries({ queryKey: ["movements"] }),
       queryClient.invalidateQueries({ queryKey: ["products"] }),
       queryClient.invalidateQueries({ queryKey: ["cashFlows"] }),
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
     ]);
   };
 
@@ -405,12 +406,18 @@ export function PurchasingPage() {
                               <Td
                                 align="right"
                                 class={
-                                  purchase.total - purchase.paid > 0
-                                    ? "font-bold text-danger"
-                                    : "text-success"
+                                  purchase.status === "CANCELLED"
+                                    ? "text-ink-muted"
+                                    : purchase.total - purchase.paid > 0
+                                      ? "font-bold text-danger"
+                                      : "text-success"
                                 }
                               >
-                                {formatRupiah(purchase.total - purchase.paid)}
+                                {purchase.status === "CANCELLED"
+                                  ? "—"
+                                  : formatRupiah(
+                                      purchase.total - purchase.paid,
+                                    )}
                               </Td>
                               <Td>
                                 <Badge
@@ -433,8 +440,16 @@ export function PurchasingPage() {
                                       purchase.total - purchase.paid > 0
                                     }
                                     fallback={
-                                      <span class="self-center text-xs text-success">
-                                        Lunas
+                                      <span
+                                        class={`self-center text-xs ${
+                                          purchase.status === "CANCELLED"
+                                            ? "text-ink-muted"
+                                            : "text-success"
+                                        }`}
+                                      >
+                                        {purchase.status === "CANCELLED"
+                                          ? "Dibatalkan"
+                                          : "Lunas"}
                                       </span>
                                     }
                                   >

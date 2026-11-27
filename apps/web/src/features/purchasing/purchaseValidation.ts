@@ -25,6 +25,14 @@ export function validatePurchaseDraft(draft: PurchaseDraft): string | null {
   }
 
   if (
+    draft.items.every((item) => item.productId) &&
+    new Set(draft.items.map((item) => item.productId)).size !==
+      draft.items.length
+  ) {
+    return "Produk tidak boleh duplikat dalam satu pembelian.";
+  }
+
+  if (
     draft.items.some(
       (item) =>
         !item.productId ||

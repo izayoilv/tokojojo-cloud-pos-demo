@@ -37,6 +37,26 @@ describe("buildReceiptHtml", () => {
     expect(html).toContain("147.000");
   });
 
+  it("nets returned quantities and shows per-unit discounts", () => {
+    const returned: Sale = {
+      ...sale,
+      status: "PARTIAL_RETURN",
+      items: [{ ...sale.items[0]!, returned: 1, discount: 500 }],
+    };
+    const html = buildReceiptHtml(returned, "TOKO JOJO");
+
+    expect(html).toContain("1 × Karung");
+    expect(html).toContain("Diskon");
+    expect(html).toContain("73.000");
+  });
+
+  it("stamps a voided receipt", () => {
+    const html = buildReceiptHtml({ ...sale, status: "VOIDED" }, "TOKO JOJO");
+
+    expect(html).toContain("VOID");
+    expect(html).toContain("DIBATALKAN");
+  });
+
   it("escapes markup in the store name", () => {
     const html = buildReceiptHtml(sale, "<script>alert(1)</script>");
 

@@ -147,7 +147,9 @@ export function DashboardPage() {
 
   const rangeSales = createMemo(() => salesInRange(sales(), range()));
   const kpis = createMemo(() => salesKpis(rangeSales()));
-  const lowStock = createMemo(() => lowStockProducts(products()));
+  const lowStock = createMemo(() =>
+    lowStockProducts(products().filter((product) => product.active)),
+  );
   const chart = createMemo(() => dailySalesSeries(sales(), range()));
   const recentSales = createMemo(() =>
     [...rangeSales()].sort((a, b) => b.time.localeCompare(a.time)).slice(0, 4),
@@ -179,7 +181,7 @@ export function DashboardPage() {
   });
 
   const statusCounts = createMemo(() => {
-    const items = products();
+    const items = products().filter((product) => product.active);
     return {
       aman: items.filter((p) => stockStatus(p) === "AMAN").length,
       menipis: items.filter((p) => stockStatus(p) === "MENIPIS").length,

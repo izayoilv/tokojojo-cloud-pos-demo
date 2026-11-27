@@ -102,7 +102,10 @@ export function InventoryPage() {
 
       <Tabs
         value={tab()}
-        onChange={setTab}
+        onChange={(next) => {
+          setTab(next);
+          if (next !== "MUTASI") setLocation("SEMUA");
+        }}
         items={[
           { value: "STOK", label: "Stok", count: products().length },
           { value: "MUTASI", label: "Mutasi", count: movements().length },

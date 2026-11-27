@@ -20,5 +20,6 @@ describe("escapeCsvCell", () => {
   it("leaves plain values and numbers unchanged", () => {
     expect(escapeCsvCell("Beras")).toBe("Beras");
     expect(escapeCsvCell(258500)).toBe("258500");
+    expect(escapeCsvCell(-2)).toBe("-2");
   });
 });

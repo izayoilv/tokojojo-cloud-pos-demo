@@ -56,6 +56,7 @@ export function WarehousePage() {
   >([{ productId: "", physicalQty: 0 }]);
   const [opnameError, setOpnameError] = createSignal("");
   const [saving, setSaving] = createSignal(false);
+  const [decidingOpname, setDecidingOpname] = createSignal(false);
 
   const transfersQuery = createQuery(() => ({
     queryKey: ["transfers"],
@@ -176,6 +177,29 @@ export function WarehousePage() {
   };
 
   const systemQty = (id: string) => stockAt(opnameLocation(), id);
+
+  const decideOpname = async (
+    opname: { id: string; number: string },
+    status: "APPROVED" | "REJECTED",
+    message: string,
+  ) => {
+    if (decidingOpname()) return;
+
+    setDecidingOpname(true);
+    try {
+      await mutate(
+        () => repository.setOpnameStatus(opname.id, status),
+        message,
+      );
+    } catch (caught) {
+      toast.notify(
+        caught instanceof Error ? caught.message : "Opname gagal diproses.",
+        "danger",
+      );
+    } finally {
+      setDecidingOpname(false);
+    }
+  };
 
   const updateOpnameRow = (
     index: number,
@@ -443,13 +467,12 @@ export function WarehousePage() {
                             <Button
                               size="sm"
                               variant="success"
+                              aria-label={`Setujui opname ${opname.number}`}
+                              loading={decidingOpname()}
                               onClick={() =>
-                                void mutate(
-                                  () =>
-                                    repository.setOpnameStatus(
-                                      opname.id,
-                                      "APPROVED",
-                                    ),
+                                void decideOpname(
+                                  opname,
+                                  "APPROVED",
                                   "Opname disetujui. Selisih diterapkan.",
                                 )
                               }
@@ -459,13 +482,12 @@ export function WarehousePage() {
                             <Button
                               size="sm"
                               variant="soft-danger"
+                              aria-label={`Tolak opname ${opname.number}`}
+                              loading={decidingOpname()}
                               onClick={() =>
-                                void mutate(
-                                  () =>
-                                    repository.setOpnameStatus(
-                                      opname.id,
-                                      "REJECTED",
-                                    ),
+                                void decideOpname(
+                                  opname,
+                                  "REJECTED",
                                   "Opname ditolak.",
                                 )
                               }

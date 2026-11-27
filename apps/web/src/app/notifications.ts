@@ -25,6 +25,7 @@ export function buildNotifications(input: {
   const now = input.now ?? new Date();
 
   for (const product of input.products) {
+    if (!product.active) continue;
     const status = stockStatus(product);
 
     if (status === "HABIS") {

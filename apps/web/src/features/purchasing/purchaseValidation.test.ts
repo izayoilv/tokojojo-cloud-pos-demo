@@ -51,6 +51,15 @@ describe("validatePurchaseDraft", () => {
     ).toBe("Lengkapi produk, jumlah, dan harga.");
   });
 
+  it("rejects the same product on more than one line", () => {
+    expect(
+      validatePurchaseDraft({
+        ...valid,
+        items: [valid.items[0]!, { ...valid.items[0]!, quantity: 1 }],
+      }),
+    ).toBe("Produk tidak boleh duplikat dalam satu pembelian.");
+  });
+
   it("rejects fractional and non-finite amounts", () => {
     for (const quantity of [1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(

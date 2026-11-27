@@ -85,6 +85,13 @@ const build = (role: Role) =>
         warehouseStock: 3,
         storeStock: 1,
       }),
+      product({
+        id: "ARCHIVED",
+        name: "Produk Arsip",
+        warehouseStock: 0,
+        storeStock: 0,
+        active: false,
+      }),
     ],
     transfers: [transfer()],
     opnames: [opname()],
@@ -104,6 +111,9 @@ describe("buildNotifications", () => {
       "Stok habis: Sunlight",
       "Stok menipis: Gula",
     ]);
+    expect(stock.some((item) => item.title.includes("Produk Arsip"))).toBe(
+      false,
+    );
   });
 
   it("shows pending warehouse work to roles with GUDANG access", () => {

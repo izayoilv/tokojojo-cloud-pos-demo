@@ -150,6 +150,17 @@ describe("repository purchases", () => {
     expect(afterCancel).toBe(before);
   });
 
+  it("rejects duplicate product lines in a purchase", async () => {
+    await expect(
+      repository.createPurchase({
+        supplierName: "PT Uji",
+        invoice: "INV-TEST-DUP",
+        due: "2026-12-10",
+        items: [items[0]!, { ...items[0]!, quantity: 1 }],
+      }),
+    ).rejects.toThrow("Produk tidak boleh duplikat");
+  });
+
   it("rejects a duplicate supplier invoice", async () => {
     await expect(
       repository.createPurchase({
