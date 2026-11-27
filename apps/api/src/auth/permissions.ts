@@ -219,8 +219,8 @@ export function canManageUser(
   targetRole: Role,
   action: UserManagementAction,
 ): boolean {
+  void action;
   if (actorRole === "OWNER") return true;
   if (actorRole !== "ADMIN") return false;
-  if (targetRole === "OWNER" && action !== "create") return false;
-  return action !== "create" || targetRole !== "OWNER";
+  return targetRole !== "OWNER";
 }
