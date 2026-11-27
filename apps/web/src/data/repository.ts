@@ -295,6 +295,7 @@ export const repository = {
 
     if (
       sale.status !== "COMPLETED" ||
+      sale.paid > 0 ||
       sale.items.some((item) => item.returned > 0)
     ) {
       throw new Error(

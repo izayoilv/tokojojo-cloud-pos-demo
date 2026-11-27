@@ -41,6 +41,7 @@ const sale = (overrides: Partial<Sale> = {}): Sale => ({
   method: "TUNAI",
   status: "COMPLETED",
   received: 300000,
+  paid: 221000,
   items: [
     {
       productId: "PRD-001",

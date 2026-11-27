@@ -561,9 +561,9 @@ describe("repository sales", () => {
     ).rejects.toThrow("melebihi jumlah yang tersisa");
   });
 
-  it("voids a sale and records reversal movements", async () => {
+  it("voids an unpaid sale and records reversal movements", async () => {
     const sale = (await repository.listSales()).find(
-      (item) => item.status === "COMPLETED",
+      (item) => item.status === "COMPLETED" && item.paid === 0,
     )!;
     const updated = await repository.voidSale(sale.id, "Salah input transaksi");
 
@@ -573,6 +573,16 @@ describe("repository sales", () => {
     );
     expect(movements[0]?.type).toBe("SALE_VOID");
     expect((await repository.listCashFlows())[0]?.type).toBe("OUT");
+  });
+
+  it("rejects voiding a paid sale", async () => {
+    const sale = (await repository.listSales()).find(
+      (item) => item.status === "COMPLETED" && item.paid > 0,
+    )!;
+
+    await expect(repository.voidSale(sale.id, "Ulang")).rejects.toThrow(
+      "tanpa pembayaran atau retur",
+    );
   });
 
   it("rejects voiding a sale after a return", async () => {

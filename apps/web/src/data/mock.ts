@@ -439,6 +439,16 @@ const rawSales: RawSale[] = [
       ["PRD-011", 2, 0],
     ],
   },
+  {
+    number: "POS/20261124/0004",
+    time: "2026-11-24T11:15:00+07:00",
+    cashier: "Dewi Lestari",
+    terminal: "KASIR-DESKTOP-01",
+    method: "HUTANG",
+    status: "COMPLETED",
+    received: 0,
+    items: [["PRD-006", 2, 0]],
+  },
 ];
 
 function toSaleItem([
@@ -486,6 +496,7 @@ export const sales: Sale[] = rawSales.map((sale, index) => {
     method: sale.method,
     status: sale.status,
     received: sale.received || subtotal - discount,
+    paid: sale.method === "HUTANG" ? 0 : subtotal - discount,
     items,
   };
 });

@@ -12,6 +12,7 @@ const sale: Sale = {
   method: "TUNAI",
   status: "COMPLETED",
   received: 100000,
+  paid: 147000,
   items: [
     {
       productId: "PRD-001",

@@ -64,6 +64,7 @@ export type Sale = {
   method: PaymentMethod;
   status: SaleStatus;
   received: number;
+  paid: number;
   items: SaleItem[];
 };
 

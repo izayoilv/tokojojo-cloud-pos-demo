@@ -349,7 +349,13 @@ export function SalesPage() {
                 <RefreshCcw size={14} /> Retur
               </Button>
             </Show>
-            <Show when={canVoid() && selected()?.status === "COMPLETED"}>
+            <Show
+              when={
+                canVoid() &&
+                selected()?.status === "COMPLETED" &&
+                selected()?.paid === 0
+              }
+            >
               <Button size="sm" variant="soft-danger" onClick={openVoid}>
                 <ShieldAlert size={14} /> Void
               </Button>
