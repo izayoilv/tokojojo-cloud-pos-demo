@@ -1,10 +1,11 @@
-import { useLocation, useNavigate } from "@solidjs/router";
+import { useBeforeLeave, useLocation, useNavigate } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   Badge,
   Button,
   Field,
   Input,
+  Modal,
   PageHeader,
   Panel,
   Select,
@@ -19,7 +20,15 @@ import {
   usePreferences,
   useToast,
 } from "@tokojojo/ui";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 
 import { useAuth } from "../../app/auth";
 import { canManageSettings } from "../../app/rbac";
@@ -93,44 +102,109 @@ export function SettingsPage() {
   const [defaultLocation, setDefaultLocation] = createSignal<
     "WH-BACK" | "STORE-FRONT"
   >("WH-BACK");
+  const [storeBaseline, setStoreBaseline] = createSignal(storeForm());
+  const [receiptBaseline, setReceiptBaseline] = createSignal(receiptForm());
+  const [stockBaseline, setStockBaseline] = createSignal({
+    lowStockPercent: lowStockPercent(),
+    defaultLocation: defaultLocation(),
+  });
+  const [pendingTab, setPendingTab] = createSignal<SettingsTab | null>(null);
+  const [discardOpen, setDiscardOpen] = createSignal(false);
+  const [saving, setSaving] = createSignal(false);
+  const [saveError, setSaveError] = createSignal("");
+  let leaveRetry: (() => void) | null = null;
+
+  const dirty = createMemo(() => {
+    if (activeTab() === "PROFIL") {
+      return JSON.stringify(storeForm()) !== JSON.stringify(storeBaseline());
+    }
+
+    if (activeTab() === "STRUK") {
+      return (
+        JSON.stringify(receiptForm()) !== JSON.stringify(receiptBaseline())
+      );
+    }
+
+    if (activeTab() === "STOK") {
+      return (
+        lowStockPercent() !== stockBaseline().lowStockPercent ||
+        defaultLocation() !== stockBaseline().defaultLocation
+      );
+    }
+
+    return false;
+  });
+
+  useBeforeLeave((event) => {
+    if (!dirty() || event.defaultPrevented) return;
+
+    event.preventDefault();
+    leaveRetry = () => event.retry(true);
+    setPendingTab(null);
+    setDiscardOpen(true);
+  });
+
+  onMount(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (!dirty()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handler);
+    onCleanup(() => window.removeEventListener("beforeunload", handler));
+  });
 
   const settingsQuery = createQuery(() => ({
     queryKey: ["settings"],
     queryFn: () => repository.getSettings(),
+    enabled: manage(),
+    refetchOnReconnect: false,
   }));
   const receiptQuery = createQuery(() => ({
     queryKey: ["receiptSettings"],
     queryFn: () => repository.getReceiptSettings(),
+    enabled: manage(),
+    refetchOnReconnect: false,
   }));
   const devicesQuery = createQuery(() => ({
     queryKey: ["devices"],
     queryFn: () => repository.listDevices(),
+    enabled: manage(),
   }));
   const sessionsQuery = createQuery(() => ({
     queryKey: ["sessions"],
     queryFn: () => repository.listSessions(),
+    enabled: manage(),
   }));
 
   createEffect(() => {
     const settings = settingsQuery.data;
-    if (settings) {
-      setStoreForm({
+    if (settings && !dirty()) {
+      const next = {
         name: settings.name,
         tagline: settings.tagline,
         address: settings.address,
         city: settings.city,
         phone: settings.phone,
         taxId: settings.taxId,
-      });
+      };
+      setStoreForm(next);
+      setStoreBaseline(next);
       setLowStockPercent(settings.lowStockPercent);
       setDefaultLocation(settings.defaultLocation);
+      setStockBaseline({
+        lowStockPercent: settings.lowStockPercent,
+        defaultLocation: settings.defaultLocation,
+      });
     }
   });
 
   createEffect(() => {
     const receipt = receiptQuery.data;
-    if (receipt) {
+    if (receipt && !dirty()) {
       setReceiptForm(receipt);
+      setReceiptBaseline(receipt);
     }
   });
 
@@ -144,12 +218,18 @@ export function SettingsPage() {
       defaultLocation: defaultLocation(),
     });
     await queryClient.invalidateQueries({ queryKey: ["settings"] });
+    setStoreBaseline(storeForm());
+    setStockBaseline({
+      lowStockPercent: lowStockPercent(),
+      defaultLocation: defaultLocation(),
+    });
     toast.notify("Profil toko tersimpan.");
   };
 
   const saveReceipt = async () => {
     await repository.saveReceiptSettings(receiptForm());
     await queryClient.invalidateQueries({ queryKey: ["receiptSettings"] });
+    setReceiptBaseline(receiptForm());
     toast.notify("Pengaturan struk tersimpan.");
   };
 
@@ -162,7 +242,99 @@ export function SettingsPage() {
       defaultLocation: defaultLocation(),
     });
     await queryClient.invalidateQueries({ queryKey: ["settings"] });
+    setStockBaseline({
+      lowStockPercent: lowStockPercent(),
+      defaultLocation: defaultLocation(),
+    });
     toast.notify("Pengaturan stok tersimpan.");
+  };
+
+  const requestTab = (tab: SettingsTab) => {
+    if (tab === activeTab()) return;
+
+    if (dirty()) {
+      setPendingTab(tab);
+      setDiscardOpen(true);
+      return;
+    }
+
+    navigate(`/pengaturan?tab=${tab.toLowerCase()}`);
+  };
+
+  const keepEditing = () => {
+    setPendingTab(null);
+    leaveRetry = null;
+    setDiscardOpen(false);
+  };
+
+  const resetServerForms = () => {
+    const settings = settingsQuery.data;
+
+    if (settings) {
+      const next = {
+        name: settings.name,
+        tagline: settings.tagline,
+        address: settings.address,
+        city: settings.city,
+        phone: settings.phone,
+        taxId: settings.taxId,
+      };
+      setStoreForm(next);
+      setStoreBaseline(next);
+      setLowStockPercent(settings.lowStockPercent);
+      setDefaultLocation(settings.defaultLocation);
+      setStockBaseline({
+        lowStockPercent: settings.lowStockPercent,
+        defaultLocation: settings.defaultLocation,
+      });
+    }
+
+    const receipt = receiptQuery.data;
+    if (receipt) {
+      setReceiptForm(receipt);
+      setReceiptBaseline(receipt);
+    }
+
+    setSaveError("");
+  };
+
+  const saveActive = async () => {
+    if (!dirty() || saving()) return;
+
+    setSaving(true);
+    setSaveError("");
+
+    try {
+      if (activeTab() === "PROFIL") {
+        await saveStore();
+      } else if (activeTab() === "STRUK") {
+        await saveReceipt();
+      } else if (activeTab() === "STOK") {
+        await saveStock();
+      }
+    } catch (caught) {
+      setSaveError(
+        caught instanceof Error ? caught.message : "Perubahan gagal disimpan.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const discardChanges = () => {
+    resetServerForms();
+    setDiscardOpen(false);
+
+    const tab = pendingTab();
+    const retry = leaveRetry;
+    setPendingTab(null);
+    leaveRetry = null;
+
+    if (tab) {
+      navigate(`/pengaturan?tab=${tab.toLowerCase()}`);
+    } else if (retry) {
+      retry();
+    }
   };
 
   const changeDevice = async (id: string, status: "APPROVED" | "REVOKED") => {
@@ -191,7 +363,7 @@ export function SettingsPage() {
       <Show when={!forbidden()} fallback={<ForbiddenPage />}>
         <Tabs
           value={activeTab()}
-          onChange={(tab) => navigate(`/pengaturan?tab=${tab.toLowerCase()}`)}
+          onChange={requestTab}
           items={
             manage() ? tabs : tabs.filter((tab) => tab.value === "TAMPILAN")
           }
@@ -277,14 +449,6 @@ export function SettingsPage() {
                   />
                 </Field>
               </div>
-              <div class="flex justify-end gap-2 border-t border-line px-4 py-3">
-                <Button onClick={() => void settingsQuery.refetch()}>
-                  Batal
-                </Button>
-                <Button variant="primary" onClick={() => void saveStore()}>
-                  Simpan perubahan
-                </Button>
-              </div>
             </Panel>
           </Show>
 
@@ -351,11 +515,6 @@ export function SettingsPage() {
                   />
                 </Field>
               </div>
-              <div class="flex justify-end border-t border-line px-4 py-3">
-                <Button variant="primary" onClick={() => void saveReceipt()}>
-                  Simpan perubahan
-                </Button>
-              </div>
             </Panel>
           </Show>
 
@@ -385,18 +544,20 @@ export function SettingsPage() {
                 <Input
                   aria-label="Ambang stok menipis"
                   type="number"
+                  min="0"
+                  max="100"
                   class="w-24"
                   value={lowStockPercent()}
-                  onInput={(event) =>
-                    setLowStockPercent(Number(event.currentTarget.value))
-                  }
+                  onInput={(event) => {
+                    const value = Number(event.currentTarget.value);
+                    setLowStockPercent(
+                      Number.isFinite(value)
+                        ? Math.min(100, Math.max(0, Math.round(value)))
+                        : 0,
+                    );
+                  }}
                 />
               </SettingsRow>
-              <div class="flex justify-end border-t border-line px-4 py-3">
-                <Button variant="primary" onClick={() => void saveStock()}>
-                  Simpan perubahan
-                </Button>
-              </div>
             </Panel>
           </Show>
 
@@ -603,7 +764,61 @@ export function SettingsPage() {
             </Panel>
           </Show>
         </div>
+
+        <Show
+          when={manage() && ["PROFIL", "STRUK", "STOK"].includes(activeTab())}
+        >
+          <div class="sticky bottom-0 z-10 mt-3 flex flex-wrap items-center gap-3 rounded-[8px] border border-line bg-surface/95 px-4 py-3 shadow-dropdown backdrop-blur">
+            <span class="text-xs font-semibold text-ink-muted">
+              {dirty()
+                ? "Perubahan belum disimpan"
+                : "Semua perubahan tersimpan"}
+            </span>
+            <Show when={saveError()}>
+              <span role="alert" class="text-xs font-semibold text-danger">
+                {saveError()}
+              </span>
+            </Show>
+            <div class="ml-auto flex gap-2">
+              <Button
+                disabled={!dirty() || saving()}
+                onClick={resetServerForms}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                loading={saving()}
+                disabled={!dirty() || saving()}
+                onClick={() => void saveActive()}
+              >
+                Simpan perubahan
+              </Button>
+            </div>
+          </div>
+        </Show>
       </Show>
+
+      <Modal
+        open={discardOpen()}
+        onOpenChange={(open) => {
+          if (!open) keepEditing();
+        }}
+        title="Buang perubahan?"
+        description="Perubahan yang belum disimpan akan hilang."
+        footer={
+          <>
+            <Button onClick={keepEditing}>Batal</Button>
+            <Button variant="soft-danger" onClick={discardChanges}>
+              Tinggalkan
+            </Button>
+          </>
+        }
+      >
+        <p class="text-sm text-ink-secondary">
+          Simpan perubahan terlebih dahulu jika ingin mempertahankannya.
+        </p>
+      </Modal>
     </>
   );
 }

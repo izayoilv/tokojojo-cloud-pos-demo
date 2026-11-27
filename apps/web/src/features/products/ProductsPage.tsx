@@ -6,6 +6,7 @@ import {
   Checkbox,
   EmptyState,
   ErrorState,
+  Modal,
   PageHeader,
   Pagination,
   Panel,
@@ -55,6 +56,8 @@ export function ProductsPage() {
   const [status, setStatus] = createSignal("SEMUA");
   const [locationFilter, setLocationFilter] = createSignal("SEMUA");
   const [page, setPage] = createSignal(1);
+  const [showArchived, setShowArchived] = createSignal(false);
+  const [archiveConfirm, setArchiveConfirm] = createSignal(false);
   const [selected, setSelected] = createSignal<string[]>([]);
   const [editing, setEditing] = createSignal<{
     product: Product | null;
@@ -73,6 +76,10 @@ export function ProductsPage() {
   }));
 
   const products = () => productsQuery.data ?? [];
+  const activeCount = () =>
+    products().filter((product) => product.active).length;
+  const archivedCount = () =>
+    products().filter((product) => !product.active).length;
   const categories = createMemo(() => [
     "Semua",
     ...new Set(products().map((product) => product.category)),
@@ -97,8 +104,13 @@ export function ProductsPage() {
         locationFilter() === "SEMUA" ||
         (locationFilter() === "GUDANG" && product.warehouseStock > 0) ||
         (locationFilter() === "TOKO" && product.storeStock > 0);
+      const matchesArchive = product.active || showArchived();
       return (
-        matchesSearch && matchesCategory && matchesStatus && matchesLocation
+        matchesSearch &&
+        matchesCategory &&
+        matchesStatus &&
+        matchesLocation &&
+        matchesArchive
       );
     });
   });
@@ -107,14 +119,23 @@ export function ProductsPage() {
   const paged = createMemo(() =>
     filtered().slice((page() - 1) * pageSize, page() * pageSize),
   );
+  const selectable = () => paged().filter((product) => product.active);
   const allSelected = () =>
-    paged().length > 0 && paged().every((p) => selected().includes(p.id));
+    selectable().length > 0 &&
+    selectable().every((product) => selected().includes(product.id));
 
   const toggleAll = (checked: boolean) => {
     setSelected((current) =>
       checked
-        ? [...new Set([...current, ...paged().map((p) => p.id)])]
-        : current.filter((id) => !paged().some((p) => p.id === id)),
+        ? [
+            ...new Set([
+              ...current,
+              ...selectable().map((product) => product.id),
+            ]),
+          ]
+        : current.filter(
+            (id) => !selectable().some((product) => product.id === id),
+          ),
     );
   };
 
@@ -123,6 +144,7 @@ export function ProductsPage() {
     setCategory("Semua");
     setStatus("SEMUA");
     setLocationFilter("SEMUA");
+    setShowArchived(false);
     setPage(1);
   };
 
@@ -140,15 +162,24 @@ export function ProductsPage() {
       selected().map((id) => repository.setProductActive(id, false)),
     );
     setSelected([]);
+    setArchiveConfirm(false);
     await queryClient.invalidateQueries({ queryKey: ["products"] });
     toast.notify("Produk terpilih diarsipkan.", "warning");
+  };
+
+  const restoreProduct = async (id: string) => {
+    await repository.setProductActive(id, true);
+    await queryClient.invalidateQueries({ queryKey: ["products"] });
+    toast.notify("Produk dipulihkan.");
   };
 
   return (
     <>
       <PageHeader
         eyebrow="Katalog barang — multi-satuan, HPP, harga jual"
-        title={`Master Produk (${products().length} SKU)`}
+        title={`Master Produk (${activeCount()} aktif${
+          archivedCount() > 0 ? ` · ${archivedCount()} arsip` : ""
+        })`}
         subtitle="Satuan dasar ditampilkan; produk multi-satuan menampilkan jumlah satuan."
         actions={
           <>
@@ -239,6 +270,16 @@ export function ProductsPage() {
               Reset
             </Button>
           </div>
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <Checkbox
+              label="Tampilkan arsip"
+              checked={showArchived()}
+              onChange={setShowArchived}
+            />
+            <span class="text-xs text-ink-muted">
+              Termasuk produk yang sudah diarsipkan.
+            </span>
+          </div>
           <Show when={selected().length > 0 && canEdit()}>
             <div class="mt-3 flex items-center gap-2 rounded-[6px] bg-primary-soft px-3 py-2 text-sm text-primary">
               <b>{selected().length} produk dipilih</b>
@@ -246,7 +287,7 @@ export function ProductsPage() {
                 size="sm"
                 variant="soft-danger"
                 class="ml-auto"
-                onClick={() => void archiveSelected()}
+                onClick={() => setArchiveConfirm(true)}
               >
                 Arsipkan
               </Button>
@@ -314,6 +355,7 @@ export function ProductsPage() {
                               label={`Pilih ${product.name}`}
                               showLabel={false}
                               checked={selected().includes(product.id)}
+                              disabled={!product.active}
                               onChange={(checked) =>
                                 setSelected((current) =>
                                   checked
@@ -350,26 +392,46 @@ export function ProductsPage() {
                           <Td align="right">{product.warehouseStock}</Td>
                           <Td align="right">{product.storeStock}</Td>
                           <Td>
-                            <Badge
-                              tone={
-                                stockStatus(product) === "HABIS"
-                                  ? "danger"
-                                  : stockStatus(product) === "MENIPIS"
-                                    ? "warning"
-                                    : "success"
+                            <Show
+                              when={product.active}
+                              fallback={
+                                <Badge tone="neutral">Diarsipkan</Badge>
                               }
                             >
-                              {statusLabel[stockStatus(product)]}
-                            </Badge>
+                              <Badge
+                                tone={
+                                  stockStatus(product) === "HABIS"
+                                    ? "danger"
+                                    : stockStatus(product) === "MENIPIS"
+                                      ? "warning"
+                                      : "success"
+                                }
+                              >
+                                {statusLabel[stockStatus(product)]}
+                              </Badge>
+                            </Show>
                           </Td>
                           <Td align="center">
-                            <Button
-                              size="sm"
-                              onClick={() => setEditing({ product })}
+                            <Show
+                              when={!product.active && canEdit()}
+                              fallback={
+                                <Button
+                                  size="sm"
+                                  onClick={() => setEditing({ product })}
+                                >
+                                  <Pencil size={13} />
+                                  {canEdit() ? "Edit" : "Lihat"}
+                                </Button>
+                              }
                             >
-                              <Pencil size={13} />
-                              {canEdit() ? "Edit" : "Lihat"}
-                            </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => void restoreProduct(product.id)}
+                              >
+                                Pulihkan
+                              </Button>
+                            </Show>
                           </Td>
                         </tr>
                       )}
@@ -387,6 +449,29 @@ export function ProductsPage() {
           </Show>
         </Show>
       </Panel>
+
+      <Modal
+        open={archiveConfirm()}
+        onOpenChange={(open) => !open && setArchiveConfirm(false)}
+        title="Arsipkan produk?"
+        description={`${selected().length} produk akan disembunyikan dari katalog aktif.`}
+        footer={
+          <>
+            <Button onClick={() => setArchiveConfirm(false)}>Batal</Button>
+            <Button
+              variant="soft-danger"
+              onClick={() => void archiveSelected()}
+            >
+              Arsipkan
+            </Button>
+          </>
+        }
+      >
+        <p class="text-sm text-ink-secondary">
+          Produk yang diarsipkan tetap tersimpan dan dapat dipulihkan lewat
+          filter “Tampilkan arsip”.
+        </p>
+      </Modal>
 
       <Show when={editing()}>
         {(entry) => (

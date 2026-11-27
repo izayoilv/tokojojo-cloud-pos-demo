@@ -43,6 +43,7 @@ import {
 import {
   formatCompactRupiah,
   formatDate,
+  formatDateTime,
   formatPercent,
   formatRupiah,
 } from "../../lib/format";
@@ -146,7 +147,9 @@ export function DashboardPage() {
 
   const rangeSales = createMemo(() => salesInRange(sales(), range()));
   const kpis = createMemo(() => salesKpis(rangeSales()));
-  const lowStock = createMemo(() => lowStockProducts(products()));
+  const lowStock = createMemo(() =>
+    lowStockProducts(products().filter((product) => product.active)),
+  );
   const chart = createMemo(() => dailySalesSeries(sales(), range()));
   const recentSales = createMemo(() =>
     [...rangeSales()].sort((a, b) => b.time.localeCompare(a.time)).slice(0, 4),
@@ -164,8 +167,21 @@ export function DashboardPage() {
     return transfers + opnames;
   });
 
+  const lastUpdated = createMemo(() => {
+    const times = [
+      ...sales().map((sale) => sale.time),
+      ...(transfersQuery.data ?? []).map(
+        (transfer) => transfer.completed ?? transfer.created,
+      ),
+      ...(opnamesQuery.data ?? []).map((opname) => opname.created),
+    ].sort((a, b) => Date.parse(a) - Date.parse(b));
+    const latest = times.at(-1);
+
+    return latest ? formatDateTime(latest) : "Belum ada data";
+  });
+
   const statusCounts = createMemo(() => {
-    const items = products();
+    const items = products().filter((product) => product.active);
     return {
       aman: items.filter((p) => stockStatus(p) === "AMAN").length,
       menipis: items.filter((p) => stockStatus(p) === "MENIPIS").length,
@@ -194,7 +210,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Toko Jojo · Batam Centre"
         title="Ringkasan"
-        subtitle="Terakhir diperbarui 24 Nov 2026, 14:30 WIB"
+        subtitle={`Terakhir diperbarui ${lastUpdated()}`}
         actions={
           <>
             <Show when={canSales()}>
@@ -522,12 +538,20 @@ export function DashboardPage() {
                                   tone={
                                     sale.status === "COMPLETED"
                                       ? "success"
-                                      : "warning"
+                                      : sale.status === "VOIDED"
+                                        ? "danger"
+                                        : sale.status === "RETURNED"
+                                          ? "neutral"
+                                          : "warning"
                                   }
                                 >
                                   {sale.status === "COMPLETED"
                                     ? "Selesai"
-                                    : "Sebagian"}
+                                    : sale.status === "PARTIAL_RETURN"
+                                      ? "Retur sebagian"
+                                      : sale.status === "RETURNED"
+                                        ? "Dikembalikan"
+                                        : "Void"}
                                 </Badge>
                               </Td>
                             </tr>
@@ -603,7 +627,7 @@ export function DashboardPage() {
             </div>
 
             <div class="text-right text-xs text-ink-muted">
-              Data terakhir: 24 Nov 2026, 14:30 WIB
+              Data terakhir: {lastUpdated()}
             </div>
           </div>
         </Show>

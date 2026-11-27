@@ -1,4 +1,4 @@
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { Button, Field, Input, Panel, useToast } from "@tokojojo/ui";
 import { Eye, EyeOff, LogIn, ShieldCheck } from "lucide-solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
@@ -12,8 +12,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [username, setUsername] = createSignal("owner");
-  const [password, setPassword] = createSignal(demoPassword);
+  const [username, setUsername] = createSignal("");
+  const [password, setPassword] = createSignal("");
   const [showPassword, setShowPassword] = createSignal(false);
   const [showDemo, setShowDemo] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -128,19 +128,21 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <button
-            type="button"
-            class="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 text-xs font-semibold text-ink-muted hover:text-ink"
-            onClick={() => setShowDemo((value) => !value)}
-          >
-            <ShieldCheck size={14} />
-            {showDemo() ? "Sembunyikan akun demo" : "Akun demo"}
-          </button>
+          <Show when={import.meta.env.DEV}>
+            <button
+              type="button"
+              class="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 text-xs font-semibold text-ink-muted hover:text-ink"
+              onClick={() => setShowDemo((value) => !value)}
+            >
+              <ShieldCheck size={14} />
+              {showDemo() ? "Sembunyikan akun demo" : "Akun demo"}
+            </button>
+          </Show>
 
-          <Show when={showDemo()}>
+          <Show when={import.meta.env.DEV && showDemo()}>
             <div class="mt-3 rounded-[6px] border border-line bg-subtle p-3">
               <p class="mb-2 text-[11px] font-bold tracking-wide text-ink-muted uppercase">
-                Pilih peran demo
+                Hanya untuk demo · pilih peran
               </p>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <For each={users}>
@@ -175,12 +177,6 @@ export function LoginPage() {
             </div>
           </Show>
         </Panel>
-
-        <p class="mt-5 text-center text-xs text-ink-muted">
-          <A href="/" class="font-semibold text-primary hover:underline">
-            Kembali ke aplikasi
-          </A>
-        </p>
       </div>
     </div>
   );

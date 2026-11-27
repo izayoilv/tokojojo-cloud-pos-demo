@@ -1,5 +1,6 @@
 import type {
   LocationCode,
+  PaymentMethod,
   Product,
   ProductUnit,
   Sale,
@@ -26,13 +27,17 @@ export type StockValuationSlice = {
 };
 
 export function saleTotals(sale: Sale): SaleTotals {
+  if (sale.status === "VOIDED") {
+    return { subtotal: 0, discount: 0, grandTotal: 0, cogs: 0 };
+  }
+
   let subtotal = 0;
   let discount = 0;
   let cogs = 0;
 
   for (const item of sale.items) {
     const sold = Math.max(0, item.quantity - item.returned);
-    subtotal += item.quantity * item.price;
+    subtotal += sold * item.price;
     discount += sold * item.discount;
     cogs += sold * item.cost;
   }
@@ -43,6 +48,10 @@ export function saleTotals(sale: Sale): SaleTotals {
     grandTotal: subtotal - discount,
     cogs,
   };
+}
+
+export function recordsCashRefund(method: PaymentMethod): boolean {
+  return method !== "HUTANG" && method !== "CAMPURAN";
 }
 
 export function totalStock(product: Product): number {
@@ -131,11 +140,11 @@ function dayNumber(isoDay: string): number {
   return Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1) / 86_400_000;
 }
 
-function referenceDate(sales: Sale[]): string | null {
+function latestDate(times: string[]): string | null {
   let latest: string | null = null;
 
-  for (const sale of sales) {
-    const day = isoDate(sale.time);
+  for (const time of times) {
+    const day = isoDate(time);
     if (!latest || day > latest) {
       latest = day;
     }
@@ -144,18 +153,22 @@ function referenceDate(sales: Sale[]): string | null {
   return latest;
 }
 
-export function salesInRange(sales: Sale[], range: DateRange): Sale[] {
-  const reference = referenceDate(sales);
+export function recordsInRange<T>(
+  records: T[],
+  getTime: (record: T) => string,
+  range: DateRange,
+): T[] {
+  const reference = latestDate(records.map(getTime));
 
   if (!reference || range === "ALL") {
-    return [...sales];
+    return [...records];
   }
 
   const referenceDay = dayNumber(reference);
   const referenceMonth = reference.slice(0, 7);
 
-  return sales.filter((sale) => {
-    const day = isoDate(sale.time);
+  return records.filter((record) => {
+    const day = isoDate(getTime(record));
 
     if (range === "TODAY") {
       return day === reference;
@@ -168,6 +181,10 @@ export function salesInRange(sales: Sale[], range: DateRange): Sale[] {
     const difference = referenceDay - dayNumber(day);
     return difference >= 0 && difference <= 7;
   });
+}
+
+export function salesInRange(sales: Sale[], range: DateRange): Sale[] {
+  return recordsInRange(sales, (sale) => sale.time, range);
 }
 
 export function dailySalesSeries(

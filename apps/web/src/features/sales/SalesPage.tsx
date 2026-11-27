@@ -1,10 +1,13 @@
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   Badge,
   Button,
   Drawer,
   EmptyState,
   ErrorState,
+  Field,
+  Input,
+  Modal,
   PageHeader,
   Panel,
   SearchInput,
@@ -13,6 +16,7 @@ import {
   TableSkeleton,
   TableWrap,
   Td,
+  Textarea,
   Th,
   useToast,
 } from "@tokojojo/ui";
@@ -20,10 +24,28 @@ import { Printer, RefreshCcw, ShieldAlert } from "lucide-solid";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { useAuth } from "../../app/auth";
+import { canReverseSales } from "../../app/rbac";
 import { repository } from "../../data/repository";
 import type { Sale } from "../../data/types";
 import { saleTotals } from "../../lib/calc";
 import { formatDateTime, formatRupiah } from "../../lib/format";
+import { buildReceiptHtml, printReceipt } from "./receiptPrint";
+
+const statusLabel: Record<Sale["status"], string> = {
+  COMPLETED: "Selesai",
+  PARTIAL_RETURN: "Retur sebagian",
+  RETURNED: "Dikembalikan",
+  VOIDED: "Void",
+};
+
+const statusTone = (status: Sale["status"]) =>
+  status === "COMPLETED"
+    ? "success"
+    : status === "PARTIAL_RETURN"
+      ? "warning"
+      : status === "VOIDED"
+        ? "danger"
+        : "neutral";
 
 const methodTone = (method: string) =>
   method === "TUNAI"
@@ -37,14 +59,29 @@ const methodTone = (method: string) =>
 export function SalesPage() {
   const auth = useAuth();
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = createSignal("");
   const [method, setMethod] = createSignal("SEMUA");
   const [status, setStatus] = createSignal("SEMUA");
   const [selected, setSelected] = createSignal<Sale | null>(null);
+  const [returnOpen, setReturnOpen] = createSignal(false);
+  const [returnQuantities, setReturnQuantities] = createSignal<
+    Record<string, number>
+  >({});
+  const [returnReason, setReturnReason] = createSignal("");
+  const [returnError, setReturnError] = createSignal("");
+  const [voidOpen, setVoidOpen] = createSignal(false);
+  const [voidReason, setVoidReason] = createSignal("");
+  const [voidError, setVoidError] = createSignal("");
+  const [saving, setSaving] = createSignal(false);
 
   const salesQuery = createQuery(() => ({
     queryKey: ["sales"],
     queryFn: () => repository.listSales(),
+  }));
+  const settingsQuery = createQuery(() => ({
+    queryKey: ["settings"],
+    queryFn: () => repository.getSettings(),
   }));
 
   const sales = createMemo(() => {
@@ -61,7 +98,110 @@ export function SalesPage() {
   });
 
   const canVoid = () =>
-    auth.user()?.role === "OWNER" || auth.user()?.role === "ADMIN";
+    auth.user() ? canReverseSales(auth.user()!.role) : false;
+
+  const invalidateSales = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["sales"] }),
+      queryClient.invalidateQueries({ queryKey: ["products"] }),
+      queryClient.invalidateQueries({ queryKey: ["movements"] }),
+      queryClient.invalidateQueries({ queryKey: ["cashFlows"] }),
+    ]);
+  };
+
+  const reprint = (sale: Sale) => {
+    printReceipt(
+      buildReceiptHtml(sale, settingsQuery.data?.name ?? "TOKO JOJO"),
+    );
+  };
+
+  const openReturn = (sale: Sale) => {
+    setReturnQuantities(
+      Object.fromEntries(
+        sale.items
+          .filter((item) => item.quantity - item.returned > 0)
+          .map((item) => [item.productId, 0]),
+      ),
+    );
+    setReturnReason("");
+    setReturnError("");
+    setReturnOpen(true);
+  };
+
+  const setReturnQuantity = (productId: string, quantity: number) => {
+    setReturnQuantities((current) => ({
+      ...current,
+      [productId]: quantity,
+    }));
+  };
+
+  const returnPreview = () => {
+    const sale = selected();
+    if (!sale) return 0;
+
+    return sale.items.reduce((sum, item) => {
+      const quantity = returnQuantities()[item.productId] ?? 0;
+      return sum + quantity * (item.price - item.discount);
+    }, 0);
+  };
+
+  const submitReturn = async () => {
+    const sale = selected();
+    if (!sale || saving()) return;
+
+    const returns = sale.items
+      .map((item) => ({
+        productId: item.productId,
+        quantity: returnQuantities()[item.productId] ?? 0,
+      }))
+      .filter((item) => item.quantity > 0);
+
+    if (returns.length === 0) {
+      setReturnError("Pilih minimal satu barang untuk diretur.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await repository.returnSale(sale.id, returns, returnReason());
+      await invalidateSales();
+      setReturnOpen(false);
+      setSelected(null);
+      toast.notify("Retur tersimpan dan stok toko diperbarui.", "warning");
+    } catch (caught) {
+      setReturnError(
+        caught instanceof Error ? caught.message : "Retur gagal disimpan.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openVoid = () => {
+    setVoidReason("");
+    setVoidError("");
+    setVoidOpen(true);
+  };
+
+  const submitVoid = async () => {
+    const sale = selected();
+    if (!sale || saving()) return;
+
+    setSaving(true);
+    try {
+      await repository.voidSale(sale.id, voidReason());
+      await invalidateSales();
+      setVoidOpen(false);
+      setSelected(null);
+      toast.notify("Transaksi di-void dan stok dikembalikan.", "danger");
+    } catch (caught) {
+      setVoidError(
+        caught instanceof Error ? caught.message : "Void gagal disimpan.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -99,6 +239,8 @@ export function SalesPage() {
               <option value="SEMUA">Semua status</option>
               <option value="COMPLETED">Selesai</option>
               <option value="PARTIAL_RETURN">Retur sebagian</option>
+              <option value="RETURNED">Dikembalikan</option>
+              <option value="VOIDED">Void</option>
             </Select>
           </div>
         </div>
@@ -154,16 +296,8 @@ export function SalesPage() {
                             <b>{formatRupiah(saleTotals(sale).grandTotal)}</b>
                           </Td>
                           <Td>
-                            <Badge
-                              tone={
-                                sale.status === "COMPLETED"
-                                  ? "success"
-                                  : "warning"
-                              }
-                            >
-                              {sale.status === "COMPLETED"
-                                ? "Selesai"
-                                : "Retur sebagian"}
+                            <Badge tone={statusTone(sale.status)}>
+                              {statusLabel[sale.status]}
                             </Badge>
                           </Td>
                           <Td align="center">
@@ -183,7 +317,7 @@ export function SalesPage() {
       </Panel>
 
       <Drawer
-        open={selected() !== null}
+        open={selected() !== null && !returnOpen() && !voidOpen()}
         onOpenChange={(open) => !open && setSelected(null)}
         title={`Invoice ${selected()?.number ?? ""}`}
         description={`${selected()?.cashier ?? ""} · ${selected() ? formatDateTime(selected()!.time) : ""}`}
@@ -191,25 +325,38 @@ export function SalesPage() {
           <>
             <Button
               size="sm"
-              onClick={() => toast.notify("Struk dikirim ke antrean cetak.")}
+              onClick={() => {
+                const sale = selected();
+                if (sale) reprint(sale);
+              }}
             >
               <Printer size={14} /> Cetak ulang
             </Button>
-            <Button
-              size="sm"
-              onClick={() => toast.notify("Retur contoh disiapkan.", "warning")}
+            <Show
+              when={
+                canVoid() &&
+                (selected()?.status === "COMPLETED" ||
+                  selected()?.status === "PARTIAL_RETURN")
+              }
             >
-              <RefreshCcw size={14} /> Retur
-            </Button>
-            <Show when={canVoid()}>
               <Button
                 size="sm"
-                variant="soft-danger"
                 onClick={() => {
-                  toast.notify("Void transaksi tercatat di audit.", "danger");
-                  setSelected(null);
+                  const sale = selected();
+                  if (sale) openReturn(sale);
                 }}
               >
+                <RefreshCcw size={14} /> Retur
+              </Button>
+            </Show>
+            <Show
+              when={
+                canVoid() &&
+                selected()?.status === "COMPLETED" &&
+                selected()?.paid === 0
+              }
+            >
+              <Button size="sm" variant="soft-danger" onClick={openVoid}>
                 <ShieldAlert size={14} /> Void
               </Button>
             </Show>
@@ -292,6 +439,133 @@ export function SalesPage() {
           )}
         </Show>
       </Drawer>
+
+      <Show when={returnOpen() && selected()}>
+        {(sale) => (
+          <Modal
+            open
+            onOpenChange={(open) => {
+              setReturnOpen(open);
+              if (!open) setReturnError("");
+            }}
+            title="Retur penjualan"
+            description={`${sale().number} · ${sale().cashier}`}
+            footer={
+              <>
+                <Button onClick={() => setReturnOpen(false)}>Batal</Button>
+                <Button
+                  variant="primary"
+                  loading={saving()}
+                  onClick={() => void submitReturn()}
+                >
+                  Simpan retur
+                </Button>
+              </>
+            }
+          >
+            <div class="space-y-3">
+              <div class="space-y-2">
+                <For each={sale().items}>
+                  {(item) => {
+                    const remaining = () => item.quantity - item.returned;
+                    return (
+                      <Show when={remaining() > 0}>
+                        <div class="grid grid-cols-1 items-center gap-2 rounded-[6px] border border-line p-2 sm:grid-cols-[1fr_90px]">
+                          <div>
+                            <b class="text-sm text-ink">{item.name}</b>
+                            <div class="text-xs text-ink-muted">
+                              Sisa {remaining()} {item.unit} ·{" "}
+                              {formatRupiah(item.price - item.discount)}/unit
+                            </div>
+                          </div>
+                          <Input
+                            aria-label={`Jumlah retur ${item.name}`}
+                            type="number"
+                            min="0"
+                            max={remaining()}
+                            value={returnQuantities()[item.productId] ?? 0}
+                            onInput={(event) =>
+                              setReturnQuantity(
+                                item.productId,
+                                Number(event.currentTarget.value),
+                              )
+                            }
+                          />
+                        </div>
+                      </Show>
+                    );
+                  }}
+                </For>
+              </div>
+              <Field label="Alasan retur" required>
+                <Textarea
+                  value={returnReason()}
+                  onInput={(event) =>
+                    setReturnReason(event.currentTarget.value)
+                  }
+                  placeholder="Contoh: barang rusak atau salah kirim."
+                />
+              </Field>
+              <div class="flex justify-between border-t border-line pt-2 text-sm">
+                <span class="text-ink-muted">Nilai retur</span>
+                <b>{formatRupiah(returnPreview())}</b>
+              </div>
+              <Show when={returnError()}>
+                <p role="alert" class="text-xs font-semibold text-danger">
+                  {returnError()}
+                </p>
+              </Show>
+            </div>
+          </Modal>
+        )}
+      </Show>
+
+      <Show when={voidOpen() && selected()}>
+        {(sale) => (
+          <Modal
+            open
+            onOpenChange={(open) => {
+              setVoidOpen(open);
+              if (!open) setVoidError("");
+            }}
+            title="Void transaksi?"
+            description={`${sale().number} · ${formatRupiah(saleTotals(sale()).grandTotal)}`}
+            footer={
+              <>
+                <Button onClick={() => setVoidOpen(false)}>Batal</Button>
+                <Button
+                  variant="soft-danger"
+                  loading={saving()}
+                  onClick={() => void submitVoid()}
+                >
+                  Void transaksi
+                </Button>
+              </>
+            }
+          >
+            <div class="space-y-3">
+              <p class="text-sm text-ink-secondary">
+                Void membatalkan transaksi, mengembalikan stok, dan mencatat
+                pengeluaran. Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <Field label="Alasan void" required>
+                <Textarea
+                  value={voidReason()}
+                  onInput={(event) => setVoidReason(event.currentTarget.value)}
+                  placeholder="Contoh: salah input metode pembayaran."
+                />
+              </Field>
+              <Show when={voidError()}>
+                <p role="alert" class="text-xs font-semibold text-danger">
+                  {voidError()}
+                </p>
+              </Show>
+            </div>
+          </Modal>
+        )}
+      </Show>
+
+      <div id="print-area" />
     </>
   );
 }

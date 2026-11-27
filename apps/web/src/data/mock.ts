@@ -439,6 +439,16 @@ const rawSales: RawSale[] = [
       ["PRD-011", 2, 0],
     ],
   },
+  {
+    number: "POS/20261124/0004",
+    time: "2026-11-24T11:15:00+07:00",
+    cashier: "Dewi Lestari",
+    terminal: "KASIR-DESKTOP-01",
+    method: "HUTANG",
+    status: "COMPLETED",
+    received: 0,
+    items: [["PRD-006", 2, 0]],
+  },
 ];
 
 function toSaleItem([
@@ -486,6 +496,7 @@ export const sales: Sale[] = rawSales.map((sale, index) => {
     method: sale.method,
     status: sale.status,
     received: sale.received || subtotal - discount,
+    paid: sale.method === "HUTANG" ? 0 : subtotal - discount,
     items,
   };
 });
@@ -502,6 +513,20 @@ export const transfers: Transfer[] = [
     createdBy: "Hendra Saputra",
     approvedBy: "Siti Rahmawati",
     itemCount: 2,
+    items: [
+      {
+        productId: "PRD-001",
+        productName: "Beras Setra Ramos Cap Topi Koki 5kg",
+        unit: "Karung",
+        quantity: 4,
+      },
+      {
+        productId: "PRD-002",
+        productName: "Minyak Goreng Bimoli Klasik Pouch 2L",
+        unit: "Pouch",
+        quantity: 6,
+      },
+    ],
   },
   {
     id: "TRF-002",
@@ -514,6 +539,20 @@ export const transfers: Transfer[] = [
     createdBy: "Hendra Saputra",
     approvedBy: null,
     itemCount: 2,
+    items: [
+      {
+        productId: "PRD-003",
+        productName: "Indomie Mi Instan Goreng Spesial 85g",
+        unit: "Bungkus",
+        quantity: 12,
+      },
+      {
+        productId: "PRD-009",
+        productName: "Aqua Botol 600ml (Dus 24)",
+        unit: "Botol",
+        quantity: 2,
+      },
+    ],
   },
 ];
 
@@ -535,6 +574,15 @@ export const payables: Payable[] = [
     total: 2150000,
     paid: 0,
     status: "UNPAID",
+  },
+  {
+    id: "PAY-003",
+    supplierName: "CV Sumber Rejeki",
+    invoice: "INV-SR-2026-1124",
+    due: "2026-12-01",
+    total: 1250000,
+    paid: 410000,
+    status: "PARTIAL",
   },
 ];
 

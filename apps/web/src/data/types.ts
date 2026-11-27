@@ -51,7 +51,7 @@ export type SaleItem = {
   returned: number;
 };
 
-export type SaleStatus = "COMPLETED" | "PARTIAL_RETURN";
+export type SaleStatus = "COMPLETED" | "PARTIAL_RETURN" | "RETURNED" | "VOIDED";
 export type PaymentMethod =
   "TUNAI" | "QRIS" | "DEBIT" | "TRANSFER" | "HUTANG" | "CAMPURAN";
 
@@ -64,6 +64,7 @@ export type Sale = {
   method: PaymentMethod;
   status: SaleStatus;
   received: number;
+  paid: number;
   items: SaleItem[];
 };
 
@@ -95,7 +96,7 @@ export type Payable = {
   due: string;
   total: number;
   paid: number;
-  status: "PARTIAL" | "UNPAID";
+  status: "PARTIAL" | "UNPAID" | "PAID";
 };
 
 export type StoreSettings = {
@@ -151,6 +152,13 @@ export type Customer = {
 
 export type PurchaseStatus = "RECEIVED" | "ORDERED" | "CANCELLED";
 
+export type PurchaseItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitCost: number;
+};
+
 export type Purchase = {
   id: string;
   number: string;
@@ -163,6 +171,7 @@ export type Purchase = {
   status: PurchaseStatus;
   payStatus: "PAID" | "PARTIAL" | "UNPAID";
   itemCount: number;
+  items?: PurchaseItem[];
 };
 
 export type StockMovementType =

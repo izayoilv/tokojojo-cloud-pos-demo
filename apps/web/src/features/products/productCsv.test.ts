@@ -44,6 +44,33 @@ describe("productsToCsv", () => {
     expect(row).toContain('"Sembako, Utama"');
   });
 
+  it("exports the base unit for multi-unit products", () => {
+    const csv = productsToCsv([
+      product({
+        unit: "Karung",
+        units: [
+          {
+            id: "PU-001",
+            name: "Karung",
+            conversionQty: 5,
+            sellingPrice: 73500,
+            barcode: "8992761110012",
+          },
+          {
+            id: "PU-002",
+            name: "Kilogram",
+            conversionQty: 1,
+            sellingPrice: 15500,
+            barcode: "2001000000112",
+          },
+        ],
+      }),
+    ]);
+    const row = csv.split("\r\n")[1]!;
+
+    expect(row).toContain(",Kilogram,");
+  });
+
   it("returns just the header for an empty catalogue", () => {
     expect(productsToCsv([]).split("\r\n")).toHaveLength(1);
   });

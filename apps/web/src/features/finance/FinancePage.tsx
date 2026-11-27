@@ -62,6 +62,9 @@ export function FinancePage() {
     payablesQuery.isPending;
   const failed = () =>
     flowsQuery.isError || receivablesQuery.isError || payablesQuery.isError;
+  const outstandingPayables = createMemo(() =>
+    (payablesQuery.data ?? []).filter((item) => item.total - item.paid > 0),
+  );
 
   const totals = createMemo(() => {
     const income = flows()
@@ -150,7 +153,7 @@ export function FinancePage() {
           {
             value: "HUTANG",
             label: "Hutang",
-            count: payablesQuery.data?.length ?? 0,
+            count: outstandingPayables().length,
           },
         ]}
         label="Tampilan keuangan"
@@ -273,9 +276,7 @@ export function FinancePage() {
                             <Td>
                               <b class="text-ink">{item.customerName}</b>
                             </Td>
-                            <Td class="font-mono text-[11px]">
-                              {item.invoice}
-                            </Td>
+                            <Td class="font-mono text-xs">{item.invoice}</Td>
                             <Td>{formatDate(item.due)}</Td>
                             <Td align="right">{formatRupiah(item.total)}</Td>
                             <Td align="right">{formatRupiah(item.paid)}</Td>
@@ -305,15 +306,13 @@ export function FinancePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      <For each={payablesQuery.data ?? []}>
+                      <For each={outstandingPayables()}>
                         {(item) => (
                           <tr class="hover:bg-hover">
                             <Td>
                               <b class="text-ink">{item.supplierName}</b>
                             </Td>
-                            <Td class="font-mono text-[11px]">
-                              {item.invoice}
-                            </Td>
+                            <Td class="font-mono text-xs">{item.invoice}</Td>
                             <Td>{formatDate(item.due)}</Td>
                             <Td align="right">{formatRupiah(item.total)}</Td>
                             <Td align="right" class="font-bold text-danger">

@@ -1,3 +1,4 @@
+import { escapeCsvCell } from "../../lib/csv";
 import { formatDateTime } from "../../lib/format";
 
 export type ReportMeta = {
@@ -5,16 +6,6 @@ export type ReportMeta = {
   userName: string;
   generatedAt: Date;
 };
-
-function escapeCell(value: string | number): string {
-  const text = String(value);
-
-  if (/[",\r\n]/.test(text)) {
-    return `"${text.replaceAll('"', '""')}"`;
-  }
-
-  return text;
-}
 
 export function escapeHtml(value: string): string {
   return value
@@ -38,7 +29,7 @@ export function buildReportCsv(
   ];
 
   return [...header, ...rows]
-    .map((row) => row.map(escapeCell).join(","))
+    .map((row) => row.map(escapeCsvCell).join(","))
     .join("\r\n");
 }
 
