@@ -43,6 +43,7 @@ import {
 import {
   formatCompactRupiah,
   formatDate,
+  formatDateTime,
   formatPercent,
   formatRupiah,
 } from "../../lib/format";
@@ -164,6 +165,19 @@ export function DashboardPage() {
     return transfers + opnames;
   });
 
+  const lastUpdated = createMemo(() => {
+    const times = [
+      ...sales().map((sale) => sale.time),
+      ...(transfersQuery.data ?? []).map(
+        (transfer) => transfer.completed ?? transfer.created,
+      ),
+      ...(opnamesQuery.data ?? []).map((opname) => opname.created),
+    ].sort();
+    const latest = times.at(-1);
+
+    return latest ? formatDateTime(latest) : "Belum ada data";
+  });
+
   const statusCounts = createMemo(() => {
     const items = products();
     return {
@@ -194,7 +208,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Toko Jojo · Batam Centre"
         title="Ringkasan"
-        subtitle="Terakhir diperbarui 24 Nov 2026, 14:30 WIB"
+        subtitle={`Terakhir diperbarui ${lastUpdated()}`}
         actions={
           <>
             <Show when={canSales()}>

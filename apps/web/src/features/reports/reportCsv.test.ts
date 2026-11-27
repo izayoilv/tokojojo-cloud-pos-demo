@@ -21,6 +21,17 @@ describe("buildReportCsv", () => {
     expect(csv).toContain("POS/20250514/0001,258500");
   });
 
+  it("neutralizes formula-like metadata and row cells", () => {
+    const csv = buildReportCsv(
+      "Laporan",
+      { ...meta, storeName: "=cmd|' /C calc'!A0" },
+      [["@SUM(A1:A2)", "normal"]],
+    );
+
+    expect(csv).toContain("'=cmd|' /C calc'!A0");
+    expect(csv).toContain("'@SUM(A1:A2)");
+  });
+
   it("escapes commas and quotes in metadata and rows", () => {
     const csv = buildReportCsv(
       'Laporan "Bulanan", Mei',

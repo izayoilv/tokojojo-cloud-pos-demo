@@ -41,6 +41,50 @@ describe("repository.listUsers", () => {
   });
 });
 
+describe("repository mock consistency", () => {
+  it("keeps shared purchase and payable invoices aligned", async () => {
+    const [purchases, payables] = await Promise.all([
+      repository.listPurchases(),
+      repository.listPayables(),
+    ]);
+    const purchase = purchases.find((item) => item.invoice === "INV-IAP-88412");
+    const payable = payables.find((item) => item.invoice === "INV-IAP-88412");
+
+    expect(purchase).toBeDefined();
+    expect(payable).toBeDefined();
+    expect(purchase!.total).toBe(payable!.total);
+    expect(purchase!.paid).toBe(payable!.paid);
+  });
+});
+
+describe("repository.mock data", () => {
+  it("converts a PRD-001 sack to five kilograms", async () => {
+    const products = await repository.listProducts();
+    const rice = products.find((product) => product.id === "PRD-001");
+    const sack = rice?.units?.find((unit) => unit.name === "Karung");
+    const kilogram = rice?.units?.find((unit) => unit.name === "Kilogram");
+
+    expect(sack?.conversionQty).toBe(5);
+    expect(kilogram?.conversionQty).toBe(1);
+  });
+
+  it("continues the transfer number sequence", async () => {
+    const before = await repository.listTransfers();
+    const expected = `MUT/2026/11/${String(before.length + 1).padStart(3, "0")}`;
+    const transfer = await repository.createTransfer("WH-BACK", "STORE-FRONT", [
+      {
+        productId: "PRD-001",
+        productName: "Beras",
+        unit: "Karung",
+        quantity: 1,
+      },
+    ]);
+
+    expect(transfer.number).toBe(expected);
+    await repository.cancelTransfer(transfer.id);
+  });
+});
+
 describe("repository reads", () => {
   it("exposes sales, transfers, and store settings", async () => {
     const [sales, transfers, settings] = await Promise.all([

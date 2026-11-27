@@ -45,6 +45,7 @@ function setInput(root: HTMLElement, selector: string, value: string) {
 async function login(root: HTMLElement, username: string) {
   await wait(30);
   setInput(root, 'input[autocomplete="username"]', username);
+  setInput(root, 'input[autocomplete="current-password"]', "tokojojo123");
   root
     .querySelector("form")!
     .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
@@ -59,6 +60,20 @@ afterEach(() => {
 });
 
 describe("app smoke", () => {
+  it("starts the login form empty", async () => {
+    const root = mount();
+    await wait(30);
+    const username = root.querySelector<HTMLInputElement>(
+      'input[autocomplete="username"]',
+    );
+    const password = root.querySelector<HTMLInputElement>(
+      'input[autocomplete="current-password"]',
+    );
+
+    expect(username?.value).toBe("");
+    expect(password?.value).toBe("");
+  });
+
   it("logs in, navigates to products, and opens reports", async () => {
     const root = mount();
     await login(root, "owner");
@@ -75,7 +90,7 @@ describe("app smoke", () => {
 
     await wait(500);
 
-    expect(root.textContent).toContain("Master Produk (12 SKU)");
+    expect(root.textContent).toContain("Master Produk (12 aktif)");
     expect(root.textContent).toContain("Beras Setra Ramos");
     expect(root.textContent).toContain("Tambah Produk");
 
@@ -89,6 +104,125 @@ describe("app smoke", () => {
 
     expect(root.textContent).toContain("Laporan");
     expect(root.textContent).toContain("Penjualan Harian / Mingguan / Bulanan");
+  });
+
+  it("navigates from an actionable stock notification", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    const trigger = root.querySelector('button[aria-label="Notifikasi"]')!;
+    trigger.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        pointerType: "mouse",
+      }),
+    );
+    await wait(100);
+
+    const item = [
+      ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    ].find((entry) => entry.textContent?.includes("Stok"));
+    expect(item).toBeDefined();
+
+    click(item!);
+    await wait(200);
+
+    expect(window.location.pathname).toBe("/persediaan");
+  });
+
+  it("archives and restores a product with confirmation", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/produk");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    const rowCheckbox = root.querySelector<HTMLInputElement>(
+      'tbody input[type="checkbox"]',
+    );
+    expect(rowCheckbox).not.toBeNull();
+    click(rowCheckbox!);
+    await wait(30);
+
+    click(
+      [...root.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Arsipkan",
+      )!,
+    );
+    await wait(50);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog!.textContent).toContain("Arsipkan produk?");
+    click(
+      [...dialog!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Arsipkan",
+      )!,
+    );
+    await wait(500);
+
+    expect(root.textContent).toContain("11 aktif · 1 arsip");
+    expect(root.textContent).not.toContain("Diarsipkan");
+
+    const showArchived = [...root.querySelectorAll("label")]
+      .find((label) => label.textContent?.includes("Tampilkan arsip"))
+      ?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(showArchived).toBeDefined();
+    click(showArchived!);
+    await wait(100);
+
+    expect(root.textContent).toContain("Diarsipkan");
+
+    click(
+      [...root.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Pulihkan",
+      )!,
+    );
+    await wait(500);
+
+    expect(root.textContent).toContain("12 aktif");
+  });
+
+  it("resets the selected report when the category changes", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/laporan");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    const categoryButton = (label: string) =>
+      [...root.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === label,
+      );
+    const hasRange = () =>
+      [...root.querySelectorAll("button")].some(
+        (button) => button.textContent?.trim() === "7 Hari",
+      );
+
+    expect(hasRange()).toBe(true);
+
+    click(categoryButton("Persediaan")!);
+    await wait(100);
+
+    expect(root.textContent).not.toContain(
+      "Penjualan Harian / Mingguan / Bulanan",
+    );
+    expect(hasRange()).toBe(false);
+
+    click(categoryButton("Keuangan")!);
+    await wait(100);
+
+    expect(root.textContent).not.toContain("Ikhtisar & Valuasi Stok");
+    expect(root.textContent).toContain("Hutang Supplier");
+    expect(hasRange()).toBe(false);
+
+    click(categoryButton("Penjualan")!);
+    await wait(100);
+
+    expect(hasRange()).toBe(true);
   });
 
   it("limits a cashier to permitted modules in read-only mode", async () => {

@@ -23,6 +23,7 @@ import { useAuth } from "../../app/auth";
 import { repository } from "../../data/repository";
 import {
   type DateRange,
+  recordsInRange,
   salesInRange,
   salesKpis,
   saleTotals,
@@ -53,8 +54,8 @@ export function ReportsPage() {
   const toast = useToast();
   const [category, setCategory] = createSignal<ReportCategory>("PENJUALAN");
   const [range, setRange] = createSignal<DateRange>("MONTH");
-  const [selected, setSelected] = createSignal<ReportDefinition>(
-    reportDefinitions[0]!,
+  const [selectedTitle, setSelectedTitle] = createSignal(
+    reportDefinitions[0]!.title,
   );
 
   const productsQuery = createQuery(() => ({
@@ -83,15 +84,40 @@ export function ReportsPage() {
   }));
 
   const loading = () =>
-    productsQuery.isPending || salesQuery.isPending || payablesQuery.isPending;
+    productsQuery.isPending ||
+    salesQuery.isPending ||
+    payablesQuery.isPending ||
+    movementsQuery.isPending ||
+    cashFlowsQuery.isPending ||
+    settingsQuery.isPending;
   const failed = () =>
-    productsQuery.isError || salesQuery.isError || payablesQuery.isError;
+    productsQuery.isError ||
+    salesQuery.isError ||
+    payablesQuery.isError ||
+    movementsQuery.isError ||
+    cashFlowsQuery.isError ||
+    settingsQuery.isError;
 
   const reports = createMemo(() =>
     reportDefinitions.filter((report) => report.category === category()),
   );
+  const selected = createMemo<ReportDefinition>(
+    () =>
+      reports().find((report) => report.title === selectedTitle()) ??
+      reports()[0]!,
+  );
   const filteredSales = createMemo(() =>
     salesInRange(salesQuery.data ?? [], range()),
+  );
+  const filteredMovements = createMemo(() =>
+    recordsInRange(
+      movementsQuery.data ?? [],
+      (movement) => movement.time,
+      range(),
+    ),
+  );
+  const filteredCashFlows = createMemo(() =>
+    recordsInRange(cashFlowsQuery.data ?? [], (flow) => flow.time, range()),
   );
 
   const preview = createMemo<PreviewTable>(() => {
@@ -185,7 +211,7 @@ export function ReportsPage() {
     if (report.kind === "MOVEMENT") {
       return {
         header: ["Tanggal", "Produk", "Lokasi", "Tipe", "Qty", "Referensi"],
-        rows: (movementsQuery.data ?? []).map((movement) => [
+        rows: filteredMovements().map((movement) => [
           formatDate(movement.time),
           movement.productName,
           movement.location,
@@ -199,7 +225,7 @@ export function ReportsPage() {
     if (report.kind === "CASHFLOW") {
       return {
         header: ["Tanggal", "Tipe", "Kategori", "Nominal", "Sumber"],
-        rows: (cashFlowsQuery.data ?? []).map((flow) => [
+        rows: filteredCashFlows().map((flow) => [
           formatDate(flow.time),
           flow.type,
           flow.category,
@@ -312,17 +338,26 @@ export function ReportsPage() {
           ]}
           label="Kategori laporan"
         />
-        <SegmentedControl
-          value={range()}
-          onChange={setRange}
-          items={[
-            { value: "TODAY", label: "Hari Ini" },
-            { value: "7DAYS", label: "7 Hari" },
-            { value: "MONTH", label: "Bulan Ini" },
-            { value: "ALL", label: "Semua" },
-          ]}
-          label="Rentang laporan"
-        />
+        <Show
+          when={selected().usesRange}
+          fallback={
+            <span class="text-xs text-ink-muted">
+              Rentang tidak berlaku untuk laporan ini.
+            </span>
+          }
+        >
+          <SegmentedControl
+            value={range()}
+            onChange={setRange}
+            items={[
+              { value: "TODAY", label: "Hari Ini" },
+              { value: "7DAYS", label: "7 Hari" },
+              { value: "MONTH", label: "Bulan Ini" },
+              { value: "ALL", label: "Semua" },
+            ]}
+            label="Rentang laporan"
+          />
+        </Show>
       </div>
 
       <Show
@@ -348,7 +383,7 @@ export function ReportsPage() {
               {(report) => (
                 <button
                   type="button"
-                  onClick={() => setSelected(report)}
+                  onClick={() => setSelectedTitle(report.title)}
                   class={`w-full cursor-pointer rounded-[8px] border p-3 text-left transition-colors ${
                     selected().title === report.title
                       ? "border-primary bg-primary-soft"

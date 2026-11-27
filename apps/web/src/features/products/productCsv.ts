@@ -1,4 +1,5 @@
 import type { Product } from "../../data/types";
+import { escapeCsvCell } from "../../lib/csv";
 
 const headers = [
   "Nama",
@@ -13,17 +14,6 @@ const headers = [
   "Stok Toko",
   "Stok Minimum",
 ];
-
-function escapeCell(value: string | number): string {
-  const raw = String(value);
-  const text = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
-
-  if (/[",\r\n]/.test(text)) {
-    return `"${text.replaceAll('"', '""')}"`;
-  }
-
-  return text;
-}
 
 export function productsToCsv(products: Product[]): string {
   const rows = products.map((product) =>
@@ -40,7 +30,7 @@ export function productsToCsv(products: Product[]): string {
       product.storeStock,
       product.minStock,
     ]
-      .map(escapeCell)
+      .map(escapeCsvCell)
       .join(","),
   );
 

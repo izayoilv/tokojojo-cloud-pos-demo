@@ -5,6 +5,7 @@ import {
   dailySalesSeries,
   inventoryValue,
   lowStockProducts,
+  recordsInRange,
   salesInRange,
   salesKpis,
   saleTotals,
@@ -162,6 +163,33 @@ describe("salesInRange", () => {
   it("returns everything for ALL and nothing for an empty list", () => {
     expect(salesInRange(dated, "ALL")).toHaveLength(4);
     expect(salesInRange([], "ALL")).toEqual([]);
+  });
+});
+
+describe("recordsInRange", () => {
+  const records = [
+    { id: "TODAY", time: "2025-05-14T09:00:00+07:00" },
+    { id: "SIX", time: "2025-05-08T09:00:00+07:00" },
+    { id: "OLD", time: "2025-05-06T09:00:00+07:00" },
+    { id: "PREV", time: "2025-04-30T09:00:00+07:00" },
+  ];
+  const time = (record: (typeof records)[number]) => record.time;
+
+  it("uses the latest record as the reference date", () => {
+    expect(
+      recordsInRange(records, time, "TODAY").map((item) => item.id),
+    ).toEqual(["TODAY"]);
+    expect(
+      recordsInRange(records, time, "7DAYS").map((item) => item.id),
+    ).toEqual(["TODAY", "SIX"]);
+    expect(
+      recordsInRange(records, time, "MONTH").map((item) => item.id),
+    ).toEqual(["TODAY", "SIX", "OLD"]);
+    expect(recordsInRange(records, time, "ALL")).toHaveLength(4);
+  });
+
+  it("returns nothing for an empty list", () => {
+    expect(recordsInRange([], time, "MONTH")).toEqual([]);
   });
 });
 

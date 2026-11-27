@@ -1,4 +1,4 @@
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { Button, Field, Input, Panel, useToast } from "@tokojojo/ui";
 import { Eye, EyeOff, LogIn, ShieldCheck } from "lucide-solid";
 import { createEffect, createSignal, For, Show } from "solid-js";
@@ -12,8 +12,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [username, setUsername] = createSignal("owner");
-  const [password, setPassword] = createSignal(demoPassword);
+  const [username, setUsername] = createSignal("");
+  const [password, setPassword] = createSignal("");
   const [showPassword, setShowPassword] = createSignal(false);
   const [showDemo, setShowDemo] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -175,12 +175,6 @@ export function LoginPage() {
             </div>
           </Show>
         </Panel>
-
-        <p class="mt-5 text-center text-xs text-ink-muted">
-          <A href="/" class="font-semibold text-primary hover:underline">
-            Kembali ke aplikasi
-          </A>
-        </p>
       </div>
     </div>
   );

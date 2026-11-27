@@ -219,7 +219,7 @@ export const repository = {
     await delay();
     const transfer: Transfer = {
       id: `TRF-${String(localTransfers.length + 1).padStart(3, "0")}`,
-      number: `MUT/2026/11/${String(localTransfers.length + 14).padStart(3, "0")}`,
+      number: `MUT/2026/11/${String(localTransfers.length + 1).padStart(3, "0")}`,
       from,
       to,
       status: "PENDING",

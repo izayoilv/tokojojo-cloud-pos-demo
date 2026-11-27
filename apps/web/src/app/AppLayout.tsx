@@ -27,23 +27,9 @@ import {
 } from "solid-js";
 
 import { repository } from "../data/repository";
-import { stockStatus } from "../lib/calc";
 import { useAuth } from "./auth";
-import {
-  canAccess,
-  initials,
-  moduleByPath,
-  roleMeta,
-  visibleSections,
-} from "./rbac";
-
-type NotificationTone = "danger" | "warning" | "info";
-
-type NotificationItem = {
-  tone: NotificationTone;
-  title: string;
-  detail: string;
-};
+import { buildNotifications, type NotificationTone } from "./notifications";
+import { initials, moduleByPath, roleMeta, visibleSections } from "./rbac";
 
 const toneDot: Record<NotificationTone, string> = {
   danger: "bg-danger",
@@ -96,64 +82,15 @@ export function AppLayout(props: { children?: JSX.Element }) {
     queryFn: () => repository.listOpnames(),
   }));
 
-  const notifications = createMemo<NotificationItem[]>(() => {
-    const items: NotificationItem[] = [];
-    const role = user()?.role;
-
-    for (const product of productsQuery.data ?? []) {
-      const status = stockStatus(product);
-      if (status === "HABIS") {
-        items.push({
-          tone: "danger",
-          title: `Stok habis: ${product.name}`,
-          detail: "Segera buat pembelian ke supplier.",
-        });
-      } else if (status === "MENIPIS") {
-        items.push({
-          tone: "warning",
-          title: `Stok menipis: ${product.name}`,
-          detail: `${product.storeStock} di toko · ${product.warehouseStock} di gudang.`,
-        });
-      }
-    }
-
-    for (const transfer of role && canAccess(role, "GUDANG")
-      ? (transfersQuery.data ?? []).filter((item) => item.status === "PENDING")
-      : []) {
-      items.push({
-        tone: "info",
-        title: `Mutasi pending: ${transfer.number}`,
-        detail: `${transfer.itemCount} jenis barang · ${transfer.createdBy}.`,
-      });
-    }
-
-    for (const opname of role && canAccess(role, "GUDANG")
-      ? (opnamesQuery.data ?? []).filter(
-          (item) => item.status === "PENDING_REVIEW",
-        )
-      : []) {
-      items.push({
-        tone: "warning",
-        title: `Opname menunggu review: ${opname.number}`,
-        detail: `${opname.items.length} produk · ${opname.createdBy}.`,
-      });
-    }
-
-    for (const payable of role && canAccess(role, "PEMBELIAN")
-      ? (payablesQuery.data ?? [])
-      : []) {
-      const remaining = payable.total - payable.paid;
-      if (remaining > 0) {
-        items.push({
-          tone: "danger",
-          title: `Hutang jatuh tempo: ${payable.supplierName}`,
-          detail: `${payable.invoice} · sisa Rp ${remaining.toLocaleString("id-ID")}.`,
-        });
-      }
-    }
-
-    return items;
-  });
+  const notifications = createMemo(() =>
+    buildNotifications({
+      role: user()?.role,
+      products: productsQuery.data ?? [],
+      transfers: transfersQuery.data ?? [],
+      opnames: opnamesQuery.data ?? [],
+      payables: payablesQuery.data ?? [],
+    }),
+  );
 
   createEffect(
     on(
@@ -360,7 +297,11 @@ export function AppLayout(props: { children?: JSX.Element }) {
                     <div class="max-h-[340px] overflow-y-auto">
                       <For each={notifications()}>
                         {(item) => (
-                          <DropdownMenu.Item class="flex cursor-default gap-2.5 border-b border-line px-4 py-2.5 text-sm outline-none last:border-0 hover:bg-hover">
+                          <DropdownMenu.Item
+                            as={A}
+                            href={item.href}
+                            class="flex cursor-pointer gap-2.5 border-b border-line px-4 py-2.5 text-sm text-ink outline-none last:border-0 hover:bg-hover"
+                          >
                             <span
                               class={`mt-1.5 size-2 shrink-0 rounded-full ${toneDot[item.tone]}`}
                             />
