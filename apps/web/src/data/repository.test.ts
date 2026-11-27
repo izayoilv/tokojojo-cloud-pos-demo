@@ -85,6 +85,230 @@ describe("repository.mock data", () => {
   });
 });
 
+describe("repository purchases", () => {
+  const items = [
+    {
+      productId: "PRD-001",
+      productName: "Beras Setra Ramos Cap Topi Koki 5kg",
+      quantity: 2,
+      unitCost: 50000,
+    },
+  ];
+
+  it("creates a received purchase with stock, payable, and movement", async () => {
+    const before = (await repository.listProducts()).find(
+      (product) => product.id === "PRD-001",
+    )!;
+    const purchase = await repository.createPurchase({
+      supplierName: "PT Uji",
+      invoice: "INV-TEST-001",
+      due: "2026-12-10",
+      items,
+    });
+
+    expect(purchase.total).toBe(100000);
+    expect(purchase.status).toBe("RECEIVED");
+    expect(purchase.payStatus).toBe("UNPAID");
+
+    const after = (await repository.listProducts()).find(
+      (product) => product.id === "PRD-001",
+    )!;
+    expect(after.warehouseStock).toBe(before.warehouseStock + 2);
+
+    const payable = (await repository.listPayables()).find(
+      (item) => item.invoice === "INV-TEST-001",
+    );
+    expect(payable?.total).toBe(100000);
+    expect(payable?.paid).toBe(0);
+
+    const movement = (await repository.listMovements())[0];
+    expect(movement?.type).toBe("PURCHASE");
+    expect(movement?.reference).toBe("INV-TEST-001");
+  });
+
+  it("rejects a duplicate supplier invoice", async () => {
+    await expect(
+      repository.createPurchase({
+        supplierName: "PT Uji",
+        invoice: "INV-TEST-001",
+        due: "2026-12-10",
+        items,
+      }),
+    ).rejects.toThrow("Faktur supplier sudah ada");
+  });
+
+  it("pays a purchase and records a cash outflow", async () => {
+    const purchase = await repository.createPurchase({
+      supplierName: "PT Uji",
+      invoice: "INV-TEST-002",
+      due: "2026-12-10",
+      items: [{ ...items[0]!, quantity: 1 }],
+    });
+    const paid = await repository.payPurchase(purchase.id, 20000, "TUNAI");
+
+    expect(paid.paid).toBe(20000);
+    expect(paid.payStatus).toBe("PARTIAL");
+
+    const payable = (await repository.listPayables()).find(
+      (item) => item.invoice === "INV-TEST-002",
+    );
+    expect(payable?.paid).toBe(20000);
+    expect(payable?.status).toBe("PARTIAL");
+
+    const flow = (await repository.listCashFlows())[0];
+    expect(flow?.type).toBe("OUT");
+    expect(flow?.amount).toBe(20000);
+    expect(flow?.reference).toBe("INV-TEST-002");
+  });
+
+  it("rejects overpayment", async () => {
+    const purchase = (await repository.listPurchases()).find(
+      (item) => item.invoice === "INV-TEST-002",
+    )!;
+
+    await expect(
+      repository.payPurchase(purchase.id, 999999, "TUNAI"),
+    ).rejects.toThrow("melebihi sisa hutang");
+  });
+
+  it("cancels an unpaid received purchase and reverses stock", async () => {
+    const before = (await repository.listProducts()).find(
+      (product) => product.id === "PRD-001",
+    )!;
+    const purchase = await repository.createPurchase({
+      supplierName: "PT Uji",
+      invoice: "INV-TEST-003",
+      due: "2026-12-10",
+      items,
+    });
+    const cancelled = await repository.cancelPurchase(purchase.id);
+
+    expect(cancelled.status).toBe("CANCELLED");
+    const after = (await repository.listProducts()).find(
+      (product) => product.id === "PRD-001",
+    )!;
+    expect(after.warehouseStock).toBe(before.warehouseStock);
+    expect(
+      (await repository.listPayables()).some(
+        (item) => item.invoice === "INV-TEST-003",
+      ),
+    ).toBe(false);
+    expect((await repository.listMovements())[0]?.type).toBe("PURCHASE_CANCEL");
+  });
+
+  it("rejects cancelling a purchase that has payments", async () => {
+    const purchase = (await repository.listPurchases()).find(
+      (item) => item.invoice === "INV-TEST-002",
+    )!;
+
+    await expect(repository.cancelPurchase(purchase.id)).rejects.toThrow(
+      "sudah dibayar",
+    );
+  });
+});
+
+describe("repository transfers", () => {
+  it("rejects same-location transfers", async () => {
+    await expect(
+      repository.createTransfer("WH-BACK", "WH-BACK", [
+        {
+          productId: "PRD-001",
+          productName: "Beras",
+          unit: "Karung",
+          quantity: 1,
+        },
+      ]),
+    ).rejects.toThrow("Lokasi asal dan tujuan harus berbeda");
+  });
+
+  it("rejects quantities above the source stock", async () => {
+    await expect(
+      repository.createTransfer("WH-BACK", "STORE-FRONT", [
+        {
+          productId: "PRD-001",
+          productName: "Beras",
+          unit: "Karung",
+          quantity: 999999,
+        },
+      ]),
+    ).rejects.toThrow("Stok gudang tidak cukup");
+  });
+
+  it("moves stock when a transfer completes", async () => {
+    const before = (await repository.listProducts()).find(
+      (product) => product.id === "PRD-001",
+    )!;
+    const transfer = await repository.createTransfer("WH-BACK", "STORE-FRONT", [
+      {
+        productId: "PRD-001",
+        productName: "Beras",
+        unit: "Karung",
+        quantity: 2,
+      },
+    ]);
+    await repository.completeTransfer(transfer.id);
+
+    const after = (await repository.listProducts()).find(
+      (product) => product.id === "PRD-001",
+    )!;
+    expect(after.warehouseStock).toBe(before.warehouseStock - 2);
+    expect(after.storeStock).toBe(before.storeStock + 2);
+
+    const movements = await repository.listMovements();
+    expect(movements[0]?.type).toBe("TRANSFER_OUT");
+    expect(movements[1]?.type).toBe("TRANSFER_IN");
+  });
+});
+
+describe("repository opnames", () => {
+  it("creates a pending opname with system quantities", async () => {
+    const product = (await repository.listProducts()).find(
+      (item) => item.id === "PRD-002",
+    )!;
+    const opname = await repository.createOpname({
+      location: "STORE-FRONT",
+      items: [{ productId: "PRD-002", physicalQty: product.storeStock - 1 }],
+    });
+
+    expect(opname.status).toBe("PENDING_REVIEW");
+    expect(opname.items[0]?.systemQty).toBe(product.storeStock);
+    expect(opname.items[0]?.physicalQty).toBe(product.storeStock - 1);
+  });
+
+  it("applies differences and records a movement on approval", async () => {
+    const before = (await repository.listProducts()).find(
+      (item) => item.id === "PRD-002",
+    )!;
+    const opname = await repository.createOpname({
+      location: "STORE-FRONT",
+      items: [{ productId: "PRD-002", physicalQty: before.storeStock + 1 }],
+    });
+    await repository.setOpnameStatus(opname.id, "APPROVED");
+
+    const after = (await repository.listProducts()).find(
+      (item) => item.id === "PRD-002",
+    )!;
+    expect(after.storeStock).toBe(before.storeStock + 1);
+    expect((await repository.listMovements())[0]?.type).toBe("OPNAME");
+  });
+
+  it("does not apply differences on rejection", async () => {
+    const before = (await repository.listProducts()).find(
+      (item) => item.id === "PRD-002",
+    )!;
+    const opname = await repository.createOpname({
+      location: "STORE-FRONT",
+      items: [{ productId: "PRD-002", physicalQty: before.storeStock - 1 }],
+    });
+    await repository.setOpnameStatus(opname.id, "REJECTED");
+
+    const after = (await repository.listProducts()).find(
+      (item) => item.id === "PRD-002",
+    )!;
+    expect(after.storeStock).toBe(before.storeStock);
+  });
+});
+
 describe("repository reads", () => {
   it("exposes sales, transfers, and store settings", async () => {
     const [sales, transfers, settings] = await Promise.all([

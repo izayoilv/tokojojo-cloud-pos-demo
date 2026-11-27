@@ -95,7 +95,7 @@ export type Payable = {
   due: string;
   total: number;
   paid: number;
-  status: "PARTIAL" | "UNPAID";
+  status: "PARTIAL" | "UNPAID" | "PAID";
 };
 
 export type StoreSettings = {
@@ -151,6 +151,13 @@ export type Customer = {
 
 export type PurchaseStatus = "RECEIVED" | "ORDERED" | "CANCELLED";
 
+export type PurchaseItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitCost: number;
+};
+
 export type Purchase = {
   id: string;
   number: string;
@@ -163,6 +170,7 @@ export type Purchase = {
   status: PurchaseStatus;
   payStatus: "PAID" | "PARTIAL" | "UNPAID";
   itemCount: number;
+  items?: PurchaseItem[];
 };
 
 export type StockMovementType =

@@ -185,6 +185,145 @@ describe("app smoke", () => {
     expect(root.textContent).toContain("12 aktif");
   });
 
+  it("creates and cancels a purchase", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/pembelian");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    click(
+      [...root.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Buat Pembelian"),
+      )!,
+    );
+    await wait(100);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+
+    const selects = dialog!.querySelectorAll<HTMLSelectElement>("select");
+    selects[0]!.value = "CV Sumber Rejeki";
+    selects[0]!.dispatchEvent(new Event("change", { bubbles: true }));
+    selects[1]!.value = "PRD-001";
+    selects[1]!.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const inputs = dialog!.querySelectorAll<HTMLInputElement>("input");
+    inputs[0]!.value = "INV-UI-TEST";
+    inputs[0]!.dispatchEvent(new Event("input", { bubbles: true }));
+    inputs[1]!.value = "2026-12-15";
+    inputs[1]!.dispatchEvent(new Event("input", { bubbles: true }));
+
+    click(
+      [...dialog!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Simpan pembelian",
+      )!,
+    );
+    await wait(500);
+
+    expect(root.textContent).toContain("INV-UI-TEST");
+
+    const row = [...root.querySelectorAll("tr")].find((entry) =>
+      entry.textContent?.includes("INV-UI-TEST"),
+    );
+    expect(row).toBeDefined();
+    const cancelButton = [...row!.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Batalkan",
+    );
+    expect(cancelButton).toBeDefined();
+    click(cancelButton!);
+    await wait(50);
+
+    const confirm = document.querySelector<HTMLElement>('[role="dialog"]');
+    expect(confirm!.textContent).toContain("Batalkan pembelian?");
+    click(
+      [...confirm!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Batalkan",
+      )!,
+    );
+    await wait(500);
+
+    const cancelledRow = [...root.querySelectorAll("tr")].find((entry) =>
+      entry.textContent?.includes("INV-UI-TEST"),
+    );
+    expect(cancelledRow?.textContent).toContain("CANCELLED");
+  });
+
+  it("validates warehouse transfers before creating", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/gudang");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    click(
+      [...root.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Buat Mutasi"),
+      )!,
+    );
+    await wait(100);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    const selects = dialog!.querySelectorAll<HTMLSelectElement>("select");
+    selects[0]!.value = "WH-BACK";
+    selects[0]!.dispatchEvent(new Event("change", { bubbles: true }));
+    selects[1]!.value = "WH-BACK";
+    selects[1]!.dispatchEvent(new Event("change", { bubbles: true }));
+    selects[2]!.value = "PRD-001";
+    selects[2]!.dispatchEvent(new Event("change", { bubbles: true }));
+
+    click(
+      [...dialog!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Buat mutasi",
+      )!,
+    );
+    await wait(100);
+
+    expect(dialog!.textContent).toContain(
+      "Lokasi asal dan tujuan harus berbeda.",
+    );
+  });
+
+  it("creates an opname from counted stock", async () => {
+    const root = mount();
+    await login(root, "owner");
+
+    window.history.pushState(null, "", "/gudang");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    await wait(500);
+
+    click(
+      [...root.querySelectorAll('[role="tab"]')].find((tab) =>
+        tab.textContent?.includes("Opname"),
+      )!,
+    );
+    await wait(100);
+
+    click(
+      [...root.querySelectorAll("button")].find((button) =>
+        button.textContent?.includes("Buat Opname"),
+      )!,
+    );
+    await wait(100);
+
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    const selects = dialog!.querySelectorAll<HTMLSelectElement>("select");
+    selects[1]!.value = "PRD-002";
+    selects[1]!.dispatchEvent(new Event("change", { bubbles: true }));
+
+    click(
+      [...dialog!.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Simpan opname",
+      )!,
+    );
+    await wait(500);
+
+    expect(root.textContent).toContain("OPN/2026/11/003");
+    expect(root.textContent).toContain("Menunggu review");
+  });
+
   it("resets the selected report when the category changes", async () => {
     const root = mount();
     await login(root, "owner");

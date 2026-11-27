@@ -24,8 +24,12 @@ import { createSignal, For, Show } from "solid-js";
 import { useAuth } from "../../app/auth";
 import { canReviewOpname } from "../../app/rbac";
 import { repository } from "../../data/repository";
-import type { LocationCode, TransferItem } from "../../data/types";
+import type { LocationCode, Transfer, TransferItem } from "../../data/types";
 import { formatDateTime } from "../../lib/format";
+import {
+  validateOpnameDraft,
+  validateTransferDraft,
+} from "./warehouseValidation";
 
 type WarehouseTab = "MUTASI" | "OPNAME";
 
@@ -39,6 +43,18 @@ export function WarehousePage() {
   const [to, setTo] = createSignal<LocationCode>("STORE-FRONT");
   const [productId, setProductId] = createSignal("");
   const [qty, setQty] = createSignal("1");
+  const [createError, setCreateError] = createSignal("");
+  const [transferAction, setTransferAction] = createSignal<{
+    type: "complete" | "cancel";
+    transfer: Transfer;
+  } | null>(null);
+  const [opnameOpen, setOpnameOpen] = createSignal(false);
+  const [opnameLocation, setOpnameLocation] =
+    createSignal<LocationCode>("STORE-FRONT");
+  const [opnameRows, setOpnameRows] = createSignal<
+    Array<{ productId: string; physicalQty: number }>
+  >([{ productId: "", physicalQty: 0 }]);
+  const [opnameError, setOpnameError] = createSignal("");
 
   const transfersQuery = createQuery(() => ({
     queryKey: ["transfers"],
@@ -53,35 +69,153 @@ export function WarehousePage() {
     queryFn: () => repository.listProducts(),
   }));
 
-  const loading = () => transfersQuery.isPending || opnamesQuery.isPending;
-  const failed = () => transfersQuery.isError || opnamesQuery.isError;
+  const loading = () =>
+    transfersQuery.isPending ||
+    opnamesQuery.isPending ||
+    productsQuery.isPending;
+  const failed = () =>
+    transfersQuery.isError || opnamesQuery.isError || productsQuery.isError;
 
   const mutate = async (action: () => Promise<unknown>, message: string) => {
     await action();
-    await queryClient.invalidateQueries({ queryKey: ["transfers"] });
-    await queryClient.invalidateQueries({ queryKey: ["opnames"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["transfers"] }),
+      queryClient.invalidateQueries({ queryKey: ["opnames"] }),
+      queryClient.invalidateQueries({ queryKey: ["products"] }),
+      queryClient.invalidateQueries({ queryKey: ["movements"] }),
+    ]);
     toast.notify(message);
   };
 
+  const selectedProduct = () =>
+    (productsQuery.data ?? []).find((product) => product.id === productId());
+  const availableStock = () => {
+    const product = selectedProduct();
+    if (!product) return 0;
+    return from() === "WH-BACK" ? product.warehouseStock : product.storeStock;
+  };
+
   const createTransfer = async () => {
-    const product = (productsQuery.data ?? []).find(
-      (p) => p.id === productId(),
-    );
-    if (!product) {
-      toast.notify("Pilih produk terlebih dahulu.", "danger");
+    const product = selectedProduct();
+    const quantity = Number(qty());
+    const error = validateTransferDraft({
+      from: from(),
+      to: to(),
+      productId: productId(),
+      quantity,
+      products: productsQuery.data ?? [],
+    });
+
+    if (error) {
+      setCreateError(error);
       return;
     }
+
+    if (!product) return;
+
     const item: TransferItem = {
       productId: product.id,
       productName: product.name,
       unit: product.unit,
-      quantity: Number(qty()) || 1,
+      quantity,
     };
+
+    try {
+      await mutate(
+        () => repository.createTransfer(from(), to(), [item]),
+        "Mutasi dibuat — menunggu serah terima.",
+      );
+      setCreateOpen(false);
+    } catch (caught) {
+      setCreateError(
+        caught instanceof Error ? caught.message : "Mutasi gagal dibuat.",
+      );
+    }
+  };
+
+  const openTransfer = () => {
+    setCreateError("");
+    setCreateOpen(true);
+  };
+
+  const confirmTransferAction = async () => {
+    const action = transferAction();
+    if (!action) return;
+
     await mutate(
-      () => repository.createTransfer(from(), to(), [item]),
-      "Mutasi dibuat — menunggu serah terima.",
+      () =>
+        action.type === "complete"
+          ? repository.completeTransfer(action.transfer.id)
+          : repository.cancelTransfer(action.transfer.id),
+      action.type === "complete"
+        ? "Mutasi selesai. Stok sudah dipindahkan."
+        : "Mutasi dibatalkan.",
     );
-    setCreateOpen(false);
+    setTransferAction(null);
+  };
+
+  const systemQty = (id: string) => {
+    const product = (productsQuery.data ?? []).find((item) => item.id === id);
+    if (!product) return 0;
+    return opnameLocation() === "WH-BACK"
+      ? product.warehouseStock
+      : product.storeStock;
+  };
+
+  const updateOpnameRow = (
+    index: number,
+    patch: Partial<{ productId: string; physicalQty: number }>,
+  ) => {
+    setOpnameRows((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, ...patch } : row,
+      ),
+    );
+  };
+
+  const addOpnameRow = () => {
+    setOpnameRows((current) => [...current, { productId: "", physicalQty: 0 }]);
+  };
+
+  const removeOpnameRow = (index: number) => {
+    setOpnameRows((current) =>
+      current.filter((_, rowIndex) => rowIndex !== index),
+    );
+  };
+
+  const openOpname = () => {
+    setOpnameLocation("STORE-FRONT");
+    setOpnameRows([{ productId: "", physicalQty: 0 }]);
+    setOpnameError("");
+    setOpnameOpen(true);
+  };
+
+  const saveOpname = async () => {
+    const error = validateOpnameDraft({
+      location: opnameLocation(),
+      items: opnameRows(),
+    });
+
+    if (error) {
+      setOpnameError(error);
+      return;
+    }
+
+    try {
+      await mutate(
+        () =>
+          repository.createOpname({
+            location: opnameLocation(),
+            items: opnameRows(),
+          }),
+        "Opname dibuat — menunggu review.",
+      );
+      setOpnameOpen(false);
+    } catch (caught) {
+      setOpnameError(
+        caught instanceof Error ? caught.message : "Opname gagal dibuat.",
+      );
+    }
   };
 
   return (
@@ -91,15 +225,18 @@ export function WarehousePage() {
         title="Gudang"
         subtitle="Mutasi dipindahkan saat selesai; opname disetujui di sini."
         actions={
-          <Show when={tab() === "MUTASI"}>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus size={14} /> Buat Mutasi
-            </Button>
-          </Show>
+          <>
+            <Show when={tab() === "MUTASI"}>
+              <Button size="sm" variant="primary" onClick={openTransfer}>
+                <Plus size={14} /> Buat Mutasi
+              </Button>
+            </Show>
+            <Show when={tab() === "OPNAME"}>
+              <Button size="sm" variant="primary" onClick={openOpname}>
+                <Plus size={14} /> Buat Opname
+              </Button>
+            </Show>
+          </>
         }
       />
 
@@ -138,6 +275,7 @@ export function WarehousePage() {
                 onRetry={() => {
                   void transfersQuery.refetch();
                   void opnamesQuery.refetch();
+                  void productsQuery.refetch();
                 }}
               />
             </Panel>
@@ -211,13 +349,10 @@ export function WarehousePage() {
                                       size="sm"
                                       variant="success"
                                       onClick={() =>
-                                        void mutate(
-                                          () =>
-                                            repository.completeTransfer(
-                                              transfer.id,
-                                            ),
-                                          "Mutasi selesai. Stok sudah dipindahkan.",
-                                        )
+                                        setTransferAction({
+                                          type: "complete",
+                                          transfer,
+                                        })
                                       }
                                     >
                                       Selesaikan
@@ -226,13 +361,10 @@ export function WarehousePage() {
                                       size="sm"
                                       variant="soft-danger"
                                       onClick={() =>
-                                        void mutate(
-                                          () =>
-                                            repository.cancelTransfer(
-                                              transfer.id,
-                                            ),
-                                          "Mutasi dibatalkan.",
-                                        )
+                                        setTransferAction({
+                                          type: "cancel",
+                                          transfer,
+                                        })
                                       }
                                     >
                                       Batal
@@ -370,7 +502,10 @@ export function WarehousePage() {
 
         <Modal
           open={createOpen()}
-          onOpenChange={setCreateOpen}
+          onOpenChange={(open) => {
+            setCreateOpen(open);
+            if (!open) setCreateError("");
+          }}
           title="Buat Mutasi"
           description="Mutasi pending harus diselesaikan agar stok berpindah."
           footer={
@@ -410,7 +545,10 @@ export function WarehousePage() {
             <Field label="Produk">
               <Select
                 value={productId()}
-                onChange={(event) => setProductId(event.currentTarget.value)}
+                onChange={(event) => {
+                  setProductId(event.currentTarget.value);
+                  setCreateError("");
+                }}
               >
                 <option value="">Pilih produk...</option>
                 <For each={productsQuery.data ?? []}>
@@ -425,11 +563,146 @@ export function WarehousePage() {
                 type="number"
                 min="1"
                 value={qty()}
-                onInput={(event) => setQty(event.currentTarget.value)}
+                onInput={(event) => {
+                  setQty(event.currentTarget.value);
+                  setCreateError("");
+                }}
               />
             </Field>
+            <p class="text-xs text-ink-muted">
+              Stok tersedia di lokasi asal: <b>{availableStock()}</b>
+            </p>
+            <Show when={createError()}>
+              <p class="text-xs font-semibold text-danger">{createError()}</p>
+            </Show>
           </div>
         </Modal>
+
+        <Show when={transferAction()}>
+          {(action) => (
+            <Modal
+              open
+              onOpenChange={(open) => !open && setTransferAction(null)}
+              title={
+                action().type === "complete"
+                  ? "Selesaikan mutasi?"
+                  : "Batalkan mutasi?"
+              }
+              description={`${action().transfer.number} · ${action().transfer.from} → ${action().transfer.to}`}
+              footer={
+                <>
+                  <Button onClick={() => setTransferAction(null)}>Tidak</Button>
+                  <Button
+                    variant={
+                      action().type === "complete" ? "success" : "soft-danger"
+                    }
+                    onClick={() => void confirmTransferAction()}
+                  >
+                    {action().type === "complete" ? "Selesaikan" : "Batalkan"}
+                  </Button>
+                </>
+              }
+            >
+              <p class="text-sm text-ink-secondary">
+                {action().type === "complete"
+                  ? "Stok akan dipindahkan dari lokasi asal ke lokasi tujuan."
+                  : "Mutasi pending akan dibatalkan tanpa memindahkan stok."}
+              </p>
+            </Modal>
+          )}
+        </Show>
+
+        <Show when={opnameOpen()}>
+          <Modal
+            open
+            onOpenChange={(open) => {
+              setOpnameOpen(open);
+              if (!open) setOpnameError("");
+            }}
+            title="Buat Opname"
+            description="Masukkan jumlah fisik hasil hitung. Selisih menunggu review OWNER/ADMIN."
+            footer={
+              <>
+                <Button onClick={() => setOpnameOpen(false)}>Batal</Button>
+                <Button variant="primary" onClick={() => void saveOpname()}>
+                  Simpan opname
+                </Button>
+              </>
+            }
+          >
+            <div class="space-y-3">
+              <Field label="Lokasi">
+                <Select
+                  value={opnameLocation()}
+                  onChange={(event) =>
+                    setOpnameLocation(event.currentTarget.value as LocationCode)
+                  }
+                >
+                  <option value="STORE-FRONT">Area toko</option>
+                  <option value="WH-BACK">Gudang belakang</option>
+                </Select>
+              </Field>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-ink-secondary">
+                    Produk
+                  </span>
+                  <Button size="sm" variant="secondary" onClick={addOpnameRow}>
+                    <Plus size={13} /> Tambah produk
+                  </Button>
+                </div>
+                <For each={opnameRows()}>
+                  {(row, index) => (
+                    <div class="grid grid-cols-1 gap-2 rounded-[6px] border border-line p-2 sm:grid-cols-[1.6fr_80px_36px]">
+                      <Select
+                        aria-label="Produk opname"
+                        value={row.productId}
+                        onChange={(event) =>
+                          updateOpnameRow(index(), {
+                            productId: event.currentTarget.value,
+                          })
+                        }
+                      >
+                        <option value="">Pilih produk...</option>
+                        <For each={productsQuery.data ?? []}>
+                          {(product) => (
+                            <option value={product.id}>{product.name}</option>
+                          )}
+                        </For>
+                      </Select>
+                      <Input
+                        aria-label="Jumlah fisik"
+                        type="number"
+                        min="0"
+                        value={row.physicalQty}
+                        onInput={(event) =>
+                          updateOpnameRow(index(), {
+                            physicalQty: Number(event.currentTarget.value),
+                          })
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Hapus produk opname"
+                        disabled={opnameRows().length === 1}
+                        onClick={() => removeOpnameRow(index())}
+                      >
+                        ×
+                      </Button>
+                      <span class="text-[11px] text-ink-muted sm:col-span-3">
+                        Stok sistem: {systemQty(row.productId)}
+                      </span>
+                    </div>
+                  )}
+                </For>
+              </div>
+              <Show when={opnameError()}>
+                <p class="text-xs font-semibold text-danger">{opnameError()}</p>
+              </Show>
+            </div>
+          </Modal>
+        </Show>
       </div>
     </>
   );

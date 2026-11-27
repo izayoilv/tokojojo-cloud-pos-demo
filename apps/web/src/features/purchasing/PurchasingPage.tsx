@@ -19,11 +19,30 @@ import {
   Th,
   useToast,
 } from "@tokojojo/ui";
-import { Plus } from "lucide-solid";
+import { Plus, Trash2 } from "lucide-solid";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { repository } from "../../data/repository";
+import type { PaymentMethod, Purchase, PurchaseItem } from "../../data/types";
 import { formatDate, formatRupiah } from "../../lib/format";
+import {
+  type PurchaseDraft,
+  validatePurchaseDraft,
+} from "./purchaseValidation";
+
+const emptyLine = (): PurchaseItem => ({
+  productId: "",
+  productName: "",
+  quantity: 1,
+  unitCost: 0,
+});
+
+const emptyDraft = (): PurchaseDraft => ({
+  supplierName: "",
+  invoice: "",
+  due: "",
+  items: [emptyLine()],
+});
 
 type PurchasingTab = "PEMBELIAN" | "SUPPLIER" | "HUTANG";
 
@@ -43,6 +62,15 @@ export function PurchasingPage() {
     name: "",
     phone: "",
   });
+  const [purchaseDraft, setPurchaseDraft] =
+    createSignal<PurchaseDraft>(emptyDraft());
+  const [purchaseError, setPurchaseError] = createSignal("");
+  const [paymentTarget, setPaymentTarget] = createSignal<Purchase | null>(null);
+  const [paymentAmount, setPaymentAmount] = createSignal("");
+  const [paymentMethod, setPaymentMethod] =
+    createSignal<PaymentMethod>("TUNAI");
+  const [paymentError, setPaymentError] = createSignal("");
+  const [cancelTarget, setCancelTarget] = createSignal<Purchase | null>(null);
 
   const purchasesQuery = createQuery(() => ({
     queryKey: ["purchases"],
@@ -56,13 +84,21 @@ export function PurchasingPage() {
     queryKey: ["payables"],
     queryFn: () => repository.listPayables(),
   }));
+  const productsQuery = createQuery(() => ({
+    queryKey: ["products"],
+    queryFn: () => repository.listProducts(),
+  }));
 
   const loading = () =>
     purchasesQuery.isPending ||
     suppliersQuery.isPending ||
-    payablesQuery.isPending;
+    payablesQuery.isPending ||
+    productsQuery.isPending;
   const failed = () =>
-    purchasesQuery.isError || suppliersQuery.isError || payablesQuery.isError;
+    purchasesQuery.isError ||
+    suppliersQuery.isError ||
+    payablesQuery.isError ||
+    productsQuery.isError;
 
   const purchases = createMemo(() => {
     const needle = search().trim().toLowerCase();
@@ -124,6 +160,120 @@ export function PurchasingPage() {
     toast.notify("Supplier tersimpan.");
   };
 
+  const invalidatePurchasing = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["purchases"] }),
+      queryClient.invalidateQueries({ queryKey: ["payables"] }),
+      queryClient.invalidateQueries({ queryKey: ["movements"] }),
+      queryClient.invalidateQueries({ queryKey: ["products"] }),
+      queryClient.invalidateQueries({ queryKey: ["cashFlows"] }),
+    ]);
+  };
+
+  const openPurchase = () => {
+    setPurchaseDraft(emptyDraft());
+    setPurchaseError("");
+    setModal("purchase");
+  };
+
+  const updateLine = (index: number, patch: Partial<PurchaseItem>) => {
+    setPurchaseDraft((current) => ({
+      ...current,
+      items: current.items.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...patch } : item,
+      ),
+    }));
+  };
+
+  const addLine = () => {
+    setPurchaseDraft((current) => ({
+      ...current,
+      items: [...current.items, emptyLine()],
+    }));
+  };
+
+  const removeLine = (index: number) => {
+    setPurchaseDraft((current) => ({
+      ...current,
+      items: current.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
+  const purchaseTotal = () =>
+    purchaseDraft().items.reduce(
+      (sum, item) => sum + item.quantity * item.unitCost,
+      0,
+    );
+
+  const savePurchase = async () => {
+    const error = validatePurchaseDraft(purchaseDraft());
+
+    if (error) {
+      setPurchaseError(error);
+      return;
+    }
+
+    try {
+      await repository.createPurchase(purchaseDraft());
+      await invalidatePurchasing();
+      setModal(null);
+      toast.notify("Pembelian dibuat dan stok gudang bertambah.");
+    } catch (caught) {
+      setPurchaseError(
+        caught instanceof Error ? caught.message : "Pembelian gagal disimpan.",
+      );
+    }
+  };
+
+  const openPayment = (purchase: Purchase) => {
+    setPaymentTarget(purchase);
+    setPaymentAmount(String(purchase.total - purchase.paid));
+    setPaymentMethod("TUNAI");
+    setPaymentError("");
+    setModal("payment");
+  };
+
+  const savePayment = async () => {
+    const target = paymentTarget();
+
+    if (!target) return;
+
+    try {
+      await repository.payPurchase(
+        target.id,
+        Number(paymentAmount()),
+        paymentMethod(),
+      );
+      await invalidatePurchasing();
+      setModal(null);
+      toast.notify("Pembayaran tersimpan di arus kas.");
+    } catch (caught) {
+      setPaymentError(
+        caught instanceof Error ? caught.message : "Pembayaran gagal disimpan.",
+      );
+    }
+  };
+
+  const cancelPurchase = async () => {
+    const target = cancelTarget();
+
+    if (!target) return;
+
+    try {
+      await repository.cancelPurchase(target.id);
+      await invalidatePurchasing();
+      setCancelTarget(null);
+      toast.notify("Pembelian dibatalkan dan stok dikembalikan.", "warning");
+    } catch (caught) {
+      toast.notify(
+        caught instanceof Error
+          ? caught.message
+          : "Pembelian gagal dibatalkan.",
+        "danger",
+      );
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -131,11 +281,7 @@ export function PurchasingPage() {
         title="Pembelian"
         subtitle="Penerimaan barang dari supplier dan kewajiban pembayaran."
         actions={
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => setModal("purchase")}
-          >
+          <Button size="sm" variant="primary" onClick={openPurchase}>
             <Plus size={14} /> Buat Pembelian
           </Button>
         }
@@ -264,21 +410,37 @@ export function PurchasingPage() {
                                 </Badge>
                               </Td>
                               <Td align="center">
-                                <Show
-                                  when={purchase.total - purchase.paid > 0}
-                                  fallback={
-                                    <span class="text-xs text-success">
-                                      Lunas
-                                    </span>
-                                  }
-                                >
-                                  <Button
-                                    size="sm"
-                                    onClick={() => setModal("payment")}
+                                <div class="flex justify-center gap-1">
+                                  <Show
+                                    when={purchase.total - purchase.paid > 0}
+                                    fallback={
+                                      <span class="self-center text-xs text-success">
+                                        Lunas
+                                      </span>
+                                    }
                                   >
-                                    Bayar
-                                  </Button>
-                                </Show>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => openPayment(purchase)}
+                                    >
+                                      Bayar
+                                    </Button>
+                                  </Show>
+                                  <Show
+                                    when={
+                                      purchase.status !== "CANCELLED" &&
+                                      purchase.paid === 0
+                                    }
+                                  >
+                                    <Button
+                                      size="sm"
+                                      variant="soft-danger"
+                                      onClick={() => setCancelTarget(purchase)}
+                                    >
+                                      Batalkan
+                                    </Button>
+                                  </Show>
+                                </div>
                               </Td>
                             </tr>
                           )}
@@ -382,14 +544,18 @@ export function PurchasingPage() {
                             <Td>
                               <Badge
                                 tone={
-                                  payable.status === "PARTIAL"
-                                    ? "warning"
-                                    : "danger"
+                                  payable.status === "PAID"
+                                    ? "success"
+                                    : payable.status === "PARTIAL"
+                                      ? "warning"
+                                      : "danger"
                                 }
                               >
-                                {payable.status === "PARTIAL"
-                                  ? "Cicilan"
-                                  : "Belum bayar"}
+                                {payable.status === "PAID"
+                                  ? "Lunas"
+                                  : payable.status === "PARTIAL"
+                                    ? "Cicilan"
+                                    : "Belum bayar"}
                               </Badge>
                             </Td>
                           </tr>
@@ -412,13 +578,7 @@ export function PurchasingPage() {
             footer={
               <>
                 <Button onClick={() => setModal(null)}>Batal</Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setModal(null);
-                    toast.notify("Pembelian contoh dibuat.");
-                  }}
-                >
+                <Button variant="primary" onClick={() => void savePurchase()}>
                   Simpan pembelian
                 </Button>
               </>
@@ -426,24 +586,126 @@ export function PurchasingPage() {
           >
             <div class="space-y-3">
               <Field label="Supplier" required>
-                <Select>
-                  <option>Pilih supplier...</option>
+                <Select
+                  value={purchaseDraft().supplierName}
+                  onChange={(event) =>
+                    setPurchaseDraft((current) => ({
+                      ...current,
+                      supplierName: event.currentTarget.value,
+                    }))
+                  }
+                >
+                  <option value="">Pilih supplier...</option>
                   <For each={suppliers()}>
-                    {(supplier) => <option>{supplier.name}</option>}
+                    {(supplier) => (
+                      <option value={supplier.name}>{supplier.name}</option>
+                    )}
                   </For>
                 </Select>
               </Field>
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label="No. faktur supplier">
-                  <Input placeholder="INV-..." />
+                <Field label="No. faktur supplier" required>
+                  <Input
+                    placeholder="INV-..."
+                    value={purchaseDraft().invoice}
+                    onInput={(event) =>
+                      setPurchaseDraft((current) => ({
+                        ...current,
+                        invoice: event.currentTarget.value,
+                      }))
+                    }
+                  />
                 </Field>
-                <Field label="Jatuh tempo">
-                  <Input type="date" />
+                <Field label="Jatuh tempo" required>
+                  <Input
+                    type="date"
+                    value={purchaseDraft().due}
+                    onInput={(event) =>
+                      setPurchaseDraft((current) => ({
+                        ...current,
+                        due: event.currentTarget.value,
+                      }))
+                    }
+                  />
                 </Field>
               </div>
-              <Field label="Total pembelian">
-                <Input type="number" placeholder="0" />
-              </Field>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-ink-secondary">
+                    Barang
+                  </span>
+                  <Button size="sm" variant="secondary" onClick={addLine}>
+                    <Plus size={13} /> Tambah barang
+                  </Button>
+                </div>
+                <For each={purchaseDraft().items}>
+                  {(item, index) => (
+                    <div class="grid grid-cols-1 gap-2 rounded-[6px] border border-line p-2 sm:grid-cols-[1.6fr_80px_120px_36px]">
+                      <Select
+                        aria-label="Produk"
+                        value={item.productId}
+                        onChange={(event) => {
+                          const product = (productsQuery.data ?? []).find(
+                            (entry) => entry.id === event.currentTarget.value,
+                          );
+                          updateLine(index(), {
+                            productId: event.currentTarget.value,
+                            productName: product?.name ?? "",
+                            unitCost: product?.cost ?? item.unitCost,
+                          });
+                        }}
+                      >
+                        <option value="">Pilih produk...</option>
+                        <For each={productsQuery.data ?? []}>
+                          {(product) => (
+                            <option value={product.id}>{product.name}</option>
+                          )}
+                        </For>
+                      </Select>
+                      <Input
+                        aria-label="Jumlah"
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onInput={(event) =>
+                          updateLine(index(), {
+                            quantity: Number(event.currentTarget.value),
+                          })
+                        }
+                      />
+                      <Input
+                        aria-label="Harga satuan"
+                        type="number"
+                        min="0"
+                        value={item.unitCost}
+                        onInput={(event) =>
+                          updateLine(index(), {
+                            unitCost: Number(event.currentTarget.value),
+                          })
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label="Hapus barang"
+                        disabled={purchaseDraft().items.length === 1}
+                        onClick={() => removeLine(index())}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  )}
+                </For>
+              </div>
+              <div class="flex items-center justify-between border-t border-line pt-3 text-sm">
+                <span class="text-ink-muted">Total pembelian</span>
+                <b>{formatRupiah(purchaseTotal())}</b>
+              </div>
+              <Show when={purchaseError()}>
+                <p class="text-xs font-semibold text-danger">
+                  {purchaseError()}
+                </p>
+              </Show>
             </div>
           </Modal>
         </Show>
@@ -453,34 +715,78 @@ export function PurchasingPage() {
             open
             onOpenChange={(open) => !open && setModal(null)}
             title="Bayar Hutang"
-            description="Pembayaran ini akan tercatat di arus kas."
+            description={
+              paymentTarget()
+                ? `${paymentTarget()!.supplierName} · ${paymentTarget()!.invoice}`
+                : "Pembayaran ini akan tercatat di arus kas."
+            }
             footer={
               <>
                 <Button onClick={() => setModal(null)}>Batal</Button>
-                <Button
-                  variant="success"
-                  onClick={() => {
-                    setModal(null);
-                    toast.notify("Pembayaran contoh tersimpan.");
-                  }}
-                >
+                <Button variant="success" onClick={() => void savePayment()}>
                   Simpan pembayaran
                 </Button>
               </>
             }
           >
             <div class="space-y-3">
-              <Field label="Nominal">
-                <Input type="number" placeholder="0" />
+              <Field label="Nominal" required>
+                <Input
+                  type="number"
+                  min="1"
+                  value={paymentAmount()}
+                  onInput={(event) =>
+                    setPaymentAmount(event.currentTarget.value)
+                  }
+                />
               </Field>
               <Field label="Metode">
-                <Select>
-                  <option>Tunai</option>
-                  <option>Transfer</option>
+                <Select
+                  value={paymentMethod()}
+                  onChange={(event) =>
+                    setPaymentMethod(event.currentTarget.value as PaymentMethod)
+                  }
+                >
+                  <option value="TUNAI">Tunai</option>
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="DEBIT">Debit</option>
                 </Select>
               </Field>
+              <Show when={paymentError()}>
+                <p class="text-xs font-semibold text-danger">
+                  {paymentError()}
+                </p>
+              </Show>
             </div>
           </Modal>
+        </Show>
+
+        <Show when={cancelTarget()}>
+          {(target) => (
+            <Modal
+              open
+              onOpenChange={(open) => !open && setCancelTarget(null)}
+              title="Batalkan pembelian?"
+              description={`${target().supplierName} · ${target().invoice}`}
+              footer={
+                <>
+                  <Button onClick={() => setCancelTarget(null)}>Tidak</Button>
+                  <Button
+                    variant="soft-danger"
+                    onClick={() => void cancelPurchase()}
+                  >
+                    Batalkan
+                  </Button>
+                </>
+              }
+            >
+              <p class="text-sm text-ink-secondary">
+                Stok yang sudah diterima akan dikembalikan. Pembelian yang sudah
+                dibayar tidak dapat dibatalkan.
+              </p>
+            </Modal>
+          )}
         </Show>
 
         <Show when={modal() === "supplier"}>

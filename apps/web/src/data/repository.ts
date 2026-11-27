@@ -26,10 +26,13 @@ import type {
   Customer,
   Device,
   DeviceStatus,
+  LocationCode,
   Opname,
   Payable,
+  PaymentMethod,
   Product,
   Purchase,
+  PurchaseItem,
   ReceiptSettings,
   Receivable,
   Sale,
@@ -60,6 +63,12 @@ let localOpnames = clone(opnames);
 let localUsers = clone(users);
 let localSettings = clone(settings);
 let localReceiptSettings = clone(receiptSettings);
+let localPurchases = clone(purchases);
+let localPayables = clone(payables);
+let localMovements = clone(stockMovements);
+
+const nextId = (prefix: string, values: Array<{ id: string }>) =>
+  `${prefix}-${String(values.length + 1).padStart(3, "0")}`;
 
 export const repository = {
   async login(username: string, password: string): Promise<User> {
@@ -198,12 +207,252 @@ export const repository = {
 
   async listPurchases(): Promise<Purchase[]> {
     await delay();
-    return clone(purchases);
+    return clone(localPurchases);
+  },
+
+  async createPurchase(input: {
+    supplierName: string;
+    invoice: string;
+    due: string;
+    items: PurchaseItem[];
+  }): Promise<Purchase> {
+    await delay();
+    const invoice = input.invoice.trim();
+
+    if (!input.supplierName.trim()) {
+      throw new Error("Supplier wajib dipilih.");
+    }
+
+    if (!invoice) {
+      throw new Error("Faktur supplier wajib diisi.");
+    }
+
+    if (
+      localPurchases.some(
+        (purchase) =>
+          purchase.status !== "CANCELLED" &&
+          purchase.invoice.toLowerCase() === invoice.toLowerCase(),
+      )
+    ) {
+      throw new Error("Faktur supplier sudah ada.");
+    }
+
+    if (input.items.length === 0) {
+      throw new Error("Tambahkan minimal satu barang.");
+    }
+
+    if (input.items.some((item) => item.quantity <= 0 || item.unitCost < 0)) {
+      throw new Error("Jumlah dan harga barang harus valid.");
+    }
+
+    const total = input.items.reduce(
+      (sum, item) => sum + item.quantity * item.unitCost,
+      0,
+    );
+    const now = new Date().toISOString();
+    const purchase: Purchase = {
+      id: nextId("PUR", localPurchases),
+      number: `PB/2026/11/${String(localPurchases.length + 15).padStart(3, "0")}`,
+      supplierName: input.supplierName.trim(),
+      invoice,
+      date: now,
+      due: input.due,
+      total,
+      paid: 0,
+      status: "RECEIVED",
+      payStatus: "UNPAID",
+      itemCount: input.items.length,
+      items: input.items,
+    };
+
+    const movementStart = localMovements.length;
+    localPurchases = [purchase, ...localPurchases];
+    localMovements = [
+      ...input.items.map((item, index): StockMovement => ({
+        id: `MOV-${String(movementStart + index + 1).padStart(3, "0")}`,
+        time: now,
+        productId: item.productId,
+        productName: item.productName,
+        location: "WH-BACK",
+        type: "PURCHASE",
+        quantity: item.quantity,
+        reference: invoice,
+        note: "Pembelian diterima",
+        createdBy: "Ko Jojo Halim",
+      })),
+      ...localMovements,
+    ];
+    localProducts = localProducts.map((product) => {
+      const item = input.items.find((entry) => entry.productId === product.id);
+
+      return item
+        ? {
+            ...product,
+            warehouseStock: product.warehouseStock + item.quantity,
+          }
+        : product;
+    });
+    localPayables = [
+      {
+        id: nextId("PAY", localPayables),
+        supplierName: purchase.supplierName,
+        invoice,
+        due: input.due,
+        total,
+        paid: 0,
+        status: "UNPAID",
+      },
+      ...localPayables,
+    ];
+
+    return clone(purchase);
+  },
+
+  async payPurchase(
+    id: string,
+    amount: number,
+    method: PaymentMethod,
+  ): Promise<Purchase> {
+    await delay();
+    const purchase = localPurchases.find((item) => item.id === id);
+
+    if (!purchase) {
+      throw new Error("Pembelian tidak ditemukan.");
+    }
+
+    if (purchase.status === "CANCELLED") {
+      throw new Error("Pembelian yang dibatalkan tidak dapat dibayar.");
+    }
+
+    const remaining = purchase.total - purchase.paid;
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Nominal pembayaran harus lebih dari nol.");
+    }
+
+    if (amount > remaining) {
+      throw new Error("Nominal melebihi sisa hutang.");
+    }
+
+    const nextPaid = purchase.paid + amount;
+    const payStatus = nextPaid >= purchase.total ? "PAID" : "PARTIAL";
+    const updated: Purchase = {
+      ...purchase,
+      paid: nextPaid,
+      payStatus,
+    };
+
+    localPurchases = localPurchases.map((item) =>
+      item.id === id ? updated : item,
+    );
+    const payable = localPayables.find(
+      (item) => item.invoice === purchase.invoice,
+    );
+
+    localPayables = payable
+      ? localPayables.map((item) =>
+          item.id === payable.id
+            ? {
+                ...item,
+                paid: item.paid + amount,
+                status: item.paid + amount >= item.total ? "PAID" : "PARTIAL",
+              }
+            : item,
+        )
+      : [
+          {
+            id: nextId("PAY", localPayables),
+            supplierName: purchase.supplierName,
+            invoice: purchase.invoice,
+            due: purchase.due,
+            total: purchase.total,
+            paid: nextPaid,
+            status: payStatus === "PAID" ? "PAID" : "PARTIAL",
+          },
+          ...localPayables,
+        ];
+    localCashFlows = [
+      {
+        id: nextId("CF", localCashFlows),
+        time: new Date().toISOString(),
+        type: "OUT",
+        category: "Pembayaran hutang",
+        method,
+        amount,
+        reference: purchase.invoice,
+        source: "AUTO",
+        createdBy: "Ko Jojo Halim",
+      },
+      ...localCashFlows,
+    ];
+
+    return clone(updated);
+  },
+
+  async cancelPurchase(id: string): Promise<Purchase> {
+    await delay();
+    const purchase = localPurchases.find((item) => item.id === id);
+
+    if (!purchase) {
+      throw new Error("Pembelian tidak ditemukan.");
+    }
+
+    if (purchase.status === "CANCELLED") {
+      return clone(purchase);
+    }
+
+    if (purchase.paid > 0) {
+      throw new Error("Pembelian yang sudah dibayar tidak dapat dibatalkan.");
+    }
+
+    if (purchase.status === "RECEIVED") {
+      localProducts = localProducts.map((product) => {
+        const item = purchase.items?.find(
+          (entry) => entry.productId === product.id,
+        );
+
+        return item
+          ? {
+              ...product,
+              warehouseStock: Math.max(
+                0,
+                product.warehouseStock - item.quantity,
+              ),
+            }
+          : product;
+      });
+      const movementStart = localMovements.length;
+      localMovements = [
+        ...(purchase.items ?? []).map((item, index): StockMovement => ({
+          id: `MOV-${String(movementStart + index + 1).padStart(3, "0")}`,
+          time: new Date().toISOString(),
+          productId: item.productId,
+          productName: item.productName,
+          location: "WH-BACK",
+          type: "PURCHASE_CANCEL",
+          quantity: item.quantity,
+          reference: purchase.invoice,
+          note: "Pembatalan pembelian",
+          createdBy: "Ko Jojo Halim",
+        })),
+        ...localMovements,
+      ];
+    }
+
+    localPayables = localPayables.filter(
+      (item) => item.invoice !== purchase.invoice,
+    );
+    const updated: Purchase = { ...purchase, status: "CANCELLED" };
+    localPurchases = localPurchases.map((item) =>
+      item.id === id ? updated : item,
+    );
+
+    return clone(updated);
   },
 
   async listMovements(): Promise<StockMovement[]> {
     await delay();
-    return clone(stockMovements);
+    return clone(localMovements);
   },
 
   async listTransfers(): Promise<Transfer[]> {
@@ -217,6 +466,40 @@ export const repository = {
     items: TransferItem[],
   ): Promise<Transfer> {
     await delay();
+
+    if (from === to) {
+      throw new Error("Lokasi asal dan tujuan harus berbeda.");
+    }
+
+    if (items.length === 0) {
+      throw new Error("Tambahkan minimal satu barang.");
+    }
+
+    for (const item of items) {
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        throw new Error("Jumlah harus berupa angka bulat lebih dari nol.");
+      }
+
+      const product = localProducts.find(
+        (entry) => entry.id === item.productId,
+      );
+
+      if (!product) {
+        throw new Error("Produk tidak ditemukan.");
+      }
+
+      const available =
+        from === "WH-BACK" ? product.warehouseStock : product.storeStock;
+
+      if (item.quantity > available) {
+        throw new Error(
+          from === "WH-BACK"
+            ? "Stok gudang tidak cukup."
+            : "Stok toko tidak cukup.",
+        );
+      }
+    }
+
     const transfer: Transfer = {
       id: `TRF-${String(localTransfers.length + 1).padStart(3, "0")}`,
       number: `MUT/2026/11/${String(localTransfers.length + 1).padStart(3, "0")}`,
@@ -236,12 +519,85 @@ export const repository = {
 
   async completeTransfer(id: string): Promise<void> {
     await delay();
+    const transfer = localTransfers.find((item) => item.id === id);
+
+    if (!transfer || transfer.status !== "PENDING") {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const movementStart = localMovements.length;
+    const items = transfer.items ?? [];
+
+    localProducts = localProducts.map((product) => {
+      const item = items.find((entry) => entry.productId === product.id);
+
+      if (!item) return product;
+
+      return {
+        ...product,
+        warehouseStock:
+          transfer.from === "WH-BACK"
+            ? Math.max(0, product.warehouseStock - item.quantity)
+            : product.warehouseStock,
+        storeStock:
+          transfer.from === "STORE-FRONT"
+            ? Math.max(0, product.storeStock - item.quantity)
+            : product.storeStock,
+      };
+    });
+    localProducts = localProducts.map((product) => {
+      const item = items.find((entry) => entry.productId === product.id);
+
+      if (!item) return product;
+
+      return {
+        ...product,
+        warehouseStock:
+          transfer.to === "WH-BACK"
+            ? product.warehouseStock + item.quantity
+            : product.warehouseStock,
+        storeStock:
+          transfer.to === "STORE-FRONT"
+            ? product.storeStock + item.quantity
+            : product.storeStock,
+      };
+    });
+
+    const movements: StockMovement[] = items.flatMap((item, index) => [
+      {
+        id: `MOV-${String(movementStart + index * 2 + 1).padStart(3, "0")}`,
+        time: now,
+        productId: item.productId,
+        productName: item.productName,
+        location: transfer.from,
+        type: "TRANSFER_OUT",
+        quantity: item.quantity,
+        reference: transfer.number,
+        note: "Mutasi keluar",
+        createdBy: "Ko Jojo Halim",
+      },
+      {
+        id: `MOV-${String(movementStart + index * 2 + 2).padStart(3, "0")}`,
+        time: now,
+        productId: item.productId,
+        productName: item.productName,
+        location: transfer.to,
+        type: "TRANSFER_IN",
+        quantity: item.quantity,
+        reference: transfer.number,
+        note: "Mutasi masuk",
+        createdBy: "Ko Jojo Halim",
+      },
+    ]);
+
+    localMovements = [...movements, ...localMovements];
     localTransfers = localTransfers.map((item) =>
       item.id === id
         ? {
             ...item,
             status: "COMPLETED",
-            completed: new Date().toISOString(),
+            completed: now,
             approvedBy: "Ko Jojo Halim",
           }
         : item,
@@ -260,8 +616,106 @@ export const repository = {
     return clone(localOpnames);
   },
 
+  async createOpname(input: {
+    location: LocationCode;
+    items: Array<{ productId: string; physicalQty: number }>;
+  }): Promise<Opname> {
+    await delay();
+
+    if (input.items.length === 0) {
+      throw new Error("Tambahkan minimal satu produk.");
+    }
+
+    const ids = new Set<string>();
+
+    for (const item of input.items) {
+      if (ids.has(item.productId)) {
+        throw new Error("Produk tidak boleh duplikat.");
+      }
+      ids.add(item.productId);
+
+      if (!Number.isInteger(item.physicalQty) || item.physicalQty < 0) {
+        throw new Error("Jumlah fisik harus angka bulat nol atau lebih.");
+      }
+    }
+
+    const items = input.items.map((item) => {
+      const product = localProducts.find(
+        (entry) => entry.id === item.productId,
+      );
+
+      if (!product) {
+        throw new Error("Produk tidak ditemukan.");
+      }
+
+      return {
+        productId: product.id,
+        productName: product.name,
+        systemQty:
+          input.location === "WH-BACK"
+            ? product.warehouseStock
+            : product.storeStock,
+        physicalQty: item.physicalQty,
+      };
+    });
+    const opname: Opname = {
+      id: nextId("OPN", localOpnames),
+      number: `OPN/2026/11/${String(localOpnames.length + 1).padStart(3, "0")}`,
+      location: input.location,
+      status: "PENDING_REVIEW",
+      created: new Date().toISOString(),
+      createdBy: "Ko Jojo Halim",
+      reviewedBy: null,
+      items,
+    };
+
+    localOpnames = [opname, ...localOpnames];
+    return clone(opname);
+  },
+
   async setOpnameStatus(id: string, status: Opname["status"]): Promise<void> {
     await delay();
+    const opname = localOpnames.find((item) => item.id === id);
+
+    if (!opname) {
+      return;
+    }
+
+    if (opname.status !== "APPROVED" && status === "APPROVED") {
+      const movementStart = localMovements.length;
+      const movements: StockMovement[] = [];
+
+      localProducts = localProducts.map((product) => {
+        const item = opname.items.find(
+          (entry) => entry.productId === product.id,
+        );
+
+        if (!item) return product;
+
+        const difference = item.physicalQty - item.systemQty;
+
+        if (difference !== 0) {
+          movements.push({
+            id: `MOV-${String(movementStart + movements.length + 1).padStart(3, "0")}`,
+            time: new Date().toISOString(),
+            productId: product.id,
+            productName: product.name,
+            location: opname.location,
+            type: "OPNAME",
+            quantity: difference,
+            reference: opname.number,
+            note: "Penyesuaian opname",
+            createdBy: "Ko Jojo Halim",
+          });
+        }
+
+        return opname.location === "WH-BACK"
+          ? { ...product, warehouseStock: item.physicalQty }
+          : { ...product, storeStock: item.physicalQty };
+      });
+      localMovements = [...movements, ...localMovements];
+    }
+
     localOpnames = localOpnames.map((item) =>
       item.id === id ? { ...item, status, reviewedBy: "Ko Jojo Halim" } : item,
     );
@@ -293,7 +747,7 @@ export const repository = {
 
   async listPayables(): Promise<Payable[]> {
     await delay();
-    return clone(payables);
+    return clone(localPayables);
   },
 
   async listAuditEvents(): Promise<AuditEvent[]> {
