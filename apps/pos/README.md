@@ -34,11 +34,14 @@ rpm-build
 pnpm --filter @tokojojo/pos tauri dev
 pnpm --filter @tokojojo/pos build
 pnpm --filter @tokojojo/pos typecheck
+pnpm --filter @tokojojo/pos lint
+pnpm --filter @tokojojo/pos test
 cargo check --workspace
 ```
 
 `cargo check` must run in an environment with the system dependencies above. The
-current Rust command is `app_info`; it proves the IPC path.
+current Rust command is `app_info`; it proves the IPC path. The frontend tests run
+in Vitest against the mock store and calculators.
 
 ## Architecture
 
@@ -56,6 +59,17 @@ plain SQLite.
 
 Planned commands include `login`, `unlock_pin`, `search_products`, `create_sale`,
 `sync_now`, `get_sync_status`, and `enroll_device`.
+
+## UI mock and demo controls
+
+The current POS UI is a UI mock backed by the in-memory store in
+`apps/pos/src/app/store.ts`. UI PRs do not add Tauri commands, Rust core, auth,
+SQLite, or sync; integration remains #8 and #7.
+
+Demo users, demo PIN/password copy, the connection/device state switcher, and
+role escalation are development-only. Full-UI work (#26) must move them behind
+an explicit dev/demo build flag and keep them out of the release path. Tests
+should use fixtures and the mock store, not visible demo credentials.
 
 ## Offline flow
 
@@ -98,6 +112,8 @@ SQLCipher key comes from the OS keychain, not from the PIN.
 
 ```bash
 pnpm --filter @tokojojo/pos typecheck
+pnpm --filter @tokojojo/pos lint
+pnpm --filter @tokojojo/pos test
 pnpm --filter @tokojojo/pos build
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
