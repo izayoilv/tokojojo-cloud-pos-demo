@@ -266,7 +266,7 @@ export async function getDashboardSummary(input: {
           dueOnOrBefore: jakartaToday(),
           outstandingOnly: true,
         },
-        page: { page: 1, pageSize: 5 },
+        page: { page: 1, pageSize: 100 },
         sort: { field: "dueDate", direction: "ASC" },
       }),
       listSales({
@@ -274,9 +274,7 @@ export async function getDashboardSummary(input: {
         sort: { field: "createdAt", direction: "DESC" },
       }),
     ]);
-    payablesDue = payables.items
-      .filter((item) => Number(item.outstanding) > 0)
-      .slice(0, 5);
+    payablesDue = payables.items.filter((item) => Number(item.outstanding) > 0);
     recentSales = recent.items
       .filter((sale) => sale.status === "COMPLETED")
       .slice(0, 5);
