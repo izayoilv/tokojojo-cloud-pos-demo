@@ -3,6 +3,7 @@ import {
   findDeviceById,
   findSessionByTokenHash,
   findUserById,
+  hasOpenShiftOnDevice,
   updateDeviceLastSeen,
 } from "../auth/repository.ts";
 import { type AuthServices, createAuthServices } from "../auth/services.ts";
@@ -42,8 +43,12 @@ export interface ContextSession {
   expiresAt: Date;
 }
 
-export type AuthFailure = "USER_DISABLED" | "DEVICE_REVOKED" | "DEVICE_PENDING";
+export type AuthFailure =
+  "USER_DISABLED" | "DEVICE_REVOKED" | "DEVICE_PENDING" | "FORBIDDEN";
 export type AuthKind = "web" | "native";
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface CookieResponse {
   appendHeader(name: string, value: string): unknown;
@@ -201,20 +206,34 @@ export async function createRequestContext(
     return context;
   }
 
+  if (device.status === "PENDING") {
+    context.authFailure = "DEVICE_PENDING";
+    return context;
+  }
+
   let effectiveUser = tokenUser;
   if (device.platform === "TAURI" && context.actingUserId) {
+    if (!UUID_PATTERN.test(context.actingUserId)) {
+      context.authFailure = "FORBIDDEN";
+      return context;
+    }
     const actingUser = await findUserById(context.actingUserId);
-    if (!actingUser) return context;
+    if (!actingUser) {
+      context.authFailure = "FORBIDDEN";
+      return context;
+    }
     if (!actingUser.isActive) {
       context.authFailure = "USER_DISABLED";
       return context;
     }
+    if (
+      actingUser.id !== tokenUser.id &&
+      !(await hasOpenShiftOnDevice(actingUser.id, device.id))
+    ) {
+      context.authFailure = "FORBIDDEN";
+      return context;
+    }
     effectiveUser = actingUser;
-  }
-
-  if (device.status === "PENDING") {
-    context.authFailure = "DEVICE_PENDING";
-    return context;
   }
 
   context.user = userRowToContextUser(effectiveUser, null);

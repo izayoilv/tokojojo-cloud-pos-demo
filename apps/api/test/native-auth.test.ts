@@ -873,6 +873,11 @@ test("TAURI acting user role comes from the acting user, Android ignores it", as
     );
     const tauriAccess = (tauriLogin.body.data?.login as { accessToken: string })
       .accessToken;
+    await testSql`
+      insert into cashier_shifts (
+        user_id, device_id, status, opening_cash
+      )
+      values (${actingUser.id}, ${tauriDevice.id}, 'OPEN', 0)`;
 
     const tauriMe = await graphql(server, "{ me { id role } }", {
       headers: {
@@ -894,6 +899,53 @@ test("TAURI acting user role comes from the acting user, Android ignores it", as
       },
     });
     assert.equal(errorCode(adminQuery.body), "FORBIDDEN");
+
+    const unboundUser = await createTestUser("CASHIER");
+    const unbound = await graphql(server, "{ me { id role } }", {
+      headers: {
+        authorization: `Bearer ${tauriAccess}`,
+        "x-client-platform": "TAURI",
+        "x-acting-user-id": unboundUser.id,
+      },
+    });
+    assert.equal(errorCode(unbound.body), "FORBIDDEN");
+
+    const cashierEnroller = await createTestUser("CASHIER");
+    const cashierDeviceKey = createDeviceKey();
+    const [cashierDevice] = await testSql`
+      insert into devices (
+        name, platform, enrolled_by_user_id, status, enrolled_at
+      )
+      values (
+        ${`Cashier Tauri ${randomSuffix()}`}, 'TAURI',
+        ${cashierEnroller.id}, 'ACTIVE', now()
+      )
+      returning id`;
+    await testSql`
+      insert into device_keys (
+        device_id, key_id, public_key, key_alg, status, activated_at
+      )
+      values (
+        ${cashierDevice.id}, ${cashierDeviceKey.keyId},
+        ${cashierDeviceKey.publicKey}, 'Ed25519', 'ACTIVE', now()
+      )`;
+    const cashierLogin = await nativeLogin(
+      server,
+      cashierEnroller,
+      { id: cashierDevice.id, key: cashierDeviceKey },
+      "TAURI",
+    );
+    const cashierAccess = (
+      cashierLogin.body.data?.login as { accessToken: string }
+    ).accessToken;
+    const ownerActing = await graphql(server, "{ me { id role } }", {
+      headers: {
+        authorization: `Bearer ${cashierAccess}`,
+        "x-client-platform": "TAURI",
+        "x-acting-user-id": tauriUser.id,
+      },
+    });
+    assert.equal(errorCode(ownerActing.body), "FORBIDDEN");
 
     const androidUser = await createTestUser("OWNER");
     const androidDevice = await activeDeviceFor(server, androidUser, "ANDROID");

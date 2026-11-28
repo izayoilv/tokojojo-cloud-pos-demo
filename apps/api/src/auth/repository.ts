@@ -465,6 +465,18 @@ export async function findUserWithLastLogin(
   return row ? { ...mapUserRow(row), lastLoginAt: row.last_login_at } : null;
 }
 
+export async function hasOpenShiftOnDevice(
+  userId: string,
+  deviceId: string,
+): Promise<boolean> {
+  const sql = await getSqlClient();
+  const [row] = await sql`
+    select 1 from cashier_shifts
+    where user_id = ${userId} and device_id = ${deviceId} and status = 'OPEN'
+    limit 1`;
+  return Boolean(row);
+}
+
 export async function findDeviceById(
   deviceId: string,
 ): Promise<DeviceRow | null> {
