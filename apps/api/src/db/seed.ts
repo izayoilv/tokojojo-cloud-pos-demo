@@ -1,15 +1,16 @@
 import { fileURLToPath } from "node:url";
 
-import { hash } from "@node-rs/argon2";
 import type postgres from "postgres";
 
+import {
+  getPepper,
+  hashPassword,
+  loadPepperConfigFromEnv,
+} from "../auth/passwords.ts";
+import { loadRuntimeEnv } from "../config/env.ts";
 import { sql } from "./client.ts";
 
 export const SEED_PASSWORD = "tokojojo_dev";
-
-// @node-rs/argon2 exports Algorithm as a const enum, which verbatimModuleSyntax
-// cannot reference at runtime. 2 is Algorithm.Argon2id.
-const ARGON2ID_ALGORITHM = 2;
 
 function fixedUuid(value: number): string {
   return `00000000-0000-4000-8000-${value.toString().padStart(12, "0")}`;
@@ -273,7 +274,8 @@ export const OPENING_STOCK: OpeningStock[] = seedProducts.flatMap(
 );
 
 function assertSeedAllowed(): void {
-  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW !== "1") {
+  const runtimeEnv = loadRuntimeEnv();
+  if (runtimeEnv.isProduction && process.env.SEED_ALLOW !== "1") {
     throw new Error(
       "Refusing to seed production. Set SEED_ALLOW=1 to seed this database.",
     );
@@ -283,22 +285,26 @@ function assertSeedAllowed(): void {
 export async function seedDatabase(client: postgres.Sql = sql): Promise<void> {
   assertSeedAllowed();
 
-  const passwordHash = await hash(SEED_PASSWORD, {
-    algorithm: ARGON2ID_ALGORITHM,
-  });
+  const pepperConfig = loadPepperConfigFromEnv();
+  const pepper = getPepper(pepperConfig, pepperConfig.currentVersion);
+  const passwordHash = await hashPassword(SEED_PASSWORD, pepper);
 
   await client.begin(async (tx) => {
     for (const user of seedUsers) {
       await tx`
-        insert into users (id, name, username, password_hash, role, is_active)
+        insert into users (
+          id, name, username, password_hash, password_pepper_version,
+          role, is_active
+        )
         values (
           ${user.id}, ${user.name}, ${user.username}, ${passwordHash},
-          ${user.role}, true
+          ${pepperConfig.currentVersion}, ${user.role}, true
         )
         on conflict (id) do update set
           name = excluded.name,
           username = excluded.username,
           password_hash = excluded.password_hash,
+          password_pepper_version = excluded.password_pepper_version,
           role = excluded.role,
           is_active = excluded.is_active,
           updated_at = now()`;

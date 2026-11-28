@@ -19,7 +19,9 @@
     "db:check": "pnpm --filter @tokojojo/api db:check",
     "db:migrate": "pnpm --filter @tokojojo/api db:migrate",
     "db:seed": "pnpm --filter @tokojojo/api db:seed",
-    "db:studio": "pnpm --filter @tokojojo/api db:studio"
+    "db:studio": "pnpm --filter @tokojojo/api db:studio",
+    "schema:check": "pnpm --filter @tokojojo/api schema:check",
+    "schema:export": "pnpm --filter @tokojojo/api schema:export"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

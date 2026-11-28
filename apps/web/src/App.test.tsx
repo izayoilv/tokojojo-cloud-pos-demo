@@ -156,7 +156,7 @@ describe("app smoke", () => {
     await wait(300);
 
     expect(root.textContent).toContain("Total SKU");
-    expect(root.textContent).toContain("Hutang supplier");
+    expect(root.textContent).toContain("Hutang jatuh tempo");
     expect(root.textContent).not.toContain("Tren penjualan");
     expect(root.textContent).not.toContain("Penjualan terbaru");
 

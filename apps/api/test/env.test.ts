@@ -5,6 +5,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 
+import { createApp } from "../src/app.ts";
+import { createAuthServices } from "../src/auth/services.ts";
+import { loadRuntimeEnv } from "../src/config/env.ts";
 import { loadEnvFile, rootEnvFile } from "../src/db/env.ts";
 
 const originalDatabaseUrl = process.env.DATABASE_URL;
@@ -60,4 +63,56 @@ test("shell-exported DATABASE_URL wins over the file", async () => {
 test("a missing env file is ignored", () => {
   const missing = path.join(tmpdir(), "tokojojo-missing-env", ".env");
   assert.doesNotThrow(() => loadEnvFile(missing));
+});
+
+test("runtime environment is explicit and validated", () => {
+  assert.throws(() => loadRuntimeEnv({}), /APP_ENV or NODE_ENV/);
+  assert.throws(
+    () => loadRuntimeEnv({ APP_ENV: "staging" }),
+    /development, test, or production/,
+  );
+  assert.equal(
+    loadRuntimeEnv({ APP_ENV: "development" }).appEnv,
+    "development",
+  );
+  assert.equal(loadRuntimeEnv({ NODE_ENV: "test" }).appEnv, "test");
+  assert.throws(
+    () => createApp({ checkDatabase: async () => {}, nodeEnv: "staging" }),
+    /development, test, or production/,
+  );
+});
+
+test("production refuses missing PASETO keys or pepper", () => {
+  assert.throws(
+    () =>
+      createAuthServices({
+        env: {
+          APP_ENV: "production",
+          PASSWORD_PEPPER_VERSION: "1",
+        },
+      }),
+    /PASSWORD_PEPPER/,
+  );
+  assert.throws(
+    () =>
+      createAuthServices({
+        env: {
+          APP_ENV: "production",
+          PASSWORD_PEPPER: "production-pepper",
+          PASSWORD_PEPPER_VERSION: "1",
+        },
+      }),
+    /PASETO_ACTIVE_PRIVATE_KEY/,
+  );
+  const testAuth = createAuthServices({
+    env: {
+      APP_ENV: "test",
+      PASSWORD_PEPPER: "test-pepper",
+      PASSWORD_PEPPER_VERSION: "1",
+      PASETO_ACTIVE_KID: "test",
+      PASETO_ACTIVE_PRIVATE_KEY: process.env.PASETO_ACTIVE_PRIVATE_KEY,
+      PASETO_ACTIVE_PUBLIC_KEY: process.env.PASETO_ACTIVE_PUBLIC_KEY,
+    },
+  });
+  testAuth.stop();
 });

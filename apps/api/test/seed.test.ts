@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
 
-import { verify } from "@node-rs/argon2";
-
+import {
+  getPepper,
+  loadPepperConfigFromEnv,
+  verifyPassword,
+} from "../src/auth/passwords.ts";
 import {
   OPENING_STOCK,
   SEED_CATEGORY_IDS,
@@ -123,29 +126,51 @@ test("seed is idempotent and creates the development store data", async () => {
   }
 });
 
-test("seed hashes the four staff passwords with Argon2id", async () => {
+test("seed hashes the four staff passwords with Argon2id and the current pepper", async () => {
   await seedDatabase(testSql);
 
   const users = await testSql`
-    select username, password_hash
+    select username, password_hash, password_pepper_version
     from users
     where id = any(${userIds}::uuid[])
     order by username`;
 
+  const pepperConfig = loadPepperConfigFromEnv();
+
   assert.equal(users.length, 4);
   for (const user of users) {
     assert.match(user.password_hash, /^\$argon2id\$/);
-    assert.equal(await verify(user.password_hash, SEED_PASSWORD), true);
+    assert.equal(
+      Number(user.password_pepper_version),
+      pepperConfig.currentVersion,
+    );
+    assert.equal(
+      await verifyPassword(
+        user.password_hash,
+        SEED_PASSWORD,
+        getPepper(pepperConfig, Number(user.password_pepper_version)),
+      ),
+      true,
+    );
   }
-  assert.equal(await verify(users[0].password_hash, "not-the-password"), false);
+  assert.equal(
+    await verifyPassword(
+      users[0].password_hash,
+      "not-the-password",
+      getPepper(pepperConfig, Number(users[0].password_pepper_version)),
+    ),
+    false,
+  );
 });
 
 test("seed refuses production unless SEED_ALLOW=1", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousAppEnv = process.env.APP_ENV;
   const previousSeedAllow = process.env.SEED_ALLOW;
+  const previousPepper = process.env.PASSWORD_PEPPER;
 
   try {
-    process.env.NODE_ENV = "production";
+    process.env.APP_ENV = "production";
+    process.env.PASSWORD_PEPPER = previousPepper ?? "test-production-pepper";
     delete process.env.SEED_ALLOW;
 
     await assert.rejects(seedDatabase(testSql), /SEED_ALLOW=1/);
@@ -153,10 +178,13 @@ test("seed refuses production unless SEED_ALLOW=1", async () => {
     process.env.SEED_ALLOW = "1";
     await seedDatabase(testSql);
   } finally {
-    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousAppEnv === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = previousAppEnv;
 
     if (previousSeedAllow === undefined) delete process.env.SEED_ALLOW;
     else process.env.SEED_ALLOW = previousSeedAllow;
+
+    if (previousPepper === undefined) delete process.env.PASSWORD_PEPPER;
+    else process.env.PASSWORD_PEPPER = previousPepper;
   }
 });

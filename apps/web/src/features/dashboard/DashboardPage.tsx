@@ -247,7 +247,7 @@ export function DashboardPage() {
                     tone="warning"
                   />
                   <KpiCard
-                    label="Hutang supplier"
+                    label="Hutang jatuh tempo"
                     value={formatCompactRupiah(
                       payables().reduce(
                         (sum, payable) => sum + payable.total - payable.paid,
