@@ -488,11 +488,10 @@ export async function syncOfflineBatch(
     throw validationFailed("Sinkronisasi offline hanya tersedia untuk TAURI.");
   }
   const ip = context.ip ?? "unknown";
-  const deviceRateKey = context.deviceId ?? "unknown";
-  if (!context.auth.syncRateLimit.check(ip, deviceRateKey)) {
+  if (!context.auth.syncRateLimit.checkIp(ip)) {
     throw apiError("RATE_LIMITED");
   }
-  context.auth.syncRateLimit.recordFailure(ip, deviceRateKey);
+  context.auth.syncRateLimit.recordIpFailure(ip);
 
   if (!isUuid(input.clientBatchId)) {
     throw validationFailed("clientBatchId tidak valid.");
@@ -528,6 +527,10 @@ export async function syncOfflineBatch(
       "Perangkat ini tidak mendukung sinkronisasi offline.",
     );
   }
+  if (!context.auth.syncRateLimit.checkDevice(proof.device.id)) {
+    throw apiError("RATE_LIMITED");
+  }
+  context.auth.syncRateLimit.recordDeviceFailure(proof.device.id);
 
   const client = await getSqlClient();
   const existing = await findSyncBatch(proof.device.id, input.clientBatchId);

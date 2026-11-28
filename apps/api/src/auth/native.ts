@@ -238,17 +238,20 @@ export async function refreshNative(
 ): Promise<NativeAuthResult> {
   const platform = nativePlatform(context);
   const ip = context.ip ?? "unknown";
-  const key = context.deviceId ?? "unknown";
-  if (!context.auth.refreshRateLimit.check(ip, key)) {
+  if (!context.auth.refreshRateLimit.checkIp(ip)) {
     throw apiError("RATE_LIMITED");
   }
-  context.auth.refreshRateLimit.recordFailure(ip, key);
+  context.auth.refreshRateLimit.recordIpFailure(ip);
 
   const proof = await verifyDeviceSignature(
     context,
     "refresh",
     input.refreshToken,
   );
+  if (!context.auth.refreshRateLimit.checkDevice(proof.device.id)) {
+    throw apiError("RATE_LIMITED");
+  }
+  context.auth.refreshRateLimit.recordDeviceFailure(proof.device.id);
 
   const subjectUserId = refreshTokenSubject(input.refreshToken);
   if (!subjectUserId) {

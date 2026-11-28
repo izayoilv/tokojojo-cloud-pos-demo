@@ -2,6 +2,7 @@ import express, { type Express, type RequestHandler } from "express";
 
 import {
   type AuthServiceOptions,
+  type AuthServices,
   createAuthServices,
 } from "./auth/services.ts";
 import { createGraphQLServer } from "./graphql/yoga.ts";
@@ -20,6 +21,7 @@ export interface CreateAppOptions {
   jsonBodyLimit?: string;
   healthTimeoutMs?: number;
   auth?: AuthServiceOptions;
+  authServices?: AuthServices;
   graphqlMaxDepth?: number;
   graphqlMaxComplexity?: number;
 }
@@ -70,7 +72,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
     configured: options.corsOrigins ?? process.env.CORS_ORIGINS,
     isProduction,
   });
-  const auth = createAuthServices(options.auth);
+  const auth = options.authServices ?? createAuthServices(options.auth);
 
   app.use(requestIdMiddleware());
   app.use(corsMiddleware(allowedOrigins));

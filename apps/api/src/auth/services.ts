@@ -37,6 +37,7 @@ export interface AuthServices {
   argon2: Semaphore;
   paseto: PasetoService;
   now: () => Date;
+  stop: () => void;
 }
 
 function positiveDuration(value: string | undefined, fallback: number): number {
@@ -111,5 +112,12 @@ export function createAuthServices(
     argon2: options.argon2 ?? getDefaultArgon2Semaphore(),
     paseto: options.paseto ?? createPasetoService(),
     now,
+    stop: () => {
+      rateLimit.stop();
+      refreshRateLimit.stop();
+      nonceRateLimit.stop();
+      upgradeRateLimit.stop();
+      syncRateLimit.stop();
+    },
   };
 }

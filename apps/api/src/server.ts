@@ -4,6 +4,7 @@ import { loadEnvFile, rootEnvFile } from "./db/env.ts";
 
 loadEnvFile(rootEnvFile);
 
+const { createAuthServices } = await import("./auth/services.ts");
 const { createApp } = await import("./app.ts");
 const { checkDatabase } = await import("./db/health.ts");
 const { sql } = await import("./db/client.ts");
@@ -11,7 +12,8 @@ const { sql } = await import("./db/client.ts");
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 
-const app = createApp({ checkDatabase });
+const auth = createAuthServices();
+const app = createApp({ checkDatabase, authServices: auth });
 const server = createServer(app);
 const { startAuditRetentionJob } = await import("./audit/service.ts");
 const stopAuditRetention = startAuditRetentionJob();
@@ -26,6 +28,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   stopAuditRetention();
+  auth.stop();
 
   console.log(`tokojojo-api received ${signal}, shutting down`);
 

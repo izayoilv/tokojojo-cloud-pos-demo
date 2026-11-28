@@ -34,11 +34,10 @@ export async function upgradeOfflineSession(
   }
 
   const ip = context.ip ?? "unknown";
-  const deviceKey = context.deviceId ?? "unknown";
-  if (!context.auth.upgradeRateLimit.check(ip, deviceKey)) {
+  if (!context.auth.upgradeRateLimit.checkIp(ip)) {
     throw apiError("RATE_LIMITED");
   }
-  context.auth.upgradeRateLimit.recordFailure(ip, deviceKey);
+  context.auth.upgradeRateLimit.recordIpFailure(ip);
 
   const offlineToken = context.offlineToken;
   if (!offlineToken) {
@@ -71,6 +70,10 @@ export async function upgradeOfflineSession(
   if (proof.device.platform !== "TAURI") {
     throw validationFailed("Perangkat ini tidak mendukung sesi offline.");
   }
+  if (!context.auth.upgradeRateLimit.checkDevice(proof.device.id)) {
+    throw apiError("RATE_LIMITED");
+  }
+  context.auth.upgradeRateLimit.recordDeviceFailure(proof.device.id);
 
   const verified = await verifyOfflineTokenForDevice(
     context,
@@ -144,7 +147,8 @@ export async function upgradeOfflineSession(
   });
 
   context.auth.rateLimit.reset(ip, user.username);
-  context.auth.upgradeRateLimit.reset(ip, deviceKey);
+  context.auth.upgradeRateLimit.resetIp(ip);
+  context.auth.upgradeRateLimit.resetDevice(proof.device.id);
 
   return {
     user: userRowToContextUser(

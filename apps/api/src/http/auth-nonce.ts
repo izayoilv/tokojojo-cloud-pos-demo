@@ -38,20 +38,28 @@ export function createNonceHandler(auth: AuthServices): RequestHandler {
       }
 
       const ip = request.ip ?? request.socket.remoteAddress ?? "unknown";
-      if (!auth.nonceRateLimit.check(ip, deviceId)) {
+      if (!auth.nonceRateLimit.checkIp(ip)) {
         throw new HttpError(
           429,
           "RATE_LIMITED",
           "Terlalu banyak permintaan nonce. Coba lagi nanti.",
         );
       }
-      auth.nonceRateLimit.recordFailure(ip, deviceId);
+      auth.nonceRateLimit.recordIpFailure(ip);
 
       const issued = await issueAuthNonce({
         deviceId,
         keyId,
         now: auth.now(),
       });
+      if (!auth.nonceRateLimit.checkDevice(deviceId)) {
+        throw new HttpError(
+          429,
+          "RATE_LIMITED",
+          "Terlalu banyak permintaan nonce. Coba lagi nanti.",
+        );
+      }
+      auth.nonceRateLimit.recordDeviceFailure(deviceId);
 
       response.setHeader("Cache-Control", "no-store");
       response.status(200).json({
