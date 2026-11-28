@@ -85,6 +85,7 @@ export type PosSale = {
   change: number;
   status: SaleStatus;
   customer?: string;
+  outstanding?: number;
   flaggedForReview?: boolean;
   refundedAmount?: number;
 };

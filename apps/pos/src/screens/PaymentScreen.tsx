@@ -6,7 +6,7 @@ import {
   CloudOff,
   ShieldAlert,
 } from "lucide-solid";
-import { type Component, createEffect, createMemo, Show } from "solid-js";
+import { type Component, createEffect, createMemo, For, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 import { usePos } from "../app/PosProvider";
@@ -82,9 +82,20 @@ export function PaymentScreen() {
   const canComplete = () => {
     if (!method()) return false;
     if (!pos.state.paymentMethods().includes(method()!)) return false;
-    if (isCash()) return pos.state.cashReceived() >= totals().total;
-    return pos.state.paymentReference().trim().length > 0;
+    const reference = pos.state.paymentReference().trim();
+    if (method() === "TUNAI") {
+      return pos.state.cashReceived() >= totals().total;
+    }
+    if (method() === "CAMPURAN") {
+      const cash = pos.state.splitCash();
+      return cash > 0 && cash < totals().total && reference.length > 0;
+    }
+    if (method() === "HUTANG") return reference.length > 0;
+    return reference.length > 0;
   };
+
+  const splitRemainder = () =>
+    Math.max(0, totals().total - pos.state.splitCash());
 
   const complete = () => {
     if (canComplete()) {
@@ -152,45 +163,175 @@ export function PaymentScreen() {
           <Show
             when={isCash()}
             fallback={
-              <div>
-                <label
-                  for="payment-reference"
-                  class="text-xs font-bold text-ink-secondary"
-                >
-                  {method() ? paymentReferenceLabels[method()!] : "Referensi"}
-                </label>
-                <Input
-                  id="payment-reference"
-                  autocomplete="off"
-                  placeholder="Masukkan referensi pembayaran"
-                  value={pos.state.paymentReference()}
-                  onInput={(event) =>
-                    pos.actions.setPaymentReference(event.currentTarget.value)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      complete();
+              <Show
+                when={method() === "CAMPURAN"}
+                fallback={
+                  <Show
+                    when={method() === "HUTANG"}
+                    fallback={
+                      <div>
+                        <label
+                          for="payment-reference"
+                          class="text-sm font-bold text-ink-secondary"
+                        >
+                          {method()
+                            ? paymentReferenceLabels[method()!]
+                            : "Referensi"}
+                        </label>
+                        <Input
+                          id="payment-reference"
+                          autocomplete="off"
+                          placeholder="Masukkan referensi pembayaran"
+                          value={pos.state.paymentReference()}
+                          onInput={(event) =>
+                            pos.actions.setPaymentReference(
+                              event.currentTarget.value,
+                            )
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              complete();
+                            }
+                          }}
+                          autofocus
+                          class="mt-1.5"
+                          style={{ height: "44px" }}
+                        />
+                        <p class="mt-1 text-sm font-semibold text-ink-muted">
+                          Wajib diisi sebagai bukti pembayaran non-tunai.
+                        </p>
+                      </div>
                     }
-                  }}
-                  autofocus
-                  class="mt-1.5"
-                  style={{ height: "44px" }}
-                />
-                <p class="mt-1 text-sm font-semibold text-ink-muted">
-                  Wajib diisi sebagai bukti pembayaran non-tunai.
-                </p>
-                <Show when={method() === "CAMPURAN"}>
-                  <p class="mt-1 text-sm font-semibold text-ink-muted">
-                    Demo mencatat campuran sebagai satu referensi pembayaran.
-                  </p>
-                </Show>
-                <Show when={method() === "HUTANG"}>
-                  <p class="mt-1 text-sm font-semibold text-ink-muted">
-                    Hutang dicatat atas nama pelanggan dan ditinjau admin.
-                  </p>
-                </Show>
-              </div>
+                  >
+                    <div>
+                      <label
+                        for="payment-reference"
+                        class="text-sm font-bold text-ink-secondary"
+                      >
+                        Nama pelanggan
+                      </label>
+                      <Input
+                        id="payment-reference"
+                        autocomplete="off"
+                        placeholder="Contoh: Warung Bu Sari"
+                        value={pos.state.paymentReference()}
+                        onInput={(event) =>
+                          pos.actions.setPaymentReference(
+                            event.currentTarget.value,
+                          )
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            complete();
+                          }
+                        }}
+                        autofocus
+                        class="mt-1.5"
+                        style={{ height: "44px" }}
+                      />
+                      <p class="mt-1 text-sm font-semibold text-ink-muted">
+                        Hutang dicatat sebagai piutang pelanggan, bukan
+                        pembayaran tunai.
+                      </p>
+                    </div>
+                  </Show>
+                }
+              >
+                <div class="space-y-3">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label
+                        for="split-cash"
+                        class="text-sm font-bold text-ink-secondary"
+                      >
+                        Porsi tunai
+                      </label>
+                      <div class="relative mt-1.5">
+                        <span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 font-mono text-sm font-bold text-ink-muted">
+                          Rp
+                        </span>
+                        <Input
+                          id="split-cash"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          placeholder="0"
+                          value={
+                            pos.state.splitCash() > 0
+                              ? pos.state.splitCash().toLocaleString("id-ID")
+                              : ""
+                          }
+                          onInput={(event) =>
+                            pos.actions.setSplitCash(
+                              Number(
+                                event.currentTarget.value.replace(/\D/g, ""),
+                              ),
+                            )
+                          }
+                          class="pl-10 font-mono text-lg font-bold tabular-nums"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div class="text-sm font-bold text-ink-secondary">
+                        Sisa non-tunai
+                      </div>
+                      <div class="mt-1.5 font-mono text-lg font-extrabold text-ink tabular-nums">
+                        {formatRupiah(splitRemainder())}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="text-sm font-bold text-ink-secondary">
+                      Metode non-tunai
+                    </div>
+                    <div class="mt-1.5 flex flex-wrap gap-1.5">
+                      <For each={["QRIS", "DEBIT", "TRANSFER"] as const}>
+                        {(candidate) => (
+                          <button
+                            type="button"
+                            aria-pressed={pos.state.splitMethod() === candidate}
+                            onClick={() =>
+                              pos.actions.setSplitMethod(candidate)
+                            }
+                            class={`h-11 cursor-pointer rounded-[5px] border px-3 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                              pos.state.splitMethod() === candidate
+                                ? "border-primary bg-primary-soft text-primary"
+                                : "border-line-control bg-surface text-ink-secondary hover:bg-hover hover:text-ink"
+                            }`}
+                          >
+                            {candidate}
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      for="payment-reference"
+                      class="text-sm font-bold text-ink-secondary"
+                    >
+                      Referensi non-tunai
+                    </label>
+                    <Input
+                      id="payment-reference"
+                      autocomplete="off"
+                      placeholder="ID transaksi / nomor referensi"
+                      value={pos.state.paymentReference()}
+                      onInput={(event) =>
+                        pos.actions.setPaymentReference(
+                          event.currentTarget.value,
+                        )
+                      }
+                      class="mt-1.5"
+                      style={{ height: "44px" }}
+                    />
+                  </div>
+                </div>
+              </Show>
             }
           >
             <div class="grid grid-cols-[1fr_auto] items-end gap-3">

@@ -446,6 +446,14 @@ export function HistoryScreen() {
                       </div>
                     )}
                   </For>
+                  <Show when={(sale().outstanding ?? 0) > 0}>
+                    <div class="mt-1 flex justify-between gap-2 border-t border-line pt-1 text-sm text-danger">
+                      <span class="font-semibold">Sisa hutang</span>
+                      <span class="font-mono font-semibold tabular-nums">
+                        {formatRupiah(sale().outstanding ?? 0)}
+                      </span>
+                    </div>
+                  </Show>
                   <Show when={sale().change > 0}>
                     <div class="mt-1 flex justify-between gap-2 border-t border-line pt-1 text-sm">
                       <span class="font-semibold text-ink-secondary">
@@ -539,18 +547,20 @@ export function HistoryScreen() {
                             sale().status === "COMPLETED"
                           }
                         >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              pos.actions.setSessionRole("OWNER");
-                              setNotice(
-                                "Izin demo OWNER aktif. Retur/void sekarang tersedia.",
-                              );
-                            }}
-                            class="mt-1 inline-flex h-11 cursor-pointer items-center text-sm font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                          >
-                            Aktifkan izin demo OWNER
-                          </button>
+                          <Show when={import.meta.env.DEV}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                pos.actions.setSessionRole("OWNER");
+                                setNotice(
+                                  "Izin demo OWNER aktif. Retur/void sekarang tersedia.",
+                                );
+                              }}
+                              class="mt-1 inline-flex h-11 cursor-pointer items-center text-sm font-bold text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                            >
+                              Aktifkan izin demo OWNER
+                            </button>
+                          </Show>
                         </Show>
                       </div>
                     </div>

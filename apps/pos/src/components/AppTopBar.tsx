@@ -98,8 +98,8 @@ export function AppTopBar() {
 
       <div class="ml-auto flex shrink-0 items-center gap-3">
         <Show
-          when={pos.state.connection() !== "LOCKED"}
-          fallback={<StateChip connection="LOCKED" />}
+          when={import.meta.env.DEV && pos.state.connection() !== "LOCKED"}
+          fallback={<StateChip connection={pos.state.connection()} />}
         >
           <StateChipMenu />
         </Show>

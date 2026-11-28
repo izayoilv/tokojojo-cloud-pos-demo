@@ -197,16 +197,18 @@ export function LockScreen() {
             {passwordMode() ? "Kembali ke PIN" : "Masuk dengan kata sandi"}
           </button>
 
-          <button
-            type="button"
-            aria-expanded={userPickerOpen()}
-            onClick={() => setUserPickerOpen((value) => !value)}
-            class="h-11 cursor-pointer rounded-[4px] px-2 text-sm font-semibold text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            {userPickerOpen() ? "Tutup pilihan pengguna" : "Ganti pengguna"}
-          </button>
+          <Show when={import.meta.env.DEV}>
+            <button
+              type="button"
+              aria-expanded={userPickerOpen()}
+              onClick={() => setUserPickerOpen((value) => !value)}
+              class="h-11 cursor-pointer rounded-[4px] px-2 text-sm font-semibold text-ink-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              {userPickerOpen() ? "Tutup pilihan pengguna" : "Ganti pengguna"}
+            </button>
+          </Show>
 
-          <Show when={userPickerOpen()}>
+          <Show when={import.meta.env.DEV && userPickerOpen()}>
             <div class="w-full space-y-1 rounded-[6px] border border-line bg-subtle p-2">
               <For each={demoUsers}>
                 {(user) => (
@@ -248,9 +250,11 @@ export function LockScreen() {
           </p>
         </div>
 
-        <p class="mt-1.5 text-center text-sm font-semibold text-ink-muted">
-          Demo: PIN awal 4321 · Kata sandi tokojojo
-        </p>
+        <Show when={import.meta.env.DEV}>
+          <p class="mt-1.5 text-center text-sm font-semibold text-ink-muted">
+            Hanya untuk demo: PIN awal 4321 · Kata sandi tokojojo
+          </p>
+        </Show>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import type {
   CartLine,
   DeviceStatus,
   HeldCart,
+  Payment,
   PaymentMethod,
   PosConnection,
   PosDevice,
@@ -82,6 +83,9 @@ export function createPosStore() {
     null,
   );
   const [cashReceived, setCashReceivedSignal] = createSignal(0);
+  const [splitCash, setSplitCashSignal] = createSignal(0);
+  const [splitMethod, setSplitMethodSignal] =
+    createSignal<PaymentMethod>("QRIS");
   const [paymentReference, setPaymentReferenceSignal] = createSignal("");
   const [receipt, setReceipt] = createSignal<PosSale | null>(null);
   const [queue, setQueue] = createSignal<SyncSnapshot>({
@@ -337,6 +341,11 @@ export function createPosStore() {
       (line) => line.productId === product.id && line.unitId === unit.id,
     );
 
+    if (((existing?.quantity ?? 0) + 1) * unit.conversionQty > product.stock) {
+      setError(`Stok ${product.name} tidak cukup untuk jumlah ini.`);
+      return;
+    }
+
     if (existing) {
       setCart((lines) =>
         lines.map((line) =>
@@ -369,6 +378,17 @@ export function createPosStore() {
     if (nextQuantity <= 0) {
       setCart((lines) => lines.filter((line) => line.id !== lineId));
       return;
+    }
+
+    const line = cart().find((item) => item.id === lineId);
+    const product = products.find((item) => item.id === line?.productId);
+    const unit = product?.units.find((item) => item.id === line?.unitId);
+
+    if (line && product && unit) {
+      if (nextQuantity * unit.conversionQty > product.stock) {
+        setError(`Stok ${product.name} tidak cukup untuk jumlah ini.`);
+        return;
+      }
     }
 
     setCart((lines) =>
@@ -490,6 +510,8 @@ export function createPosStore() {
 
     setPaymentMethod(method);
     setPaymentReferenceSignal("");
+    setSplitCashSignal(0);
+    setSplitMethodSignal("QRIS");
     if (method === "TUNAI") {
       setCashReceivedSignal(currentTotals().total);
     }
@@ -499,6 +521,18 @@ export function createPosStore() {
   const setCashReceived = (amount: number) => {
     if (!Number.isFinite(amount)) return;
     setCashReceivedSignal(Math.max(0, Math.round(amount)));
+  };
+
+  const setSplitCash = (amount: number) => {
+    if (!Number.isFinite(amount)) return;
+    setSplitCashSignal(
+      Math.min(currentTotals().total, Math.max(0, Math.round(amount))),
+    );
+  };
+
+  const setSplitMethod = (method: PaymentMethod) => {
+    if (!["QRIS", "DEBIT", "TRANSFER"].includes(method)) return;
+    setSplitMethodSignal(method);
   };
 
   const setPaymentReference = (value: string) => {
@@ -549,6 +583,8 @@ export function createPosStore() {
 
     let received = totals.total;
     let change = 0;
+    let payments: Payment[] = [];
+    let outstanding: number | undefined;
 
     if (method === "TUNAI") {
       received = cashReceived();
@@ -557,6 +593,29 @@ export function createPosStore() {
         return;
       }
       change = changeDue(totals.total, received);
+      payments = [{ method, amount: received }];
+    } else if (method === "CAMPURAN") {
+      const cash = splitCash();
+      if (cash <= 0 || cash >= totals.total) {
+        setError("Porsi tunai harus lebih dari nol dan kurang dari total.");
+        return;
+      }
+      const nonCash = totals.total - cash;
+      received = cash;
+      payments = [
+        { method: "TUNAI", amount: cash },
+        {
+          method: splitMethod(),
+          amount: nonCash,
+          reference,
+        },
+      ];
+    } else if (method === "HUTANG") {
+      received = 0;
+      outstanding = totals.total;
+      payments = [];
+    } else {
+      payments = [{ method, amount: totals.total, reference }];
     }
 
     const saleTime = new Date();
@@ -573,13 +632,8 @@ export function createPosStore() {
       discount: totals.discount,
       total: totals.total,
       customer: method === "HUTANG" ? reference : undefined,
-      payments: [
-        {
-          method,
-          amount: received,
-          reference: reference || undefined,
-        },
-      ],
+      outstanding,
+      payments,
       change,
       status: "COMPLETED",
       flaggedForReview: connection() === "GRACE" ? true : undefined,
@@ -587,10 +641,11 @@ export function createPosStore() {
 
     setSales((current) => [sale, ...current]);
 
-    if (method === "TUNAI") {
+    if (method === "TUNAI" || method === "CAMPURAN") {
+      const cashSales = method === "CAMPURAN" ? splitCash() : totals.total;
       setShift((current) =>
         current
-          ? { ...current, cashSales: current.cashSales + totals.total }
+          ? { ...current, cashSales: current.cashSales + cashSales }
           : current,
       );
     }
@@ -614,6 +669,7 @@ export function createPosStore() {
     setCart([]);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setSplitCashSignal(0);
     setPaymentReferenceSignal("");
     setError(null);
     setScreen("RECEIPT");
@@ -623,6 +679,7 @@ export function createPosStore() {
     setReceipt(null);
     setPaymentMethod(null);
     setCashReceivedSignal(0);
+    setSplitCashSignal(0);
     setPaymentReferenceSignal("");
     setError(null);
 
@@ -797,6 +854,8 @@ export function createPosStore() {
       sales,
       paymentMethod,
       cashReceived,
+      splitCash,
+      splitMethod,
       paymentReference,
       receipt,
       queue,
@@ -825,6 +884,8 @@ export function createPosStore() {
       go,
       selectPaymentMethod,
       setCashReceived,
+      setSplitCash,
+      setSplitMethod,
       setPaymentReference,
       completeSale,
       newTransaction,
