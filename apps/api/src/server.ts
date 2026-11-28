@@ -15,8 +15,10 @@ const host = process.env.HOST ?? "0.0.0.0";
 const auth = createAuthServices();
 const app = createApp({ checkDatabase, authServices: auth });
 const server = createServer(app);
+const { startAuthCleanupJob } = await import("./auth/cleanup.ts");
 const { startAuditRetentionJob } = await import("./audit/service.ts");
 const stopAuditRetention = startAuditRetentionJob();
+const stopAuthCleanup = startAuthCleanupJob();
 
 server.listen(port, host, () => {
   console.log(`tokojojo-api listening on http://${host}:${port}`);
@@ -28,6 +30,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   stopAuditRetention();
+  stopAuthCleanup();
   auth.stop();
 
   console.log(`tokojojo-api received ${signal}, shutting down`);

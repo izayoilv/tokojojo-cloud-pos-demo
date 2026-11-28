@@ -385,6 +385,13 @@ Sales day buckets use `Asia/Jakarta` and are returned as `YYYY-MM-DD`.
   password, token, nonce, or signature material.
 - Audit rows carry `retention_until = created_at + 180 days`. The server runs an
   audit retention job daily and exports `purgeExpiredAuditEvents()` for tests.
+- The auth cleanup job runs daily. It removes used/expired nonces (1h retention),
+  expired/revoked sessions (7d), expired refresh tokens (7d) and offline tokens
+  after grace (7d). Refresh-token families are left intact while any member is
+  still inside the reuse-detection window. Configure with
+  `AUTH_CLEANUP_INTERVAL_MS`, `AUTH_CLEANUP_NONCE_RETENTION_MS`,
+  `AUTH_CLEANUP_SESSION_RETENTION_MS`, `AUTH_CLEANUP_REFRESH_RETENTION_MS`, and
+  `AUTH_CLEANUP_OFFLINE_RETENTION_MS`.
 
 ### Hardening and contract gate
 

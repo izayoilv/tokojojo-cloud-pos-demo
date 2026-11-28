@@ -11,6 +11,7 @@ import { createServer, type Server } from "node:http";
 import { after, test } from "node:test";
 
 import { createApp, type CreateAppOptions } from "../src/app.ts";
+import { purgeExpiredAuthArtifacts } from "../src/auth/cleanup.ts";
 import { createPasetoService } from "../src/auth/paseto.ts";
 import {
   getPepper,
@@ -744,6 +745,8 @@ test("refresh rotates tokens and reuse revokes the family", async () => {
     };
     assert.ok(second.accessToken);
     assert.notEqual(second.refreshToken, first.refreshToken);
+
+    await purgeExpiredAuthArtifacts({ refreshRetentionMs: 0 });
 
     const reuse = await graphql(server, REFRESH_MUTATION, {
       variables: { input: { refreshToken: first.refreshToken } },
