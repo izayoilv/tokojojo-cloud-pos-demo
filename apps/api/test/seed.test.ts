@@ -164,12 +164,12 @@ test("seed hashes the four staff passwords with Argon2id and the current pepper"
 });
 
 test("seed refuses production unless SEED_ALLOW=1", async () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  const previousAppEnv = process.env.APP_ENV;
   const previousSeedAllow = process.env.SEED_ALLOW;
   const previousPepper = process.env.PASSWORD_PEPPER;
 
   try {
-    process.env.NODE_ENV = "production";
+    process.env.APP_ENV = "production";
     process.env.PASSWORD_PEPPER = previousPepper ?? "test-production-pepper";
     delete process.env.SEED_ALLOW;
 
@@ -178,8 +178,8 @@ test("seed refuses production unless SEED_ALLOW=1", async () => {
     process.env.SEED_ALLOW = "1";
     await seedDatabase(testSql);
   } finally {
-    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousAppEnv === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = previousAppEnv;
 
     if (previousSeedAllow === undefined) delete process.env.SEED_ALLOW;
     else process.env.SEED_ALLOW = previousSeedAllow;

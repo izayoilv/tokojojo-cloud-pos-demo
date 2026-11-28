@@ -5,6 +5,7 @@ import {
   type AuthServices,
   createAuthServices,
 } from "./auth/services.ts";
+import { loadRuntimeEnv } from "./config/env.ts";
 import { createGraphQLServer } from "./graphql/yoga.ts";
 import { createNonceHandler } from "./http/auth-nonce.ts";
 import { parseTrustedProxies } from "./http/client-ip.ts";
@@ -58,8 +59,11 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
  * listener; schema construction never depends on listening.
  */
 export function createApp(options: CreateAppOptions = {}): Express {
-  const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? "development";
-  const isProduction = nodeEnv === "production";
+  const env = options.nodeEnv
+    ? { ...process.env, APP_ENV: options.nodeEnv }
+    : process.env;
+  const runtimeEnv = loadRuntimeEnv(env);
+  const isProduction = runtimeEnv.isProduction;
   const version = options.version ?? API_VERSION;
   const jsonBodyLimit =
     options.jsonBodyLimit ?? process.env.JSON_BODY_LIMIT ?? "1mb";
@@ -79,7 +83,13 @@ export function createApp(options: CreateAppOptions = {}): Express {
     configured: options.corsOrigins ?? process.env.CORS_ORIGINS,
     isProduction,
   });
-  const auth = options.authServices ?? createAuthServices(options.auth);
+  const auth =
+    options.authServices ??
+    createAuthServices({
+      ...options.auth,
+      env,
+      runtimeEnv,
+    });
 
   app.use(requestIdMiddleware());
   app.use(corsMiddleware(allowedOrigins));

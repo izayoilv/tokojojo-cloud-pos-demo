@@ -5,6 +5,7 @@ import type { GraphQLSchema } from "graphql";
 import { createYoga } from "graphql-yoga";
 
 import { type AuthServices, createAuthServices } from "../auth/services.ts";
+import { loadRuntimeEnv } from "../config/env.ts";
 import { resolveClientIp } from "../http/client-ip.ts";
 import { createRequestContext, type RequestContext } from "./context.ts";
 import { maskGraphQLError } from "./errors.ts";
@@ -30,9 +31,10 @@ export function createGraphQLServer(
     RequestContext
   >
 > {
-  const isProduction =
-    options.isProduction ?? process.env.NODE_ENV === "production";
-  const auth = options.auth ?? createAuthServices();
+  const runtimeEnv = loadRuntimeEnv();
+  const isProduction = options.isProduction ?? runtimeEnv.isProduction;
+  const auth =
+    options.auth ?? createAuthServices({ appEnv: runtimeEnv.appEnv });
   const allowedOrigins = options.allowedOrigins ?? [];
 
   return createYoga<

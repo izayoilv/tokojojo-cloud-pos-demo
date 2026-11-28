@@ -7,6 +7,7 @@ import {
   hashPassword,
   loadPepperConfigFromEnv,
 } from "../auth/passwords.ts";
+import { loadRuntimeEnv } from "../config/env.ts";
 import { sql } from "./client.ts";
 
 export const SEED_PASSWORD = "tokojojo_dev";
@@ -273,7 +274,8 @@ export const OPENING_STOCK: OpeningStock[] = seedProducts.flatMap(
 );
 
 function assertSeedAllowed(): void {
-  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW !== "1") {
+  const runtimeEnv = loadRuntimeEnv();
+  if (runtimeEnv.isProduction && process.env.SEED_ALLOW !== "1") {
     throw new Error(
       "Refusing to seed production. Set SEED_ALLOW=1 to seed this database.",
     );

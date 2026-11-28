@@ -60,17 +60,31 @@ Defaults come from `.env.example`: database `tokojojo`, user `tokojojo`,
 password `tokojojo_dev`, exposed only on `127.0.0.1:5432`. Every command reads
 `DATABASE_URL`; export it if you do not use the repo-root `.env`.
 
+### Runtime and deployment
+
+`APP_ENV` is required and must be exactly `development`, `test`, or `production`
+(`NODE_ENV` is accepted as a fallback). The API refuses to start when it is unset
+or unknown. Introspection and GraphiQL are enabled only for explicit
+`development`/`test`; production disables both.
+
 Web and native auth read the versioned server pepper from `PASSWORD_PEPPER` and
 `PASSWORD_PEPPER_VERSION`; keep old values as `PASSWORD_PEPPER_V<n>` during a
-rotation. Production refuses to start without a pepper. The development fallback
-in `.env.example` is not a production secret.
+rotation. Outside `development`, a missing current pepper refuses startup. The
+development fallback in `.env.example` is not a production secret.
 
 PASETO v4.public access tokens use `PASETO_ACTIVE_PRIVATE_KEY` (base64url raw
 32-byte Ed25519 seed), `PASETO_ACTIVE_PUBLIC_KEY`, and `PASETO_ACTIVE_KID`.
 Keep a previous public key as `PASETO_PREVIOUS_PUBLIC_KEY` /
 `PASETO_PREVIOUS_KID` during signing-key rotation. Signing keys stay in
-podman secrets/environment, never PostgreSQL. Development uses an ephemeral key
-when none is configured; production refuses to start without one.
+podman secrets/environment, never PostgreSQL. Only explicit `development` may
+generate an ephemeral key; `test`/`production` refuse startup without configured
+keys.
+
+`TRUSTED_PROXIES` is an optional comma-separated list of proxy IPs/CIDRs. It is
+empty by default, so `cf-connecting-ip` and `X-Forwarded-For` are ignored and the
+socket address is authoritative. Only configure proxies you control (for example
+a local Cloudflare Tunnel/Caddy hop); the resolver then feeds GraphQL context,
+`/auth/nonce`, and every rate limiter.
 
 | Command                                     | Purpose                                          |
 | ------------------------------------------- | ------------------------------------------------ |

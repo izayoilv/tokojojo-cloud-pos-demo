@@ -8,6 +8,7 @@ import {
   verify as cryptoVerify,
 } from "node:crypto";
 
+import { type AppEnv, resolveAppEnv } from "../config/env.ts";
 import type { Role } from "./permissions.ts";
 
 const PASETO_HEADER = Buffer.from("v4.public.");
@@ -60,6 +61,8 @@ export interface PasetoServiceOptions {
   accessTtlMs?: number;
   offlineTtlMs?: number;
   offlineGraceMs?: number;
+  appEnv?: AppEnv;
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface PasetoService {
@@ -189,7 +192,10 @@ function getDevelopmentKeys(): { privateKey: string; publicKey: string } {
   return developmentKeyPair;
 }
 
-function pasetoConfigFromEnv(env: NodeJS.ProcessEnv): {
+function pasetoConfigFromEnv(
+  env: NodeJS.ProcessEnv,
+  configuredAppEnv?: AppEnv,
+): {
   active: PasetoKeyInput;
   previous: PasetoKeyInput[];
 } {
@@ -204,9 +210,10 @@ function pasetoConfigFromEnv(env: NodeJS.ProcessEnv): {
   };
 
   if (!activePrivate) {
-    if (env.NODE_ENV === "production") {
+    const appEnv = configuredAppEnv ?? resolveAppEnv(env);
+    if (appEnv !== "development") {
       throw new Error(
-        "PASETO_ACTIVE_PRIVATE_KEY is required in production; keep signing keys in podman secrets or the environment.",
+        "PASETO_ACTIVE_PRIVATE_KEY is required outside development; keep signing keys in podman secrets or the environment.",
       );
     }
     const keys = getDevelopmentKeys();
@@ -302,9 +309,10 @@ function isAccessClaims(value: unknown): value is AccessTokenClaims {
 export function createPasetoService(
   options: PasetoServiceOptions = {},
 ): PasetoService {
+  const env = options.env ?? process.env;
   const envConfig = options.active
     ? { active: options.active, previous: options.previous ?? [] }
-    : pasetoConfigFromEnv(process.env);
+    : pasetoConfigFromEnv(env, options.appEnv);
   const activeInput = options.active ?? envConfig.active;
   const previousInput = options.previous ?? envConfig.previous;
   const active = keyMaterial(activeInput, true);
@@ -313,22 +321,21 @@ export function createPasetoService(
     [active, ...previous].map((key) => [key.kid, key]),
   );
   const configuredTtlMs =
-    options.accessTtlMs ??
-    Number(process.env.PASETO_ACCESS_TTL_MS ?? 20 * 60 * 1000);
+    options.accessTtlMs ?? Number(env.PASETO_ACCESS_TTL_MS ?? 20 * 60 * 1000);
   const accessTtlMs =
     Number.isFinite(configuredTtlMs) && configuredTtlMs > 0
       ? configuredTtlMs
       : 20 * 60 * 1000;
   const configuredOfflineTtl =
     options.offlineTtlMs ??
-    Number(process.env.OFFLINE_TOKEN_TTL_MS ?? 7 * 24 * 60 * 60 * 1000);
+    Number(env.OFFLINE_TOKEN_TTL_MS ?? 7 * 24 * 60 * 60 * 1000);
   const offlineTtlMs =
     Number.isFinite(configuredOfflineTtl) && configuredOfflineTtl > 0
       ? configuredOfflineTtl
       : 7 * 24 * 60 * 60 * 1000;
   const configuredOfflineGrace =
     options.offlineGraceMs ??
-    Number(process.env.OFFLINE_TOKEN_GRACE_MS ?? 7 * 24 * 60 * 60 * 1000);
+    Number(env.OFFLINE_TOKEN_GRACE_MS ?? 7 * 24 * 60 * 60 * 1000);
   const offlineGraceMs =
     Number.isFinite(configuredOfflineGrace) && configuredOfflineGrace > 0
       ? configuredOfflineGrace

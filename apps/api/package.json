@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "schema:export": "node --import tsx scripts/export-schema.ts",
     "schema:check": "node --import tsx scripts/check-schema-drift.ts",
-    "test": "node --env-file-if-exists=../../.env --import tsx --test --test-concurrency=1 test/*.test.ts"
+    "test": "node --env-file-if-exists=../../.env --import tsx --import ./test/setup.ts --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {
     "@graphql-yoga/plugin-disable-introspection": "3.1.1",

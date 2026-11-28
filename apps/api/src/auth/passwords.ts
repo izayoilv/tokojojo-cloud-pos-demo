@@ -2,6 +2,8 @@ import { createHmac } from "node:crypto";
 
 import { hash, parseOptions, verify } from "@node-rs/argon2";
 
+import { type AppEnv, resolveAppEnv } from "../config/env.ts";
+
 // @node-rs/argon2 exports Algorithm as a const enum, which verbatimModuleSyntax
 // cannot reference at runtime. 2 is Algorithm.Argon2id.
 const ARGON2ID_ALGORITHM = 2;
@@ -35,6 +37,7 @@ function parseVersion(value: string | undefined): number {
  */
 export function loadPepperConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
+  appEnv: AppEnv = resolveAppEnv(env),
 ): PepperConfig {
   const currentVersion = parseVersion(env.PASSWORD_PEPPER_VERSION);
   const peppers = new Map<number, string>();
@@ -51,12 +54,12 @@ export function loadPepperConfigFromEnv(
   const currentPepper = env.PASSWORD_PEPPER ?? peppers.get(currentVersion);
   if (currentPepper) {
     peppers.set(currentVersion, currentPepper);
-  } else if (env.NODE_ENV === "production") {
-    throw new Error(
-      "PASSWORD_PEPPER is required in production; keep it in podman secrets or the environment, never the database.",
-    );
-  } else {
+  } else if (appEnv === "development") {
     peppers.set(currentVersion, DEVELOPMENT_PEPPER);
+  } else {
+    throw new Error(
+      "PASSWORD_PEPPER is required outside development; keep it in podman secrets or the environment, never the database.",
+    );
   }
 
   return { currentVersion, peppers };

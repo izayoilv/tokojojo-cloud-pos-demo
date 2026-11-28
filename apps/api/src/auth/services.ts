@@ -1,3 +1,4 @@
+import { type AppEnv, loadRuntimeEnv, type RuntimeEnv } from "../config/env.ts";
 import { createPasetoService, type PasetoService } from "./paseto.ts";
 import type { PepperConfig } from "./passwords.ts";
 import { loadPepperConfigFromEnv } from "./passwords.ts";
@@ -23,6 +24,9 @@ export interface AuthServiceOptions {
   argon2?: Semaphore;
   paseto?: PasetoService;
   now?: () => Date;
+  env?: NodeJS.ProcessEnv;
+  appEnv?: AppEnv;
+  runtimeEnv?: RuntimeEnv;
 }
 
 export interface AuthServices {
@@ -52,11 +56,25 @@ function sessionTtlFromEnv(env: NodeJS.ProcessEnv): number {
 export function createAuthServices(
   options: AuthServiceOptions = {},
 ): AuthServices {
+  const env = options.env ?? process.env;
+  const runtimeEnv =
+    options.runtimeEnv ??
+    (options.appEnv
+      ? {
+          appEnv: options.appEnv,
+          isDevelopment: options.appEnv === "development",
+          isTest: options.appEnv === "test",
+          isProduction: options.appEnv === "production",
+        }
+      : loadRuntimeEnv(env));
   const now = options.now ?? (() => new Date());
-  const peppers = options.peppers ?? loadPepperConfigFromEnv();
+  const peppers =
+    options.peppers ?? loadPepperConfigFromEnv(env, runtimeEnv.appEnv);
+  const paseto =
+    options.paseto ?? createPasetoService({ env, appEnv: runtimeEnv.appEnv });
   const rateLimit = new LoginRateLimiter(
     {
-      ...loginRateLimitFromEnv(),
+      ...loginRateLimitFromEnv(env),
       ...options.rateLimit,
     },
     () => now().getTime(),
@@ -105,12 +123,12 @@ export function createAuthServices(
     nonceRateLimit,
     upgradeRateLimit,
     syncRateLimit,
-    sessionTtlMs: options.sessionTtlMs ?? sessionTtlFromEnv(process.env),
+    sessionTtlMs: options.sessionTtlMs ?? sessionTtlFromEnv(env),
     refreshTtlMs:
       options.refreshTtlMs ??
-      positiveDuration(process.env.AUTH_REFRESH_TTL_MS, REFRESH_TTL_MS),
+      positiveDuration(env.AUTH_REFRESH_TTL_MS, REFRESH_TTL_MS),
     argon2: options.argon2 ?? getDefaultArgon2Semaphore(),
-    paseto: options.paseto ?? createPasetoService(),
+    paseto,
     now,
     stop: () => {
       rateLimit.stop();
