@@ -5,6 +5,7 @@ import type { GraphQLSchema } from "graphql";
 import { createYoga } from "graphql-yoga";
 
 import { type AuthServices, createAuthServices } from "../auth/services.ts";
+import { resolveClientIp } from "../http/client-ip.ts";
 import { createRequestContext, type RequestContext } from "./context.ts";
 import { maskGraphQLError } from "./errors.ts";
 import { appSchema } from "./schema.ts";
@@ -14,6 +15,7 @@ export interface GraphQLServerOptions {
   schema?: GraphQLSchema;
   auth?: AuthServices;
   allowedOrigins?: readonly string[];
+  trustedProxies?: readonly string[];
 }
 
 /**
@@ -52,7 +54,11 @@ export function createGraphQLServer(
         auth,
         allowedOrigins,
         response: res,
-        ip: req.socket.remoteAddress ?? null,
+        ip: resolveClientIp({
+          peerAddress: req.socket.remoteAddress,
+          headers: req.headers,
+          trustedProxies: options.trustedProxies,
+        }),
       }),
   });
 }

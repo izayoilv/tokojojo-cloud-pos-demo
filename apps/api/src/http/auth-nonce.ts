@@ -4,6 +4,7 @@ import { GraphQLError } from "graphql";
 import { issueAuthNonce } from "../auth/devices.ts";
 import type { AuthServices } from "../auth/services.ts";
 import { isErrorCode } from "../graphql/errors.ts";
+import { resolveClientIp } from "./client-ip.ts";
 import { HttpError } from "./errors.ts";
 
 function nonceHttpError(error: unknown): unknown {
@@ -24,7 +25,10 @@ function nonceHttpError(error: unknown): unknown {
   return new HttpError(status, code, error.message);
 }
 
-export function createNonceHandler(auth: AuthServices): RequestHandler {
+export function createNonceHandler(
+  auth: AuthServices,
+  options: { trustedProxies?: readonly string[] } = {},
+): RequestHandler {
   return async (request, response, next) => {
     try {
       const deviceId = request.get("x-device-id");
@@ -37,7 +41,11 @@ export function createNonceHandler(auth: AuthServices): RequestHandler {
         );
       }
 
-      const ip = request.ip ?? request.socket.remoteAddress ?? "unknown";
+      const ip = resolveClientIp({
+        peerAddress: request.socket.remoteAddress,
+        headers: request.headers,
+        trustedProxies: options.trustedProxies,
+      });
       if (!auth.nonceRateLimit.checkIp(ip)) {
         throw new HttpError(
           429,

@@ -7,6 +7,7 @@ import {
 } from "./auth/services.ts";
 import { createGraphQLServer } from "./graphql/yoga.ts";
 import { createNonceHandler } from "./http/auth-nonce.ts";
+import { parseTrustedProxies } from "./http/client-ip.ts";
 import { corsMiddleware, resolveAllowedOrigins } from "./http/cors.ts";
 import { errorHandler, notFoundHandler } from "./http/errors.ts";
 import { graphqlGuardMiddleware } from "./http/graphql-guard.ts";
@@ -22,6 +23,7 @@ export interface CreateAppOptions {
   healthTimeoutMs?: number;
   auth?: AuthServiceOptions;
   authServices?: AuthServices;
+  trustedProxies?: string;
   graphqlMaxDepth?: number;
   graphqlMaxComplexity?: number;
 }
@@ -65,8 +67,13 @@ export function createApp(options: CreateAppOptions = {}): Express {
     options.healthTimeoutMs ??
     Number(process.env.HEALTHCHECK_TIMEOUT_MS ?? 3000);
 
+  const trustedProxies = parseTrustedProxies(
+    options.trustedProxies ?? process.env.TRUSTED_PROXIES,
+  );
+
   const app = express();
   app.disable("x-powered-by");
+  app.set("trust proxy", trustedProxies.length > 0 ? trustedProxies : false);
 
   const allowedOrigins = resolveAllowedOrigins({
     configured: options.corsOrigins ?? process.env.CORS_ORIGINS,
@@ -77,7 +84,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
   app.use(requestIdMiddleware());
   app.use(corsMiddleware(allowedOrigins));
 
-  app.get("/auth/nonce", createNonceHandler(auth));
+  app.get("/auth/nonce", createNonceHandler(auth, { trustedProxies }));
 
   app.get("/healthz", async (_request, response) => {
     const time = new Date().toISOString();
@@ -106,6 +113,7 @@ export function createApp(options: CreateAppOptions = {}): Express {
     isProduction,
     auth,
     allowedOrigins,
+    trustedProxies,
   });
   app.use("/graphql", yoga as unknown as RequestHandler);
 

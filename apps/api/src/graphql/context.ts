@@ -82,17 +82,6 @@ export interface CreateRequestContextOptions {
   ip?: string | null;
 }
 
-function resolveIp(
-  request: Request,
-  fallback: string | null | undefined,
-): string | null {
-  const forwarded =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-
-  return forwarded ?? fallback ?? null;
-}
-
 /**
  * Resolve the web session cookie into a request context. A session that is
  * missing, expired, or revoked is anonymous; a valid session for a disabled
@@ -140,7 +129,7 @@ export async function createRequestContext(
     deviceSignature: request.headers.get("x-device-signature"),
     offlineToken: request.headers.get("x-offline-token"),
     actingUserId: request.headers.get("x-acting-user-id"),
-    ip: resolveIp(request, options.ip),
+    ip: options.ip ?? null,
     userAgent: request.headers.get("user-agent"),
     auth,
     setCookie,
