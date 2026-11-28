@@ -101,6 +101,17 @@ export function ReceiptPreview(props: {
             </div>
           )}
         </For>
+        <Show when={(props.sale.outstanding ?? 0) > 0}>
+          <div class="flex justify-between gap-2 text-danger">
+            <span>Hutang</span>
+            <span class="tabular-nums">
+              {formatRupiah(props.sale.outstanding ?? 0)}
+            </span>
+          </div>
+          <div class="break-words text-xs text-ink-muted">
+            Pelanggan: {props.sale.customer ?? "—"}
+          </div>
+        </Show>
         <Show when={props.sale.change > 0}>
           <div class="flex justify-between gap-2">
             <span>Kembalian</span>

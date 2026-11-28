@@ -127,13 +127,15 @@ export function EnrollmentScreen() {
 
           <div class="mt-5 flex flex-wrap items-center gap-2">
             <Show when={status() === "PENDING"}>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => pos.actions.approveDevice()}
-              >
-                Aktifkan perangkat
-              </Button>
+              <Show when={import.meta.env.DEV}>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => pos.actions.approveDevice()}
+                >
+                  Aktifkan perangkat
+                </Button>
+              </Show>
               <Button
                 variant="secondary"
                 size="lg"
@@ -151,13 +153,15 @@ export function EnrollmentScreen() {
               >
                 Lanjutkan ke PIN <ArrowRight size={16} />
               </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => pos.actions.setDeviceStatus("REVOKED")}
-              >
-                Cabut perangkat
-              </Button>
+              <Show when={import.meta.env.DEV}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => pos.actions.setDeviceStatus("REVOKED")}
+                >
+                  Cabut perangkat
+                </Button>
+              </Show>
             </Show>
 
             <Show when={status() === "REVOKED"}>
@@ -178,30 +182,32 @@ export function EnrollmentScreen() {
             </a>
           </div>
 
-          <div class="mt-4 rounded-[8px] border border-dashed border-line-strong bg-subtle/60 px-3 py-2.5">
-            <div class="mb-2 text-sm font-extrabold tracking-[0.12em] text-ink-muted uppercase">
-              Kontrol demo
+          <Show when={import.meta.env.DEV}>
+            <div class="mt-4 rounded-[8px] border border-dashed border-line-strong bg-subtle/60 px-3 py-2.5">
+              <div class="mb-2 text-sm font-extrabold tracking-[0.12em] text-ink-muted uppercase">
+                Hanya untuk demo · kontrol perangkat
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                {demoStates.map(([value, label]) => (
+                  <button
+                    type="button"
+                    aria-pressed={status() === value}
+                    onClick={() => pos.actions.setDeviceStatus(value)}
+                    class={`inline-flex h-11 cursor-pointer items-center rounded-[5px] border px-3 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                      status() === value
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-line-control bg-surface text-ink-secondary hover:bg-hover"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p class="mt-2 text-sm font-semibold text-ink-muted">
+                Persetujuan admin disimulasikan untuk demo UI.
+              </p>
             </div>
-            <div class="flex flex-wrap gap-1.5">
-              {demoStates.map(([value, label]) => (
-                <button
-                  type="button"
-                  aria-pressed={status() === value}
-                  onClick={() => pos.actions.setDeviceStatus(value)}
-                  class={`inline-flex h-11 cursor-pointer items-center rounded-[5px] border px-3 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                    status() === value
-                      ? "border-primary bg-primary-soft text-primary"
-                      : "border-line-control bg-surface text-ink-secondary hover:bg-hover"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p class="mt-2 text-sm font-semibold text-ink-muted">
-              Persetujuan admin disimulasikan untuk demo UI.
-            </p>
-          </div>
+          </Show>
         </div>
       </div>
     </div>

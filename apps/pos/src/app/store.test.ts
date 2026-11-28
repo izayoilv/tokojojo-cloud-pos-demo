@@ -259,6 +259,54 @@ describe("payment and offline behavior", () => {
     expect(store.state.shift()?.source).toBe("OFFLINE");
   });
 
+  it("blocks quantities above available stock", () => {
+    const store = unlockedStore();
+    store.actions.clearCart();
+    const product = products.find((item) => item.id === "PRD-003")!;
+    const unit = product.units[0]!;
+
+    store.actions.addProduct(product.id, unit.id);
+    store.actions.setQuantity("LINE-1", product.stock + 1);
+
+    expect(store.state.cart()[0]?.quantity).toBe(1);
+    expect(store.state.error()).toContain("Stok");
+    expect(store.state.totals().itemCount).toBe(1);
+  });
+
+  it("records split tender with cash and non-cash components", () => {
+    const store = unlockedStore();
+    store.actions.selectPaymentMethod("CAMPURAN");
+    store.actions.setSplitMethod("QRIS");
+    store.actions.setSplitCash(100000);
+    store.actions.setPaymentReference("QRIS-SPLIT-1");
+    store.actions.completeSale();
+
+    const sale = store.state.receipt()!;
+    expect(sale.payments).toEqual([
+      { method: "TUNAI", amount: 100000 },
+      {
+        method: "QRIS",
+        amount: 66500,
+        reference: "QRIS-SPLIT-1",
+      },
+    ]);
+    expect(sale.change).toBe(0);
+    expect(store.state.shift()?.cashSales).toBe(100000);
+  });
+
+  it("records a Hutang sale without treating it as paid", () => {
+    const store = unlockedStore();
+    store.actions.selectPaymentMethod("HUTANG");
+    store.actions.setPaymentReference("Warung Bu Sari");
+    store.actions.completeSale();
+
+    const sale = store.state.receipt()!;
+    expect(sale.customer).toBe("Warung Bu Sari");
+    expect(sale.outstanding).toBe(166500);
+    expect(sale.payments).toHaveLength(0);
+    expect(store.state.shift()?.cashSales).toBe(0);
+  });
+
   it("flags grace sales in the sync queue", () => {
     const store = unlockedStore();
     const flaggedBefore = store.state.queue().flagged;

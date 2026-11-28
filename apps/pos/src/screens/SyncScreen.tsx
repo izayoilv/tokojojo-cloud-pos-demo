@@ -83,42 +83,44 @@ export function SyncScreen() {
           </Button>
         </div>
 
-        <div class="flex flex-wrap items-center gap-1.5">
-          <span class="mr-1 text-xs font-extrabold tracking-[0.12em] text-ink-muted uppercase">
-            Simulasi status
-          </span>
-          <For each={connections}>
-            {(option) => (
-              <button
-                type="button"
-                data-connection={option.value}
-                aria-pressed={pos.state.connection() === option.value}
-                onClick={() => pos.actions.setConnection(option.value)}
-                class={`flex h-11 cursor-pointer items-center gap-1 rounded-[5px] border px-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-                  pos.state.connection() === option.value
-                    ? "border-primary bg-primary-soft text-primary"
-                    : "border-line-control bg-surface text-ink-secondary hover:bg-hover"
-                }`}
-              >
-                <Show
-                  when={option.value === "ONLINE"}
-                  fallback={
-                    option.value === "LOCKED" ? (
-                      <ShieldAlert size={11} />
-                    ) : option.value === "GRACE" ? (
-                      <Clock3 size={11} />
-                    ) : (
-                      <WifiOff size={11} />
-                    )
-                  }
+        <Show when={import.meta.env.DEV}>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="mr-1 text-xs font-extrabold tracking-[0.12em] text-ink-muted uppercase">
+              Hanya untuk demo · simulasi status
+            </span>
+            <For each={connections}>
+              {(option) => (
+                <button
+                  type="button"
+                  data-connection={option.value}
+                  aria-pressed={pos.state.connection() === option.value}
+                  onClick={() => pos.actions.setConnection(option.value)}
+                  class={`flex h-11 cursor-pointer items-center gap-1 rounded-[5px] border px-2 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                    pos.state.connection() === option.value
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-line-control bg-surface text-ink-secondary hover:bg-hover"
+                  }`}
                 >
-                  <Wifi size={11} />
-                </Show>
-                {option.label}
-              </button>
-            )}
-          </For>
-        </div>
+                  <Show
+                    when={option.value === "ONLINE"}
+                    fallback={
+                      option.value === "LOCKED" ? (
+                        <ShieldAlert size={11} />
+                      ) : option.value === "GRACE" ? (
+                        <Clock3 size={11} />
+                      ) : (
+                        <WifiOff size={11} />
+                      )
+                    }
+                  >
+                    <Wifi size={11} />
+                  </Show>
+                  {option.label}
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
 
         <div class="grid grid-cols-5 gap-2">
           <Stat label="Antrean" value={queue().pending} tone="warning" />
