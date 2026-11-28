@@ -78,7 +78,7 @@ async function startServer(
 }
 
 async function createTestUser(
-  role: "OWNER" | "ADMIN" | "CASHIER" | "WAREHOUSE" = "CASHIER",
+  role: "OWNER" | "ADMIN" | "CASHIER" | "WAREHOUSE" = "WAREHOUSE",
 ): Promise<TestUser> {
   const suffix = randomSuffix();
   const username = `native-${suffix}`;
@@ -985,7 +985,7 @@ test("nonce endpoint rejects revoked devices and rate limits", async () => {
 
 test("web admins can list devices and sessions and revoke a session", async () => {
   const admin = await createTestUser("OWNER");
-  const deviceUser = await createTestUser("CASHIER");
+  const deviceUser = await createTestUser("WAREHOUSE");
   const server = await startServer();
 
   try {

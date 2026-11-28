@@ -110,6 +110,17 @@ export async function enrollDevice(
     password: input.password,
   });
   const { user, rehashedPassword, rehashedPepperVersion } = credentials;
+
+  const allowedRoles =
+    input.platform === "TAURI"
+      ? new Set(["OWNER", "ADMIN"])
+      : new Set(["WAREHOUSE", "ADMIN", "OWNER"]);
+  if (!allowedRoles.has(user.role)) {
+    throw forbidden(
+      `Role ${user.role} tidak diizinkan mendaftarkan perangkat ${input.platform}.`,
+    );
+  }
+
   const now = context.auth.now();
   const sql = await getSqlClient();
 
