@@ -1,7 +1,13 @@
-import { type DeviceView, loadDeviceView } from "../auth/device-view.ts";
-import { findUserById, getSqlClient } from "../auth/repository.ts";
+import { type DeviceView, deviceView } from "../auth/device-view.ts";
+import {
+  findDevicesByIds,
+  findUsersByIds,
+  getSqlClient,
+  listDeviceKeysByIds,
+} from "../auth/repository.ts";
 import { userRowToContextUser } from "../auth/user-mapper.ts";
 import {
+  type DbClient,
   normalizePage,
   type PageInfo,
   pageInfo,
@@ -40,19 +46,25 @@ interface AuditEventRow {
   retention_until: Date;
 }
 
-export async function listAuditEvents(input: {
-  filter?: {
-    eventType?: string | null;
-    actorUserId?: string | null;
-    deviceId?: string | null;
-    entityType?: string | null;
-    entityId?: string | null;
-    range?: { from?: Date | string | null; to?: Date | string | null } | null;
-  } | null;
-  page?: { page: number; pageSize: number } | null;
-  sort?: { field: string; direction: "ASC" | "DESC" } | null;
-}): Promise<AuditEventPageView> {
-  const client = await getSqlClient();
+export async function listAuditEvents(
+  input: {
+    filter?: {
+      eventType?: string | null;
+      actorUserId?: string | null;
+      deviceId?: string | null;
+      entityType?: string | null;
+      entityId?: string | null;
+      range?: {
+        from?: Date | string | null;
+        to?: Date | string | null;
+      } | null;
+    } | null;
+    page?: { page: number; pageSize: number } | null;
+    sort?: { field: string; direction: "ASC" | "DESC" } | null;
+  },
+  clientOverride?: DbClient,
+): Promise<AuditEventPageView> {
+  const client = clientOverride ?? (await getSqlClient());
   const page = normalizePage(input.page);
   const order = resolveSort(
     input.sort,
@@ -101,25 +113,60 @@ export async function listAuditEvents(input: {
     order by ${client(order.expression)} ${direction}
     limit ${page.pageSize} offset ${offset}`) as AuditEventRow[];
 
-  const items: AuditEventView[] = [];
-  for (const row of rows) {
+  const actorIds = [
+    ...new Set(
+      rows
+        .map((row) => row.actor_user_id)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const deviceIds = [
+    ...new Set(
+      rows
+        .map((row) => row.device_id)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const [devices, deviceKeys] = await Promise.all([
+    findDevicesByIds(deviceIds, client),
+    listDeviceKeysByIds(deviceIds, client),
+  ]);
+  const userIds = new Set(actorIds);
+  for (const device of devices.values()) {
+    userIds.add(device.enrolledByUserId);
+  }
+  const users = await findUsersByIds([...userIds], client);
+  const deviceViews = new Map<string, DeviceView>();
+  for (const [deviceId, device] of devices) {
+    const enrolledBy = users.get(device.enrolledByUserId);
+    if (!enrolledBy) continue;
+    deviceViews.set(
+      deviceId,
+      deviceView(
+        device,
+        userRowToContextUser(enrolledBy, null),
+        deviceKeys.get(deviceId) ?? [],
+      ),
+    );
+  }
+
+  const items: AuditEventView[] = rows.map((row) => {
     const actor = row.actor_user_id
-      ? await findUserById(row.actor_user_id)
+      ? (users.get(row.actor_user_id) ?? null)
       : null;
-    const device = row.device_id ? await loadDeviceView(row.device_id) : null;
-    items.push({
+    return {
       id: row.id,
       eventType: row.event_type,
       actor: actor ? userRowToContextUser(actor, null) : null,
       deviceId: row.device_id,
-      device,
+      device: row.device_id ? (deviceViews.get(row.device_id) ?? null) : null,
       entityType: row.entity_type,
       entityId: row.entity_id,
       metadata: JSON.stringify(row.metadata ?? {}),
       createdAt: row.created_at,
       retentionUntil: row.retention_until,
-    });
-  }
+    };
+  });
 
   return { items, pageInfo: pageInfo(page, Number(countRow.total)) };
 }

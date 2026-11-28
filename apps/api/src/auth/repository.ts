@@ -304,6 +304,24 @@ export async function findUserById(userId: string): Promise<UserRow | null> {
   return row ? mapUserRow(row) : null;
 }
 
+export async function findUsersByIds(
+  userIds: string[],
+  client?: DbClient,
+): Promise<Map<string, UserRow>> {
+  const result = new Map<string, UserRow>();
+  if (userIds.length === 0) return result;
+  const sql = client ?? (await getSqlClient());
+  const rows = await sql`
+    select
+      id, name, username, password_hash, password_pepper_version,
+      password_changed_at, credential_version, role, is_active,
+      created_at, updated_at
+    from users
+    where id = any(${userIds}::uuid[])`;
+  for (const row of rows) result.set(row.id, mapUserRow(row));
+  return result;
+}
+
 export interface UserWithLastLoginRow extends UserRow {
   lastLoginAt: Date | null;
 }
@@ -491,6 +509,23 @@ export async function findDeviceById(
   return row ? mapDeviceRow(row) : null;
 }
 
+export async function findDevicesByIds(
+  deviceIds: string[],
+  client?: DbClient,
+): Promise<Map<string, DeviceRow>> {
+  const result = new Map<string, DeviceRow>();
+  if (deviceIds.length === 0) return result;
+  const sql = client ?? (await getSqlClient());
+  const rows = await sql`
+    select
+      id, name, platform, status, enrolled_by_user_id, enrolled_at,
+      last_seen_at, revoked_at, created_at, updated_at
+    from devices
+    where id = any(${deviceIds}::uuid[])`;
+  for (const row of rows) result.set(row.id, mapDeviceRow(row));
+  return result;
+}
+
 export async function findDeviceWithKey(
   deviceId: string,
   keyId: string,
@@ -566,6 +601,29 @@ export async function listDeviceKeys(
     where device_id = ${deviceId}
     order by created_at, id`;
   return rows.map(mapDeviceKeyRow);
+}
+
+export async function listDeviceKeysByIds(
+  deviceIds: string[],
+  client?: DbClient,
+): Promise<Map<string, DeviceKeyRow[]>> {
+  const result = new Map<string, DeviceKeyRow[]>();
+  if (deviceIds.length === 0) return result;
+  const sql = client ?? (await getSqlClient());
+  const rows = await sql`
+    select
+      id, device_id, key_id, public_key, key_alg, status, created_at,
+      activated_at, retired_at, accepted_until, revoked_at
+    from device_keys
+    where device_id = any(${deviceIds}::uuid[])
+    order by created_at, id`;
+  for (const row of rows) {
+    const key = mapDeviceKeyRow(row);
+    const list = result.get(key.deviceId) ?? [];
+    list.push(key);
+    result.set(key.deviceId, list);
+  }
+  return result;
 }
 
 export async function listDevices(input: {
