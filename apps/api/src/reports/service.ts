@@ -1,3 +1,4 @@
+import type { Role } from "../auth/permissions.ts";
 import { loadProductsByIds, type ProductView } from "../catalog/service.ts";
 import {
   type DbClient,
@@ -204,25 +205,19 @@ async function salesAggregates(
 export async function getDashboardSummary(input: {
   range?: DateRangeView | null;
   location?: "WAREHOUSE" | "STORE" | null;
+  role?: Role | null;
 }): Promise<DashboardSummaryView> {
   const client = await getSqlClient();
   const bounds = boundsFor(input.range);
   const from = iso(bounds.from);
   const to = iso(bounds.to);
   const location = input.location ?? null;
+  const canViewSensitive = input.role === "OWNER" || input.role === "ADMIN";
 
-  const [
-    aggregates,
-    seriesRows,
-    summary,
-    lowStock,
-    payables,
-    recent,
-    transfers,
-    opnames,
-  ] = await Promise.all([
-    salesAggregates(client, bounds),
-    client`
+  const [aggregates, seriesRows, summary, lowStock, transfers, opnames] =
+    await Promise.all([
+      salesAggregates(client, bounds),
+      client`
         select
           to_char(
             (s.created_at at time zone 'Asia/Jakarta')::date,
@@ -236,27 +231,40 @@ export async function getDashboardSummary(input: {
           and (${to}::timestamptz is null or s.created_at <= ${to}::timestamptz)
         group by 1
         order by 1`,
-    stockSummary(location),
-    lowStockProducts(location),
-    listPayables({
-      page: { page: 1, pageSize: 10 },
-      sort: { field: "dueDate", direction: "ASC" },
-    }),
-    listSales({
-      page: { page: 1, pageSize: 10 },
-      sort: { field: "createdAt", direction: "DESC" },
-    }),
-    listTransfers({
-      filter: { status: "PENDING" },
-      page: { page: 1, pageSize: 5 },
-      sort: { field: "createdAt", direction: "DESC" },
-    }),
-    listOpnames({
-      filter: { status: "PENDING" },
-      page: { page: 1, pageSize: 5 },
-      sort: { field: "createdAt", direction: "DESC" },
-    }),
-  ]);
+      stockSummary(location),
+      lowStockProducts(location),
+      listTransfers({
+        filter: { status: "PENDING" },
+        page: { page: 1, pageSize: 5 },
+        sort: { field: "createdAt", direction: "DESC" },
+      }),
+      listOpnames({
+        filter: { status: "PENDING" },
+        page: { page: 1, pageSize: 5 },
+        sort: { field: "createdAt", direction: "DESC" },
+      }),
+    ]);
+
+  let payablesDue: PayableView[] = [];
+  let recentSales: SaleView[] = [];
+  if (canViewSensitive) {
+    const [payables, recent] = await Promise.all([
+      listPayables({
+        page: { page: 1, pageSize: 10 },
+        sort: { field: "dueDate", direction: "ASC" },
+      }),
+      listSales({
+        page: { page: 1, pageSize: 10 },
+        sort: { field: "createdAt", direction: "DESC" },
+      }),
+    ]);
+    payablesDue = payables.items
+      .filter((item) => Number(item.outstanding) > 0)
+      .slice(0, 5);
+    recentSales = recent.items
+      .filter((sale) => sale.status === "COMPLETED")
+      .slice(0, 5);
+  }
 
   const grossProfit =
     aggregates.salesTotal - aggregates.returnsTotal - aggregates.cogsTotal;
@@ -277,12 +285,8 @@ export async function getDashboardSummary(input: {
       out: summary.outCount,
     },
     lowStock,
-    payablesDue: payables.items
-      .filter((item) => Number(item.outstanding) > 0)
-      .slice(0, 5),
-    recentSales: recent.items
-      .filter((sale) => sale.status === "COMPLETED")
-      .slice(0, 5),
+    payablesDue,
+    recentSales,
     pendingTransfers: transfers.items,
     pendingOpnames: opnames.items,
   };

@@ -241,7 +241,8 @@ builder.queryFields((t) => ({
       range: t.arg({ type: DateRangeInputRef }),
       location: t.arg({ type: StockLocationEnum }),
     },
-    resolve: (_parent, args) => getDashboardSummary(args),
+    resolve: (_parent, args, context) =>
+      getDashboardSummary({ ...args, role: context.role }),
   }),
   salesReport: t.field({
     type: SalesReportRef,

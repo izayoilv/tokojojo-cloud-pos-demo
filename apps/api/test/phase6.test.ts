@@ -440,6 +440,16 @@ test("reports aggregate sales, inventory, and finance from the views", async () 
         ${product.id}, 'STORE', -2, 'SALE', 'SALE',
         ${sale.id}, ${owner.id}, ${soldAt}::timestamptz
       )`;
+    const [recentSale] = await testSql`
+      insert into sales (
+        invoice_no, shift_id, user_id, subtotal, discount, total_amount,
+        settlement_method, status, created_at, updated_at
+      )
+      values (
+        ${`INV-RECENT-${suffix}`}, ${shift.id}, ${owner.id},
+        1000, 0, 1000, 'CASH', 'COMPLETED', now(), now()
+      )
+      returning id`;
 
     const dashboard = await graphql(
       server,
@@ -696,34 +706,55 @@ test("reports aggregate sales, inventory, and finance from the views", async () 
       ),
     );
 
+    const admin = await createUser("ADMIN");
     const cashier = await createUser("CASHIER");
     const warehouse = await createUser("WAREHOUSE");
+    const adminAuth = await webLogin(server, admin);
     const cashierAuth = await webLogin(server, cashier);
     const warehouseAuth = await webLogin(server, warehouse);
-    const cashierDashboard = await graphql(
-      server,
-      `
-        {
-          dashboardSummary {
-            salesTotal
+
+    for (const [role, roleAuth] of [
+      ["OWNER", auth],
+      ["ADMIN", adminAuth],
+      ["CASHIER", cashierAuth],
+      ["WAREHOUSE", warehouseAuth],
+    ] as const) {
+      const dashboard = await graphql(
+        server,
+        `
+          {
+            dashboardSummary {
+              salesTotal
+              payablesDue {
+                purchaseNo
+              }
+              recentSales {
+                id
+              }
+            }
           }
-        }
-      `,
-      { headers: cashierAuth.headers },
-    );
-    assert.equal(cashierDashboard.body.errors, undefined);
-    const warehouseDashboard = await graphql(
-      server,
-      `
-        {
-          dashboardSummary {
-            salesTotal
-          }
-        }
-      `,
-      { headers: warehouseAuth.headers },
-    );
-    assert.equal(warehouseDashboard.body.errors, undefined);
+        `,
+        { headers: roleAuth.headers },
+      );
+      assert.equal(
+        dashboard.body.errors,
+        undefined,
+        `${role}: ${JSON.stringify(dashboard.body.errors)}`,
+      );
+      const payload = dashboard.body.data?.dashboardSummary as {
+        payablesDue: Array<{ purchaseNo: string }>;
+        recentSales: Array<{ id: string }>;
+      };
+      if (role === "OWNER" || role === "ADMIN") {
+        assert.ok(
+          payload.recentSales.some((item) => item.id === recentSale.id),
+          `${role} sees recent sales`,
+        );
+      } else {
+        assert.deepEqual(payload.payablesDue, [], `${role} payables`);
+        assert.deepEqual(payload.recentSales, [], `${role} recent sales`);
+      }
+    }
     const forbidden = await graphql(
       server,
       `
