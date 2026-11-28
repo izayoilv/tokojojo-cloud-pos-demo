@@ -365,6 +365,10 @@ Sales day buckets use `Asia/Jakarta` and are returned as `YYYY-MM-DD`.
 - `dashboardSummary` is available to every role with `dashboard:read`
   (OWNER/ADMIN/CASHIER/WAREHOUSE). It aggregates completed sales only and uses
   `v_stock_balances` for stock counts.
+- For OWNER/ADMIN, `payablesDue` includes only open purchases with
+  `outstanding > 0` and `due_date <= today`. Today is evaluated in
+  `Asia/Jakarta`; purchases without a due date are excluded. CASHIER/WAREHOUSE
+  receive an empty list.
 - `salesReport`, `inventoryReport`, and `financeReport` require `reports:read`
   (OWNER/ADMIN). Sales reports exclude `VOIDED` sales; finance uses
   `v_sale_balances` and `v_purchase_balances`, which exclude `VOIDED` sales and

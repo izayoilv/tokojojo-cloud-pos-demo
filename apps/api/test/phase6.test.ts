@@ -90,6 +90,19 @@ function errorCode(body: GraphQLBody): string | undefined {
   return body.errors?.[0]?.extensions?.code;
 }
 
+function jakartaDay(offsetDays = 0): string {
+  const date = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 async function createUser(
   role: TestUser["role"] = "OWNER",
   password = "phase6-password",
@@ -450,6 +463,31 @@ test("reports aggregate sales, inventory, and finance from the views", async () 
         1000, 0, 1000, 'CASH', 'COMPLETED', now(), now()
       )
       returning id`;
+    const [dueSupplier] = await testSql`
+      insert into suppliers (name)
+      values (${`Due Supplier ${suffix}`})
+      returning id`;
+    const duePurchaseNos: Record<"overdue" | "today" | "future", string> = {
+      overdue: `PO-DUE-OVERDUE-${suffix}`,
+      today: `PO-DUE-TODAY-${suffix}`,
+      future: `PO-DUE-FUTURE-${suffix}`,
+    };
+    for (const [bucket, dueDate] of [
+      ["overdue", jakartaDay(-1)],
+      ["today", jakartaDay(0)],
+      ["future", jakartaDay(1)],
+    ] as const) {
+      await testSql`
+        insert into purchases (
+          purchase_no, supplier_id, supplier_name, created_by, due_date,
+          total_amount, status, received_at, created_at, updated_at
+        )
+        values (
+          ${duePurchaseNos[bucket]}, ${dueSupplier.id},
+          ${`Due Supplier ${suffix}`}, ${owner.id},
+          ${dueDate}::date, 5000, 'OPEN', now(), now(), now()
+        )`;
+    }
 
     const dashboard = await graphql(
       server,
@@ -749,6 +787,19 @@ test("reports aggregate sales, inventory, and finance from the views", async () 
         assert.ok(
           payload.recentSales.some((item) => item.id === recentSale.id),
           `${role} sees recent sales`,
+        );
+        const dueNos = payload.payablesDue.map((item) => item.purchaseNo);
+        assert.ok(
+          dueNos.includes(duePurchaseNos.overdue),
+          `${role} includes overdue payable`,
+        );
+        assert.ok(
+          dueNos.includes(duePurchaseNos.today),
+          `${role} includes today payable`,
+        );
+        assert.ok(
+          !dueNos.includes(duePurchaseNos.future),
+          `${role} excludes future payable`,
         );
       } else {
         assert.deepEqual(payload.payablesDue, [], `${role} payables`);

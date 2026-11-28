@@ -164,6 +164,18 @@ function iso(value: Date | null): string | null {
   return value ? value.toISOString() : null;
 }
 
+function jakartaToday(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
 function marginPercent(grossProfit: number, sales: number): string {
   if (sales <= 0) return "0.00";
   return ((grossProfit / sales) * 100).toFixed(2);
@@ -250,7 +262,11 @@ export async function getDashboardSummary(input: {
   if (canViewSensitive) {
     const [payables, recent] = await Promise.all([
       listPayables({
-        page: { page: 1, pageSize: 10 },
+        filter: {
+          dueOnOrBefore: jakartaToday(),
+          outstandingOnly: true,
+        },
+        page: { page: 1, pageSize: 5 },
         sort: { field: "dueDate", direction: "ASC" },
       }),
       listSales({

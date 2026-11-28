@@ -678,6 +678,8 @@ export async function listPayables(input: {
     supplierId?: string | null;
     paymentStatus?: string | null;
     dueBefore?: string | null;
+    dueOnOrBefore?: string | null;
+    outstandingOnly?: boolean | null;
   } | null;
   page?: { page: number; pageSize: number } | null;
   sort?: { field: string; direction: "ASC" | "DESC" } | null;
@@ -698,7 +700,10 @@ export async function listPayables(input: {
   const supplierId = input.filter?.supplierId ?? null;
   const paymentStatus = input.filter?.paymentStatus ?? null;
   const dueBefore = input.filter?.dueBefore ?? null;
+  const dueOnOrBefore = input.filter?.dueOnOrBefore ?? null;
+  const outstandingOnly = input.filter?.outstandingOnly ?? null;
   assertDueDate(dueBefore);
+  assertDueDate(dueOnOrBefore);
   const direction = order.direction === "ASC" ? client`asc` : client`desc`;
   const offset = (page.page - 1) * page.pageSize;
 
@@ -713,7 +718,9 @@ export async function listPayables(input: {
         or p.supplier_invoice_no ilike ${search})
       and (${supplierId}::uuid is null or p.supplier_id = ${supplierId}::uuid)
       and (${paymentStatus}::text is null or b.payment_status = ${paymentStatus})
-      and (${dueBefore}::date is null or p.due_date < ${dueBefore}::date)`;
+      and (${dueBefore}::date is null or p.due_date < ${dueBefore}::date)
+      and (${dueOnOrBefore}::date is null or p.due_date <= ${dueOnOrBefore}::date)
+      and (${outstandingOnly}::boolean is not true or b.outstanding > 0)`;
 
   const rows = (await client`
     select
@@ -731,6 +738,8 @@ export async function listPayables(input: {
       and (${supplierId}::uuid is null or p.supplier_id = ${supplierId}::uuid)
       and (${paymentStatus}::text is null or b.payment_status = ${paymentStatus})
       and (${dueBefore}::date is null or p.due_date < ${dueBefore}::date)
+      and (${dueOnOrBefore}::date is null or p.due_date <= ${dueOnOrBefore}::date)
+      and (${outstandingOnly}::boolean is not true or b.outstanding > 0)
     order by ${client(order.expression)} ${direction}
     limit ${page.pageSize} offset ${offset}`) as PurchaseRow[];
 
