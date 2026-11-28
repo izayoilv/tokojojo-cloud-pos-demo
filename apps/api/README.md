@@ -394,7 +394,14 @@ Sales day buckets use `Asia/Jakarta` and are returned as `YYYY-MM-DD`.
   are masked, while documented `extensions.code` errors pass through.
 - Request/error logs contain request metadata only, never bodies, headers, tokens,
   passwords, nonces, or signatures.
-- Login, refresh, nonce, upgrade, and sync use in-process rate limiters.
+- Login, refresh, nonce, upgrade, and sync use in-process rate limiters with a
+  bounded LRU bucket store.
+- Refresh uses a **failure-only** budget: the device proof is verified first,
+  failed refreshes count against IP and device limits, and a successful refresh
+  resets both buckets. Defaults are 60 failures/IP and 30/device per 15 minutes.
+- Nonce and sync use **attempt** budgets (every verified attempt counts): nonce
+  and sync default to 60 attempts/IP and 30/device per minute; upgrade defaults
+  to 30/IP and 10/device per 15 minutes.
 - `pending-operations.ts` is empty. `schema:check` compares Pothos and the contract
   structurally and by normalized `printSchema`, so CI fails on any SDL drift.
 

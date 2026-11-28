@@ -342,6 +342,26 @@ async function nativeLogin(
   });
 }
 
+async function refresh(
+  server: TestServer,
+  device: ActiveDevice,
+  refreshToken: string,
+) {
+  return graphql(server, REFRESH_MUTATION, {
+    variables: { input: { refreshToken } },
+    headers: nativeHeaders(
+      device,
+      "ANDROID",
+      await signedHeaders({
+        server,
+        device,
+        operation: "refresh",
+        payload: refreshToken,
+      }),
+    ),
+  });
+}
+
 function cookieValue(setCookies: string[], name: string): string {
   const cookie = setCookies.find((value) => value.startsWith(`${name}=`));
   assert.ok(cookie);
@@ -542,6 +562,87 @@ test("clock skew is rejected before nonce consumption", async () => {
       ),
     });
     assert.equal(errorCode(skewed.body), "CLOCK_SKEW");
+  } finally {
+    await server.close();
+  }
+});
+
+test("successful refreshes never exhaust the refresh attempt budget", async () => {
+  const user = await createTestUser();
+  const server = await startServer({
+    auth: {
+      refreshRateLimit: { perIp: 1, perUsername: 1, windowMs: 60_000 },
+    },
+  });
+
+  try {
+    const device = await activeDeviceFor(server, user);
+    const login = await nativeLogin(server, user, device);
+    let refreshToken = (login.body.data?.login as { refreshToken: string })
+      .refreshToken;
+
+    for (let index = 0; index < 5; index += 1) {
+      const result = await refresh(server, device, refreshToken);
+      assert.equal(
+        result.body.errors,
+        undefined,
+        `refresh ${index}: ${JSON.stringify(result.body.errors)}`,
+      );
+      refreshToken = (result.body.data?.refresh as { refreshToken: string })
+        .refreshToken;
+    }
+  } finally {
+    await server.close();
+  }
+});
+
+test("refresh failure budget resets on success", async () => {
+  const user = await createTestUser();
+  const server = await startServer({
+    auth: {
+      refreshRateLimit: { perIp: 2, perUsername: 2, windowMs: 60_000 },
+    },
+  });
+
+  try {
+    const device = await activeDeviceFor(server, user);
+    const login = await nativeLogin(server, user, device);
+    const refreshToken = (login.body.data?.login as { refreshToken: string })
+      .refreshToken;
+
+    const beforeReset = await refresh(
+      server,
+      device,
+      `invalid-refresh-${randomSuffix()}`,
+    );
+    assert.equal(errorCode(beforeReset.body), "UNAUTHENTICATED");
+
+    const success = await refresh(server, device, refreshToken);
+    assert.equal(
+      success.body.errors,
+      undefined,
+      JSON.stringify(success.body.errors),
+    );
+
+    for (let index = 0; index < 2; index += 1) {
+      const failed = await refresh(
+        server,
+        device,
+        `invalid-refresh-${randomSuffix()}`,
+      );
+      assert.equal(
+        errorCode(failed.body),
+        "UNAUTHENTICATED",
+        `post-reset failure ${index}`,
+      );
+    }
+
+    const limited = await refresh(
+      server,
+      device,
+      `invalid-refresh-${randomSuffix()}`,
+    );
+    assert.equal(errorCode(limited.body), "RATE_LIMITED");
   } finally {
     await server.close();
   }

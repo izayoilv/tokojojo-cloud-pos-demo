@@ -79,6 +79,7 @@ export function createAuthServices(
     },
     () => now().getTime(),
   );
+  // Failure-only budget: proofs are verified before counting, success resets.
   const refreshRateLimit = new LoginRateLimiter(
     {
       perIp: 60,
@@ -88,6 +89,7 @@ export function createAuthServices(
     },
     () => now().getTime(),
   );
+  // Attempt budgets: every verified nonce/sync attempt consumes the buckets.
   const nonceRateLimit = new LoginRateLimiter(
     {
       perIp: 60,

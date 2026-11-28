@@ -10,7 +10,10 @@ import {
   verifyLoginCredentials,
   writeLoginFailureAudit,
 } from "./credentials.ts";
-import { verifyDeviceSignature } from "./device-signature.ts";
+import {
+  type VerifiedDeviceSignature,
+  verifyDeviceSignature,
+} from "./device-signature.ts";
 import { type DeviceView, loadDeviceView } from "./device-view.ts";
 import { issueOfflineToken, type OfflineTokenView } from "./offline.ts";
 import type { PasetoPublicKey } from "./paseto.ts";
@@ -237,22 +240,41 @@ export async function refreshNative(
   input: { refreshToken: string },
 ): Promise<NativeAuthResult> {
   const platform = nativePlatform(context);
-  const ip = context.ip ?? "unknown";
-  if (!context.auth.refreshRateLimit.checkIp(ip)) {
-    throw apiError("RATE_LIMITED");
-  }
-  context.auth.refreshRateLimit.recordIpFailure(ip);
-
   const proof = await verifyDeviceSignature(
     context,
     "refresh",
     input.refreshToken,
   );
-  if (!context.auth.refreshRateLimit.checkDevice(proof.device.id)) {
+
+  // Refresh uses a failure-only budget: verified device proofs are required
+  // before an attempt can consume the IP/device budget, and a successful
+  // refresh clears both buckets.
+  const ip = context.ip ?? "unknown";
+  if (
+    !context.auth.refreshRateLimit.checkIp(ip) ||
+    !context.auth.refreshRateLimit.checkDevice(proof.device.id)
+  ) {
     throw apiError("RATE_LIMITED");
   }
-  context.auth.refreshRateLimit.recordDeviceFailure(proof.device.id);
 
+  try {
+    const result = await completeRefresh(context, input, proof, platform);
+    context.auth.refreshRateLimit.resetIp(ip);
+    context.auth.refreshRateLimit.resetDevice(proof.device.id);
+    return result;
+  } catch (error) {
+    context.auth.refreshRateLimit.recordIpFailure(ip);
+    context.auth.refreshRateLimit.recordDeviceFailure(proof.device.id);
+    throw error;
+  }
+}
+
+async function completeRefresh(
+  context: RequestContext,
+  input: { refreshToken: string },
+  proof: VerifiedDeviceSignature,
+  platform: "ANDROID" | "TAURI",
+): Promise<NativeAuthResult> {
   const subjectUserId = refreshTokenSubject(input.refreshToken);
   if (!subjectUserId) {
     throw unauthenticated("Refresh token tidak valid.");
